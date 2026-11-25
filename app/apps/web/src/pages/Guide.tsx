@@ -84,7 +84,7 @@ const FEATURES: Record<string, Feature> = {
     rule: "A part can't be Done while its tasks are open. Particles flow from active parts.",
   },
   "learning map": {
-    say: "“Link the topics of my OS course in learning order”",
+    say: "“Link the topics of my OS course in learning order” (local MCP can also create courses; Tunnel can only submit drafts)",
     tools: ["update_topic", "add_topic", "create_roadmap", "create_course"],
     file: "learning/<id>/topics.yaml",
     example: "- id: moore-fsm\n  title: Moore State Machines\n  phase: fsm              # column\n  depends_on: [state-tables]  # arrow\n  status: learning",
@@ -92,7 +92,7 @@ const FEATURES: Record<string, Feature> = {
     rule: "Stale (>14 days) or weak (<60%) topics show amber, never green.",
   },
   skills: {
-    say: "“Quiz me on virtual memory” · “Record my lab result”",
+    say: "“Quiz me on virtual memory” · “Record my lab result” (recording and changing skills require local MCP)",
     tools: ["generate_quiz_context", "create_quiz", "record_assessment", "adjust_skill_level"],
     file: "quizzes/*.yaml · assessments/*.md",
     example: "score: 72\nskills: [os-internals]\nevidence: lab report link",
@@ -114,15 +114,15 @@ const FEATURES: Record<string, Feature> = {
     example:
       "type: gantt        # state|gantt|chart|grid|tree\ntopic: process-scheduling\ndata:\n  lanes: [{ id: p1, label: P1 }]\n  bars: [{ id: b1, lane: p1, start: 0, end: 2 }]\nsteps:\n  - text: P1 runs for one quantum\n    highlight: [b1]",
     see: "▶ Review → a lesson page: real math, step-by-step state, live graphs and simulations",
-    rule: "Lesson blocks: text, formula, trace, plot, sim, check, visual, html (sandboxed). Data, not HTML: far fewer tokens; sims are computed by the app, so results are always correct.",
+    rule: "Lesson blocks include text, formulas, traces, Flow / Reveal / Compare motion, plots, simulations and self-checks. Simulations reflect the inputs and assumptions you choose.",
   },
   chatgpt: {
     say: "In ChatGPT on the phone: “What should I review today?”",
     tools: ["get_review_queue", "get_overview", "update_topic"],
     file: "same data, via the tunnel",
-    example: "Sidebar → Remote access → On for 8 h\n# ChatGPT reaches this PC through OpenAI's\n# outbound-only tunnel; read-mostly tool set",
+    example: "Settings → OpenAI Tunnel → Save setup → Connect for 8 h\n# ChatGPT reaches this PC through OpenAI's\n# outbound-only tunnel; read-mostly tool set",
     see: "Answers in ChatGPT; changes in Activity as remote-chatgpt",
-    rule: "Off by default, stops by itself. No deletes, undo or skill changes remotely. Setup: docs/REMOTE_ACCESS.md.",
+    rule: "Tunnel is off by default and has a time limit. It cannot create a live course, publish a draft, delete, undo, or change skills. Pairing a phone with a QR code opens the app; it does not connect AI.",
   },
   schedule: {
     say: "“Block 2 hours on Friday afternoon for MT2 networking”",
@@ -167,6 +167,11 @@ export function Guide() {
   return (
     <>
       <PageHeader title="Guide" subtitle="How AI works with your data: what goes in, what comes out, and what it costs." />
+      <section aria-label="Start here" className="mb-5 grid gap-3 md:grid-cols-3">
+        <Card className="p-4"><h2 className="font-semibold">Projects</h2><p>Organize deliverables and link tasks to related lessons. Task status is separate from learning progress.</p></Card>
+        <Card className="p-4"><h2 className="font-semibold">Learning</h2><p>Create a course or preview a JSON/ZIP package on the main computer. Review and publish drafts in your workspace.</p></Card>
+        <Card className="p-4"><h2 className="font-semibold">ChatGPT, local AI &amp; phone</h2><p>Tunnel sends drafts for review; local MCP has more tools. QR pairing opens the app and copies the current layout and colors, not an AI connection or live appearance sync.</p></Card>
+      </section>
 
       {/* 1 */}
       <Card className="mb-6">
@@ -305,7 +310,7 @@ function TokenCost({ r }: { r: NonNullable<Awaited<ReturnType<typeof api.guideTo
 
       <ul className="list-disc space-y-1 pl-5 text-xs text-slate-500 dark:text-slate-400">
         <li>Start with “Using tesseract tools, …”. One get_overview answers most questions.</li>
-        <li>Stay in one chat for related work: the tool list is paid once per session, not per question.</li>
+        <li>This is an estimate for the local MCP profile, not ChatGPT billing, quota, or Tunnel usage.</li>
         <li>Ask for a specific project or course instead of “show me everything”.</li>
       </ul>
     </div>

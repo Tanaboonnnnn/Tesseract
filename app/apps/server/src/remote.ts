@@ -42,6 +42,7 @@ type Spawn = (cmd: string, args: string[], opts: { env: NodeJS.ProcessEnv }) => 
 export interface RemoteOptions {
   dir?: string;
   appDir?: string;
+  dataDir?: string;
   spawn?: Spawn;
   now?: () => number;
   vault?: TunnelVault;
@@ -223,6 +224,7 @@ export function remoteControl(options: RemoteOptions = {}): RemoteControl {
       const logFile = join(dir, "tunnel.log");
       {
         const env = { ...process.env };
+        if (options.dataDir) env.BRAIN_DATA_DIR = resolve(options.dataDir);
         delete env.CONTROL_PLANE_API_KEY;
         delete env.OPENAI_API_KEY;
         delete env[envKey];

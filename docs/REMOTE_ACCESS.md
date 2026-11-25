@@ -53,3 +53,6 @@ changes tools, open the connector in ChatGPT and press **Refresh** (or remove an
 - Answers ChatGPT reads are stored by OpenAI under your ChatGPT data settings.
 - Logs: `~/.tesseract/tunnel.log`. We never write the key, but if OpenAI rejects a key its error message
   is converted into a fixed diagnostic message. New logs do not store raw runtime output. Older logs are not rewritten.
+
+## Send a course draft
+ChatGPT can use classroom_format, submit_course_draft and get_draft_status. It cannot create a live course directly or publish revisions. Open **Learning → Course drafts & revisions** on the main computer, review the draft and explicitly publish it to your workspace. The Tunnel reads the same workspace directory as the app, including a custom --data directory. See [course packages](COURSE_PACKAGES.md).

@@ -17,6 +17,7 @@ const VisualPage = lazy(() => import("./pages/VisualPage.tsx").then((m) => ({ de
 const Settings = lazy(() => import("./pages/Settings.tsx").then((m) => ({ default: m.Settings })));
 import { Home } from "./pages/Home.tsx";
 const Learning = lazy(() => import("./pages/Learning.tsx").then((m) => ({ default: m.Learning })));
+const ClassroomPage = lazy(() => import("./pages/Classroom.tsx").then(m => ({ default: m.ClassroomPage })));
 const LearningDetail = lazy(() => import("./pages/LearningDetail.tsx").then((m) => ({ default: m.LearningDetail })));
 const More = lazy(() => import("./pages/More.tsx").then((m) => ({ default: m.More })));
 const NoteDetail = lazy(() => import("./pages/NoteDetail.tsx").then((m) => ({ default: m.NoteDetail })));
@@ -48,6 +49,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="projects" element={<Projects />} />
               <Route path="projects/:id" element={<ProjectDetail />} />
               <Route path="learning" element={<Learning />} />
+              <Route path="learning/classroom/:id" element={<ClassroomPage />} />
+              <Route path="learning/drafts/:id" element={<ClassroomPage draft />} />
               <Route path="learning/:id" element={<LearningDetail />} />
               <Route path="learning/:id/visuals/:vid" element={<VisualPage />} />
               <Route path="skills" element={<Skills />} />

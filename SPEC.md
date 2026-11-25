@@ -484,3 +484,6 @@ Core alone writes the local `data/.classroom/classroom.sqlite`. Revisions are im
 ### Performance verification
 
 Build the pinned upstream and fork with the same toolchain. Sum the JS and CSS reachable from the production Vite entry using only static imports; do not count lazy pages as first-load JS. Run `node scripts/perf-web.ts <upstream-dist> <fork-dist>` in app/. Run `node apps/mcp/src/benchmark.ts` for in-process MCP latencies: list tools, stage a synthetic draft, and read a receipt. These numbers exclude tunnel/network, rendering time, RAM and browser caches; do not present them as such. Measure desktop UI and live tunnel separately before making end-to-end claims.
+
+### Task lesson references (§4)
+A task may contain up to 12 distinct topic_refs (default empty) using learning/<course-id>#<topic-id>. Newly added references must name a topic in the legacy Learning store or a lesson in the current published classroom revision. Missing historical references remain removable and do not block unrelated task edits. Completing a task never changes learning status or score.

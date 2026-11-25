@@ -36,6 +36,7 @@ const block = z.discriminatedUnion("type", [
 ]);
 const question = z.discriminatedUnion("type", [
   z.strictObject({ id, type: z.literal("explain"), prompt: text(1200), rubric: z.array(text()).min(1).max(8), model_answer: text(3000) }),
+  z.strictObject({ id, type: z.literal("single"), prompt: text(1200), choices: z.array(text()).min(2).max(8), correct: z.array(z.number().int().nonnegative()).length(1), explanation: text(3000) }),
   z.strictObject({ id, type: z.literal("multi"), prompt: text(1200), choices: z.array(text()).min(3).max(8), correct: z.array(z.number().int().nonnegative()).min(2).max(8), explanation: text(3000) }),
 ]);
 const lab = z.strictObject({
@@ -58,7 +59,7 @@ export const ClassroomBundleSchema = z.strictObject({
     if (l.source_ids.some((s) => !sourceIds.has(s))) issue(["lessons", i, "source_ids"], "Unknown source ID");
     if (new Set(l.questions.map((q) => q.id)).size !== l.questions.length) issue(["lessons", i, "questions"], "Question IDs must be unique within a lesson");
     l.questions.forEach((q, qi) => {
-      if (q.type === "multi" && (new Set(q.correct).size !== q.correct.length || q.correct.some((v) => v >= q.choices.length))) {
+      if (q.type !== "explain" && (new Set(q.correct).size !== q.correct.length || q.correct.some((v) => v >= q.choices.length))) {
         issue(["lessons", i, "questions", qi, "correct"], "Use distinct zero-based choice indexes");
       }
     });

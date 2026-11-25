@@ -73,6 +73,7 @@ export const TaskSchema = z.object({
   due: IsoDate.nullable().default(null),
   phase: Id.nullable().default(null),
   done_at: IsoDate.nullable().default(null),
+  topic_refs: z.array(TopicRef).max(12).refine(a => new Set(a).size === a.length, "Lesson links must be unique").default([]),
 });
 export const TaskListSchema = z.array(TaskSchema).refine(uniqueIds, "task ids must be unique");
 

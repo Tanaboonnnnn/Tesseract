@@ -455,3 +455,45 @@ it("identifies this app at the desktop readiness endpoint", async () => {
   expect(result.status).toBe(200);
   expect(await result.json()).toMatchObject({ app: "tesseract", ok: true, local: true });
 });
+
+describe("classroom onboarding", () => {
+  const bundle = {
+    schema_version: 1, course_id: "course-fixture", title: "Isolated test course", language: "en",
+    sources: [{ id: "source", title: "Example", url: "https://example.org", accessed_on: "2026-11-25", rights: "reference-only", summary: "Fixture" }],
+    lessons: [{ id: "lesson", title: "Test lesson", objective: "Check publication boundary", source_ids: ["source"],
+      blocks: [{type:"text",markdown:"Fixture text"}], questions: [{id:"q",type:"single",prompt:"Pick A",choices:["A","B"],correct:[0],explanation:"Fixture answer."}] }]
+  };
+  const file = { format: "json", contents: Buffer.from(JSON.stringify(bundle)).toString("base64") };
+
+  it("previews without writes, stages idempotently, publishes, tracks answers and links tasks", async () => {
+    const { req }=setup();
+    expect((await req("POST","/api/learning",{title:"Empty course"})).status).toBe(201);
+    expect((await req("POST","/api/classroom/import",file)).status).toBe(200);
+    expect(await (await req("GET","/api/classroom/drafts")).json()).toEqual([]);
+    expect((await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"test-receipt"})).status).toBe(201);
+    const first = (await (await req("GET","/api/classroom/drafts")).json())[0].revision_id;
+    expect((await (await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"test-receipt"})).json()).revision_id).toBe(first);
+    expect((await req("GET","/api/classroom/published/course-fixture")).status).toBe(404);
+    expect((await req("POST","/api/classroom/drafts/"+first+"/publish",{})).status).toBe(200);
+    const path="/api/classroom/published/course-fixture/attempts";
+    expect(await (await req("POST",path,{revision_id:first,attempt_id:"test-answer",lesson_id:"lesson",question_id:"q",answer:[0]})).json()).toEqual({score:1});
+    const task=await (await req("POST","/api/projects/weather-app/tasks",{title:"Review fixture",topic_refs:["learning/course-fixture#lesson"]})).json();
+    expect(task.topic_refs).toEqual(["learning/course-fixture#lesson"]);
+    expect((await req("PATCH","/api/projects/weather-app/tasks/"+task.id,{status:"done"})).status).toBe(200);
+    expect((await (await req("GET",path)).json())[0].score).toBe(1);
+    expect((await (await req("GET","/api/learning-related-tasks/course-fixture")).json())[0].status).toBe("done");
+    const second = (await (await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"test-receipt-2",base_revision:first})).json()).revision_id;
+    expect((await req("POST","/api/classroom/drafts/"+second+"/publish",{})).status).toBe(200);
+    expect(await (await req("GET",path)).json()).toEqual([]);
+    expect((await req("POST","/api/classroom/drafts/"+first+"/restore",{})).status).toBe(200);
+    expect((await (await req("GET",path)).json())[0].score).toBe(1);
+  });
+  it("does not let a paired device import, inspect drafts, or publish", async()=>{
+    const {req}=setup(undefined,{address:"192.168.1.9",token:"paired-fixture"});
+    const auth={authorization:"Bearer paired-fixture"};
+    expect((await req("GET","/api/classroom/published",undefined,auth)).status).toBe(200);
+    expect((await req("GET","/api/classroom/drafts",undefined,auth)).status).toBe(403);
+    expect((await req("POST","/api/classroom/import",file,auth)).status).toBe(403);
+    expect((await req("POST","/api/classroom/drafts/fixture/publish",{},auth)).status).toBe(403);
+  });
+});

@@ -81,6 +81,14 @@ describe("remote profile", () => {
       expect(names).not.toContain(bad);
     }
     expect(client.getInstructions()).toMatch(/connected remotely/);
+    for (const bad of ["create_course", "publish_course", "restore_course"]) expect(names).not.toContain(bad);
+    const payload = (await client.callTool({name:"classroom_format", arguments:{}})).content as {text:string}[];
+    const {example} = JSON.parse(payload[0]!.text);
+    const receipt = await client.callTool({name:"submit_course_draft", arguments:{request_id:"remote-draft-path",bundle:example}});
+    expect(receipt.isError).not.toBe(true);
+    expect(JSON.stringify(receipt.content)).toContain("staged");
+    const published = await client.callTool({name:"list_published_courses",arguments:{}});
+    expect(published.content).toEqual([{type:"text",text:"[]"}]);
 
     // a blocked tool can't be called either
     const res = await client.callTool({ name: "delete_task", arguments: { project: "weather-app", task: "t-001" } });

@@ -1,3 +1,4 @@
+import { Link as LessonLink } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box, CalendarClock, Check, ChevronRight, CodeXml, ExternalLink, GitBranch, Plus, Trash2 } from "lucide-react";
 import { useState, type DragEvent } from "react";
@@ -335,6 +336,7 @@ function TaskForm({ project, task, onClose }: { project: ProjectView; task: Task
     priority: task.priority,
     due: task.due ?? "",
     phase: task.phase ?? "",
+    topic_refs: task.topic_refs ?? [],
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
   const done = () => {
@@ -347,6 +349,9 @@ function TaskForm({ project, task, onClose }: { project: ProjectView; task: Task
     onSuccess: done,
   });
   const remove = useMutation({ mutationFn: () => api.deleteTask(project.id, task.id), onSuccess: done });
+  const lessons = useQuery({queryKey:["lesson-options"], queryFn:api.lessonOptions});
+  const [lesson,setLesson] = useState("");
+
 
   return (
     <form
@@ -391,6 +396,22 @@ function TaskForm({ project, task, onClose }: { project: ProjectView; task: Task
             ))}
           </select>
         </Field>
+      </div>
+      <div className="space-y-2">
+        <Field label="Related lessons">
+          <select className={inputClass} value={lesson} onChange={e=>setLesson(e.target.value)}>
+            <option value="">Choose a lesson</option>
+            {(lessons.data ?? []).filter(l=>!form.topic_refs.includes(l.ref)).map(l=><option key={l.ref} value={l.ref}>{l.course} · {l.title}</option>)}
+          </select>
+        </Field>
+        <Button type="button" disabled={!lesson || form.topic_refs.length>=12} onClick={()=>{set("topic_refs",[...form.topic_refs,lesson]);setLesson("");}}>Add lesson link</Button>
+        {form.topic_refs.map(ref=>{
+          const link=lessons.data?.find(l=>l.ref===ref);
+          return <div className="flex flex-wrap items-center gap-2 text-sm" key={ref}>
+            {link?<LessonLink className="underline" to={link.url}>{link.title}</LessonLink>:<span title={ref}>Lesson not available</span>}
+            <Button type="button" onClick={()=>set("topic_refs",form.topic_refs.filter(x=>x!==ref))}>Remove link</Button>
+          </div>;
+        })}
       </div>
       <ErrorNote error={save.error ?? remove.error} />
       <div className="flex items-center justify-between pt-1">

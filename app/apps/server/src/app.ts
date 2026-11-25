@@ -19,6 +19,9 @@ import { HTTPException } from "hono/http-exception";
 import { getCookie, setCookie } from "hono/cookie";
 import {
   BrainError,
+  ClassroomStore,
+  COURSE_BYTES_LIMIT,
+  readCoursePackage,
   goalSummary,
   learningSummary,
   noteDetail,
@@ -329,6 +332,94 @@ export function createApp(store: Store, options: AppOptions): Hono {
   // Connecting opens a browser on this PC and stores a token here: this machine only.
   const localOnly = (c: Context) =>
     isLocal(c) ? null : c.json({ error: "FORBIDDEN", message: "Do this on the computer running Tesseract" }, 403);
+  const classroom = new ClassroomStore(store.dataDir);
+  const courseId = (title: string) => title.normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60).replace(/-$/, "");
+  api.post("/learning", bodyLimit({ maxSize: 8192 }), async (c) => {
+    const denied = localOnly(c);
+    if (denied) return denied;
+    const body = await json(c);
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title || title.length > 100) throw new BrainError("VALIDATION", "Enter a course title (up to 100 characters)");
+    const id = courseId(title) || "course-" + Date.now().toString(36);
+    if (classroom.listDrafts().some(r => r.course_id === id)) throw new BrainError("CONFLICT", "That course ID already has a draft or a published revision");
+    return c.json(store.createLearning({ id, type: "course", title, phases: ["study"] }), 201);
+  });
+
+  api.get("/classroom/published", (c) => c.json(classroom.listPublished()));
+  api.get("/classroom/published/:id", (c) => {
+    const detail = classroom.getPublished(c.req.param("id"));
+    if (!detail) throw new BrainError("NOT_FOUND", "Course not found");
+    return c.json(detail);
+  });
+  api.get("/classroom/drafts", (c) => localOnly(c) ?? c.json(classroom.listDrafts()));
+  api.get("/classroom/drafts/:revision", (c) => {
+    const denied = localOnly(c);
+    if (denied) return denied;
+    const detail = classroom.getRevision(c.req.param("revision"));
+    if (!detail) throw new BrainError("NOT_FOUND", "Draft not found");
+    return c.json(detail);
+  });
+  api.post("/classroom/import", bodyLimit({ maxSize: Math.ceil(COURSE_BYTES_LIMIT * 4 / 3) + 2048 }), async (c) => {
+    const denied = localOnly(c);
+    if (denied) return denied;
+    const body = await json(c);
+    if ((body.format !== "json" && body.format !== "zip") || typeof body.contents !== "string" ||
+        !/^[A-Za-z0-9+/]*={0,2}$/.test(body.contents)) throw new BrainError("VALIDATION", "Choose a JSON course manifest or a course ZIP");
+    const bundle = readCoursePackage(Buffer.from(body.contents, "base64"), body.format);
+    assertCourseNamespace(bundle.course_id);
+    // Preview is side-effect free; confirm stages exactly the validated manifest first.
+    if (body.confirm !== true) return c.json({ bundle });
+    const result = classroom.submit({ request_id: body.request_id, ...(body.base_revision ? { base_revision: body.base_revision } : {}), bundle });
+    return c.json(result, result.ok ? 201 : 400);
+  });
+  function assertCourseNamespace(id: string) {
+    if (store.listLearning().some(l => l.id === id)) throw new BrainError("CONFLICT", "A legacy Learning course already uses this ID; rename the incoming course ID before publishing");
+  }
+  for (const operation of ["publish", "restore"] as const) {
+    api.post("/classroom/drafts/:revision/" + operation, bodyLimit({ maxSize: 2048 }), (c) => {
+      const denied = localOnly(c);
+      if (denied) return denied;
+      const revision = c.req.param("revision");
+      if (!revision) throw new BrainError("VALIDATION", "Revision required");
+      const detail = classroom.getRevision(revision);
+      if (!detail) throw new BrainError("NOT_FOUND", "Draft not found");
+      assertCourseNamespace(detail.course_id);
+      return c.json(classroom[operation](revision));
+    });
+  }
+  api.get("/classroom/published/:id/attempts", (c) => {
+    const detail = classroom.getPublished(c.req.param("id"));
+    if (!detail) throw new BrainError("NOT_FOUND", "Course not found");
+    return c.json(classroom.listAttempts(detail.revision_id));
+  });
+  api.post("/classroom/published/:id/attempts", bodyLimit({ maxSize: 16384 }), async (c) => {
+    const body = await json(c);
+    const published = classroom.getPublished(c.req.param("id"));
+    if (!published || body.revision_id !== published.revision_id) throw new BrainError("CONFLICT", "This revision is no longer current; refresh the lesson");
+    if (typeof body.attempt_id !== "string" || typeof body.lesson_id !== "string" || typeof body.question_id !== "string" ||
+        !(typeof body.answer === "string" || (Array.isArray(body.answer) && body.answer.every(x => typeof x === "number"))))
+      throw new BrainError("VALIDATION", "Enter a valid answer");
+    return c.json(classroom.recordAttempt({ attempt_id: body.attempt_id, lesson_id: body.lesson_id, question_id: body.question_id, revision_id: published.revision_id, answer: body.answer }), 201);
+  });
+  api.get("/learning-topic-options", (c) => c.json([
+    ...store.listLearning().flatMap(l => {
+      const visuals = store.listVisuals(l.id);
+      return l.topics.map(t => {
+        const visual = visuals.find(v => v.topic === t.id);
+        return { ref: "learning/" + l.id + "#" + t.id, course: l.title, title: t.title, url: "/learning/" + l.id + (visual ? "/visuals/" + visual.id : "#" + t.id) };
+      });
+    }),
+    ...classroom.listPublished().flatMap(c => classroom.getPublished(c.course_id)?.bundle.lessons.map(l => ({
+      ref: "learning/" + c.course_id + "#" + l.id, course: c.title, title: l.title, url: "/learning/classroom/" + c.course_id + "#" + l.id,
+    })) ?? []),
+  ]));
+  api.get("/learning-related-tasks/:id", (c) => {
+    const prefix = "learning/" + c.req.param("id") + "#";
+    return c.json(store.listProjects().flatMap(p => p.tasks.flatMap(t => t.topic_refs.filter(ref => ref.startsWith(prefix)).map(ref => ({
+      ref, project: p.id, projectTitle: p.title, title: t.title, status: t.status,
+    })))));
+  });
+
   // Desktop window opacity: changes a window on this PC, so this machine only.
   api.get("/window", (c) => c.json(options.window ? { available: true, opacity: options.window.get() } : { available: false }));
   api.put("/window", async (c) => {

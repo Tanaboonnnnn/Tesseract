@@ -9,3 +9,5 @@ export * from "./visuals.ts";
 export * from "./classroom.ts";
 
 export * from "./backup.ts";
+
+export * from "./course-package.ts";

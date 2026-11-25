@@ -39,6 +39,7 @@ function setup(complete = true, vault = new Map<string, string>()) {
       remove: (slot) => void vault.delete(slot),
     },
     appDir: "C:/app",
+    dataDir: join(dir, "workspace with spaces"),
     now: () => Date.UTC(2026, 10, 25, 12),
     spawn: (cmd, args, { env }) => {
       calls.push({ cmd, args, env });
@@ -189,4 +190,12 @@ describe("protected tunnel setup", () => {
     children[0]!.emit("error", new Error(KEY));
     expect(JSON.stringify(remote.state())).not.toContain(KEY);
   });
+});
+
+it("forwards the resolved workspace separately from the MCP command", () => {
+  const {remote, calls, dir} = setup();
+  expect(remote.start(1).on).toBe(true);
+  expect(calls[0]?.env.BRAIN_DATA_DIR).toBe(join(dir, "workspace with spaces"));
+  expect(calls[0]?.args.join(" ")).not.toContain("workspace with spaces");
+  remote.dispose();
 });

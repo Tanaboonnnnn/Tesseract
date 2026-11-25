@@ -1,3 +1,4 @@
+import type { ClassroomBundle } from "@tesseract/core";
 /** Typed client for apps/server. Types come straight from core (type-only, nothing bundled). */
 import type {
   ActivitySummary,
@@ -105,6 +106,12 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   return data as T;
 }
 
+export type CourseRevision = { revision_id: string; course_id: string; title: string; created_at: string; published: boolean };
+export type CourseDetail = CourseRevision & { bundle: ClassroomBundle };
+export type LessonOption = { ref: string; course: string; title: string; url: string };
+export type RelatedTask = { ref: string; project: string; projectTitle: string; title: string; status: string };
+export type CourseAttempt = { attempt_id: string; lesson_id: string; question_id: string; score: number | null };
+
 export const api = {
   overview: () => request<Overview>("GET", "/overview"),
   goals: () => request<GoalSummary[]>("GET", "/goals"),
@@ -122,6 +129,22 @@ export const api = {
     request<ProjectMapView>("PATCH", `/projects/${project}/map/nodes/${node}`, patch),
   setMapFocus: (project: string, node: string | null) => request<ProjectMapView>("PUT", `/projects/${project}/map/focus`, { node }),
 
+  newCourse: (title: string) => request<{ id: string }>("POST", "/learning", { title }),
+  publishedCourses: () => request<CourseRevision[]>("GET", "/classroom/published"),
+  publishedCourse: (id: string) => request<CourseDetail>("GET", "/classroom/published/" + id),
+  courseDrafts: () => request<CourseRevision[]>("GET", "/classroom/drafts"),
+  courseDraft: (id: string) => request<CourseDetail>("GET", "/classroom/drafts/" + id),
+  previewCourseFile: (format: "json" | "zip", contents: string) =>
+    request<{ bundle: ClassroomBundle }>("POST", "/classroom/import", { format, contents }),
+  stageCourseFile: (format: "json" | "zip", contents: string, request_id: string, base_revision?: string) =>
+    request<{ revision_id: string }>("POST", "/classroom/import", { format, contents, confirm: true, request_id, base_revision }),
+  makeCourseCurrent: (revision: string, operation: "publish" | "restore") =>
+    request<{ revision_id: string }>("POST", "/classroom/drafts/" + revision + "/" + operation, {}),
+  lessonOptions: () => request<LessonOption[]>("GET", "/learning-topic-options"),
+  relatedTasks: (id: string) => request<RelatedTask[]>("GET", "/learning-related-tasks/" + id),
+  courseAttempts: (id: string) => request<CourseAttempt[]>("GET", "/classroom/published/" + id + "/attempts"),
+  submitCourseAnswer: (id: string, input: { revision_id: string; attempt_id: string; lesson_id: string; question_id: string; answer: string | number[] }) =>
+    request<{ score: null | number }>("POST", "/classroom/published/" + id + "/attempts", input),
   learning: () => request<LearningSummary[]>("GET", "/learning"),
   deleteImpact: (kind: "projects" | "learning", id: string) => request<DeleteImpact>("GET", `/${kind}/${id}/delete-impact`),
   deleteEntity: (kind: "projects" | "learning", id: string) => request<DeleteImpact>("DELETE", `/${kind}/${id}`),

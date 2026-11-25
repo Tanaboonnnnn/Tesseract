@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { LearningCard } from "../components/cards.tsx";
 import { Card, Empty, ErrorNote, Loading, PageHeader } from "../components/ui.tsx";
+import { Link } from "react-router";
+import { CourseActions, CourseDraftList } from "./Classroom.tsx";
 import { api } from "../lib/api.ts";
 
 const FILTERS = [
@@ -13,11 +15,14 @@ const FILTERS = [
 export function Learning() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const { data, error, isPending } = useQuery({ queryKey: ["learning"], queryFn: api.learning });
+  const published = useQuery({queryKey:["classroom-published"], queryFn:api.publishedCourses});
+  const courses = filter === "roadmap" ? [] : (published.data ?? []);
   const shown = (data ?? []).filter((l) => filter === "all" || l.type === filter);
 
   return (
     <>
       <PageHeader title="Learning" />
+      <CourseActions />
       <div className="seg mb-5">
         {FILTERS.map((f) => (
           <button
@@ -33,17 +38,19 @@ export function Learning() {
         <Loading />
       ) : error ? (
         <ErrorNote error={error} />
-      ) : shown.length ? (
+      ) : shown.length || courses.length ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {courses.map(c => <Link key={c.course_id} to={"/learning/classroom/" + c.course_id} className="block"><Card className="p-4"><p className="text-xs muted">Course · Reviewed revision</p><p className="font-semibold">{c.title}</p></Card></Link>)}
           {shown.map((l) => (
             <LearningCard key={l.id} l={l} />
           ))}
         </div>
       ) : (
         <Card>
-          <Empty>Nothing here yet. Ask your AI to create a roadmap.</Empty>
+          <Empty>No lessons here yet. Create or import a course on the main computer. If you use ChatGPT, ask it to send a course draft for review.</Empty>
         </Card>
       )}
+      <CourseDraftList />
     </>
   );
 }

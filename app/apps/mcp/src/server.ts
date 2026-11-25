@@ -154,11 +154,13 @@ export const REMOTE_TOOLS = [
   // low-risk, undoable writes
   "add_task", "update_task", "add_topic", "update_topic", "add_event", "update_event", "create_note", "create_quiz",
   "save_visual", "set_map_focus",
+  "classroom_format", "submit_course_draft", "get_draft_receipt", "get_draft_status", "list_published_courses",
 ] as const;
 
 const REMOTE_NOTE = `
 - You are connected remotely (cloud chat through a tunnel). This is a read-mostly tool set: deleting, undoing and
-  changing skill levels or assessments are not available here; ask the user to do those in the app.`;
+  changing skill levels or assessments are not available here; ask the user to do those in the app.
+- Use classroom_format and submit_course_draft for a new course. Drafts are not published; the owner reviews them on this PC. After silence or timeout, query get_draft_status with the same request ID; never automatically resend.`;
 
 const CLASSROOM_EXAMPLE = {
   schema_version: 1, course_id: "synthetic-example", title: "Synthetic example", language: "en",
@@ -168,10 +170,15 @@ const CLASSROOM_EXAMPLE = {
 } as const;
 
 function classroomServer(store: Store): McpServer {
-  const c = new ClassroomStore(store.dataDir);
   const server = new McpServer({ name: "tesseract-classroom", version: "0.1.0" }, {
     instructions: "Draft-only. Use classroom_format if you need the bundle shape. Submit once with a stable request_id. On timeout call get_draft_status first. Unknown means no durable receipt, not proof of no execution. Never automatically replay a write; if approved, reuse the same ID and payload. Only the owner can publish locally. Do not send secrets, raw HTML, copied articles, or private files.",
   });
+  registerDraftTools(server, store);
+  return server;
+}
+
+function registerDraftTools(server: McpServer, store: Store) {
+  const c = new ClassroomStore(store.dataDir);
   server.registerTool("classroom_format", { description: "Compact bundle example and constraints.", annotations: READ }, () => ok({
     example: CLASSROOM_EXAMPLE, limits: { max_bytes: 262144, max_lessons: 24 },
     blocks: { text: "{type, markdown}", visual: "{type, visual: typed Panya/Tesseract renderer data, fallback}" },
@@ -194,13 +201,17 @@ function classroomServer(store: Store): McpServer {
       if (extra.signal.aborted) return { isError: true, content: [{ type: "text", text: "Request cancelled before staging. Check status by request ID." }] };
       return run(() => c.submit(input));
     });
-  return server;
 }
 
 export function createServer(store: Store, options: ServerOptions = {}): McpServer {
   if (options.profile === "classroom") return classroomServer(store);
   const remote = options.profile === "remote";
   const server = new McpServer({ name: "tesseract", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS + (remote ? REMOTE_NOTE : "") });
+  if (remote) {
+    registerDraftTools(server, store);
+    server.registerTool("list_published_courses", { description: "List reviewed courses visible in Learning, not private drafts.", annotations: READ },
+      () => run(() => new ClassroomStore(store.dataDir).listPublished().map(({course_id, title}) => ({course_id, title}))));
+  }
   const allowed = new Set<string>(REMOTE_TOOLS);
   const register = server.registerTool.bind(server);
   // Remote profile: tools outside the allow-list are never registered, so they can't be listed or called.

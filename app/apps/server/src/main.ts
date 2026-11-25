@@ -66,7 +66,7 @@ google?.startAutoSync(15);
 
 const extraHosts = (arg("--allow-host") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
 // Remote access (off by default): tunnel-client child process, stopped with the server.
-const remote = preview ? undefined : remoteControl();
+const remote = preview ? undefined : remoteControl({ dataDir: store.dataDir });
 const windowCtl = preview ? undefined : windowControl();
 
 /** LAN mode (phone & tablet). Starts from --lan; the desktop switch changes it in-process. */

@@ -1,3 +1,4 @@
+import { ClassroomStore } from "./classroom.ts";
 /**
  * Store — the ONLY code that writes to the data folder (AGENTS.md rule 1).
  * Every write: validate → check references/rules → write atomically → append activity log.
@@ -438,6 +439,7 @@ export class Store {
     const task = this.#finishTask(
       validate(TaskSchema, { ...defined(input), id: input.id ?? nextTaskId(tasks) }, "task"),
     );
+    this.#checkTaskTopics(task.topic_refs);
     this.#saveTasks(project, [...tasks, task], "create", `add task ${task.id}: ${task.title}`);
     return task;
   }
@@ -447,6 +449,7 @@ export class Store {
     const current = tasks.find((t) => t.id === taskId);
     if (!current) throw new BrainError("NOT_FOUND", `Task "${taskId}" not found in project "${projectId}"`);
     const task = this.#finishTask(validate(TaskSchema, { ...current, ...defined(patch), id: taskId }, "task"));
+    this.#checkTaskTopics(task.topic_refs.filter(ref => !current.topic_refs.includes(ref)));
     if (same(current, task)) return current;
     this.#saveTasks(project, tasks.map((t) => (t.id === taskId ? task : t)), "update", `update task ${taskId}`);
     return task;
@@ -458,6 +461,17 @@ export class Store {
       throw new BrainError("NOT_FOUND", `Task "${taskId}" not found in project "${projectId}"`);
     }
     this.#saveTasks(project, tasks.filter((t) => t.id !== taskId), "delete", `delete task ${taskId}`);
+  }
+
+  #checkTaskTopics(refs: string[]): void {
+    if (!refs.length) return;
+    const classroom = new ClassroomStore(this.dataDir);
+    for (const ref of refs) {
+      const [course, topic] = ref.slice("learning/".length).split("#") as [string, string];
+      const legacy = this.#loadTopics(course).some(t => t.id === topic);
+      const published = classroom.getPublished(course)?.bundle.lessons.some(l => l.id === topic);
+      if (!legacy && !published) throw new BrainError("VALIDATION", "Unknown lesson: " + ref);
+    }
   }
 
   /** done ⇒ done_at set (today if missing); not done ⇒ done_at cleared. */
@@ -574,6 +588,8 @@ export class Store {
 
   /** Create a roadmap or course, optionally with its topics in one change. */
   createLearning(input: LearningInput): LearningView {
+    if (new ClassroomStore(this.dataDir).getPublished(input.id))
+      throw new BrainError("CONFLICT", "A published classroom already uses that course ID");
     const id = checkId(input.id, "learning");
     if (this.#exists(`learning/${id}/learning.md`)) throw new BrainError("CONFLICT", `Learning "${id}" already exists`);
     const { body = "", topics: topicInputs = [], ...rest } = defined(input);

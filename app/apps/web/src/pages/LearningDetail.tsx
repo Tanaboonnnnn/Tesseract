@@ -1,3 +1,6 @@
+import { useEffect as useLessonAnchorEffect } from "react";
+import { useLocation as useLessonLocation } from "react-router";
+import { RelatedTasks } from "./Classroom.tsx";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, CalendarClock, ChevronRight, Circle, CircleAlert, CircleCheck, CircleDot, GraduationCap, ListChecks, Play, Plus, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -27,6 +30,8 @@ export function LearningDetail() {
   const { data: l, error, isPending } = useQuery({ queryKey: ["learning", id], queryFn: () => api.learningItem(id) });
   const skills = useQuery({ queryKey: ["skills"], queryFn: api.skills });
   const quizzes = useQuery({ queryKey: ["quizzes"], queryFn: api.quizzes });
+  const {hash} = useLessonLocation();
+  useLessonAnchorEffect(() => { if (hash) { const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView(), 150); return () => clearTimeout(t); } }, [hash]);
   const visuals = useQuery({ queryKey: ["learning", id, "visuals"], queryFn: () => api.visuals(id) });
 
   const skillTitle = useMemo(() => {
@@ -132,6 +137,7 @@ export function LearningDetail() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className={cn("space-y-6", l.type === "course" ? "lg:col-span-2" : "lg:col-span-3")}>
           <RoadmapPath l={l} visuals={visuals.data ?? []} skillTitle={skillTitle} onStatus={(topic, status) => update.mutate({ topic, status })} />
+          <RelatedTasks id={l.id}/>
         </div>
         {l.type === "course" && <CoursePanel l={l} />}
       </div>
@@ -211,7 +217,7 @@ function TopicRow({
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
       <span title={TOPIC_STATUS_LABEL[t.effective_status]}>{STATUS_ICON[t.effective_status]}</span>
-      <div className="min-w-0 flex-1">
+      <div id={t.id} className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-sm font-medium">{t.title}</span>
           {t.review.reasons.map((r) => (
