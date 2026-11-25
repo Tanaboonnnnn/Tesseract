@@ -1,5 +1,7 @@
 /** App frame: the navigation for the chosen layout (UI theme) around the shared pages. */
+import { Suspense } from "react";
 import { Outlet } from "react-router";
+import { Loading } from "./ui.tsx";
 import { cn } from "../lib/format.ts";
 import { useLayout } from "../lib/theme.ts";
 import { BottomNav, RailNav, SidebarNav, StatusBar, TabsNav, TopNav } from "./Nav.tsx";
@@ -25,7 +27,7 @@ export function Layout() {
       {layout === "notebook" && <TabsNav />}
 
       <main className="sb-main mx-auto max-w-6xl px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
-        <Outlet />
+        <Suspense fallback={<Loading />}><Outlet /></Suspense>
       </main>
 
       {layout === "terminal" && <StatusBar />}

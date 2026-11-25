@@ -8,7 +8,7 @@ import { Description } from "../components/Description.tsx";
 import { LearningMap } from "../components/LearningMap.tsx";
 import { Card, Chip, ErrorNote, inputClass, Loading, ProgressBar, SectionTitle } from "../components/ui.tsx";
 import { api, type LearningView, type TopicView, type VisualSummary } from "../lib/api.ts";
-import { VisualList } from "./VisualPage.tsx";
+import { VisualList } from "../components/VisualList.tsx";
 import { cn, dueLabel, label, shortDate, slugify, todayIso } from "../lib/format.ts";
 import { REVIEW_REASON, TOPIC_STATUS_LABEL } from "../lib/labels.ts";
 

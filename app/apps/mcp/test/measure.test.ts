@@ -1,7 +1,7 @@
 import { cpSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { resolveDataDir, Store } from "@brain/core";
+import { resolveDataDir, Store } from "@tesseract/core";
 import { describe, expect, it } from "vitest";
 import { measureTokens } from "../src/measure.ts";
 

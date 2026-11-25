@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * node src/main.ts [--data <dir>] [--port 4310] [--lan] [--allow-host a,b] [--reset-token] [--idle-exit <min>]
+ * node src/main.ts [--data <dir>] [--port 4320] [--lan] [--allow-host a,b] [--reset-token] [--idle-exit <min>]
  *
  * Default: listens on 127.0.0.1 only — nothing else on the network can reach it.
  * --lan:   also listens on this machine's network addresses (Wi-Fi, Tailscale) for your phone.
@@ -13,8 +13,8 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { homedir, networkInterfaces } from "node:os";
 import { join, resolve } from "node:path";
 import { serve } from "@hono/node-server";
-import { Store } from "@brain/core";
-import { googleService } from "@brain/gcal";
+import { Store } from "@tesseract/core";
+import { googleService } from "@tesseract/gcal";
 import { createApp } from "./app.ts";
 import { windowControl } from "./window.ts";
 import { remoteControl } from "./remote.ts";
@@ -28,7 +28,7 @@ const flag = (name: string) => process.argv.includes(name);
 
 /** Token lives outside the repo and data folder, so it is never committed. */
 function loadToken(reset: boolean): string {
-  const dir = join(homedir(), ".panya");
+  const dir = join(homedir(), ".tesseract");
   const file = join(dir, "token");
   if (!reset && existsSync(file)) {
     const saved = readFileSync(file, "utf8").trim();
@@ -52,7 +52,7 @@ function lanAddresses(): string[] {
     .map((i) => i!.address);
 }
 
-const port = Number(arg("--port") ?? process.env.PORT ?? 4310);
+const port = Number(arg("--port") ?? process.env.PORT ?? 4320);
 const store = new Store({ agent: "web-ui", dataDir: arg("--data"), gitCommit: process.env.BRAIN_GIT_COMMIT === "1" });
 
 // Google Calendar: syncs at start and every 15 min while running (once connected).
@@ -88,8 +88,8 @@ function buildApp() {
       `localhost:${port}`,
       `127.0.0.1:${port}`,
       // Vite dev server proxies /api here.
-      "localhost:5173",
-      "127.0.0.1:5173",
+      "localhost:5180",
+      "127.0.0.1:5180",
       ...mode.addresses.map((a) => `${a}:${port}`),
       ...extraHosts,
     ],
@@ -125,7 +125,7 @@ const fetch: typeof app.fetch = (req, ...rest) => {
 
 function listen() {
   const s = serve({ fetch, port, hostname: mode.lan ? "0.0.0.0" : "127.0.0.1" }, () => {
-    console.log(`Panya → http://localhost:${port}`);
+    console.log(`Tesseract → http://localhost:${port}`);
     console.log(`Data: ${store.dataDir}`);
     if (mode.lan) {
       console.log("\nOn your phone (same Wi-Fi or Tailscale):");

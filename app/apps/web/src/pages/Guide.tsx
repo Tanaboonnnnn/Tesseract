@@ -15,7 +15,7 @@ import { cn } from "../lib/format.ts";
 /* ---------------- 1. How it works ---------------- */
 
 const PARTS: Record<string, { what: string; input: string; output: string }> = {
-  you: { what: "You ask in plain words, in any AI app connected to Panya.", input: "Your message", output: "A request to the AI" },
+  you: { what: "You ask in plain words, in any AI app connected to Tesseract.", input: "Your message", output: "A request to the AI" },
   ai: {
     what: "Codex, Claude or ChatGPT (Work mode). It reads the tool list once per session, then picks the tool that fits.",
     input: "Your message + the tool list",
@@ -304,7 +304,7 @@ function TokenCost({ r }: { r: NonNullable<Awaited<ReturnType<typeof api.guideTo
       </div>
 
       <ul className="list-disc space-y-1 pl-5 text-xs text-slate-500 dark:text-slate-400">
-        <li>Start with “Using panya tools, …”. One get_overview answers most questions.</li>
+        <li>Start with “Using tesseract tools, …”. One get_overview answers most questions.</li>
         <li>Stay in one chat for related work: the tool list is paid once per session, not per question.</li>
         <li>Ask for a specific project or course instead of “show me everything”.</li>
       </ul>

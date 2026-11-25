@@ -7,6 +7,8 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
   ASSESSMENT_SOURCES,
   BrainError,
+  ClassroomStore,
+  ClassroomSubmitSchema,
   DIFFICULTIES,
   GOAL_STATUS,
   MAP_STATUS,
@@ -29,11 +31,11 @@ import {
   search,
   type Store,
   visualFormat,
-} from "@brain/core";
-import type { GoogleService } from "@brain/gcal";
+} from "@tesseract/core";
+import type { GoogleService } from "@tesseract/gcal";
 import { z } from "zod";
 
-export const SERVER_INSTRUCTIONS = `Panya — the user's projects, learning, skills, goals and notes (local files).
+export const SERVER_INSTRUCTIONS = `Tesseract — the user's projects, learning, skills, goals and notes (local files).
 - Start with get_overview; use list/get tools for detail only when needed.
 - Ids are kebab-case. Refs: goals/<id>, projects/<id>, learning/<id>, learning/<id>#<topic>, notes/<id>, assessments/<id>, skills/<id>.
 - Project maps: get_project_map / set_project_map draw a project's system (parts, lanes, links); link parts to tasks and keep set_map_focus on the part being worked on.
@@ -140,7 +142,7 @@ export interface ServerOptions {
    * "remote": cloud chat apps reaching this PC through a tunnel (Phase 8a). Only REMOTE_TOOLS are registered:
    * reads plus a few undoable, low-risk writes. No deletes, undo, bulk redraws, skill/assessment changes or inbox.
    */
-  profile?: "local" | "remote";
+  profile?: "local" | "remote" | "classroom";
 }
 
 /** Least-privilege tool set for the remote profile (SPEC §5). */
@@ -158,9 +160,35 @@ const REMOTE_NOTE = `
 - You are connected remotely (cloud chat through a tunnel). This is a read-mostly tool set: deleting, undoing and
   changing skill levels or assessments are not available here; ask the user to do those in the app.`;
 
+const CLASSROOM_EXAMPLE = {
+  schema_version: 1, course_id: "synthetic-example", title: "Synthetic example", language: "en",
+  sources: [{ id: "ref", title: "Illustrative only", url: "https://example.com/reference", accessed_on: "2026-01-01", rights: "reference-only", summary: "Shape example; not a factual course." }],
+  lessons: [{ id: "intro", title: "Example lesson", objective: "Demonstrate payload shape", source_ids: ["ref"], blocks: [{ type: "text", markdown: "Write supported Markdown here." }],
+    questions: [{ id: "reason", type: "explain", prompt: "Explain in your own words.", rubric: ["State a reason"], model_answer: "Illustrative answer." }] }],
+} as const;
+
+function classroomServer(store: Store): McpServer {
+  const c = new ClassroomStore(store.dataDir);
+  const server = new McpServer({ name: "tesseract-classroom", version: "0.1.0" }, {
+    instructions: "Draft-only. Use classroom_format if you need the bundle shape. Submit once with a stable request_id; look up that ID before retrying a timed-out request. Only the owner can publish locally. Do not send secrets, raw HTML, copied articles, or private files.",
+  });
+  server.registerTool("classroom_format", { description: "Compact bundle example and constraints.", annotations: READ }, () => ok({
+    example: CLASSROOM_EXAMPLE, limits: { max_bytes: 262144, max_lessons: 24 },
+    blocks: { text: "{type, markdown}", visual: "{type, visual: typed Panya/Tesseract renderer data, fallback}" },
+    questions: { explain: "{id,type,prompt,rubric,model_answer}", multi: "{id,type,prompt,choices,correct,explanation}" },
+    labs: "{platform,environment,prerequisites,steps,expected,cleanup?}",
+  }));
+  server.registerTool("get_draft_receipt", { description: "Look up receipt by request ID without generating another draft.", inputSchema: { request_id: ClassroomSubmitSchema.shape.request_id }, annotations: READ },
+    ({ request_id }) => run(() => c.getReceipt(request_id) ?? { ok: false, status: "not_found" }));
+  server.registerTool("submit_course_draft", { description: "Validate and stage one sourced course bundle. Same ID and payload return the same receipt. Never publishes.", inputSchema: ClassroomSubmitSchema.shape, annotations: WRITE },
+    (input) => run(() => c.submit(input)));
+  return server;
+}
+
 export function createServer(store: Store, options: ServerOptions = {}): McpServer {
+  if (options.profile === "classroom") return classroomServer(store);
   const remote = options.profile === "remote";
-  const server = new McpServer({ name: "panya", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS + (remote ? REMOTE_NOTE : "") });
+  const server = new McpServer({ name: "tesseract", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS + (remote ? REMOTE_NOTE : "") });
   const allowed = new Set<string>(REMOTE_TOOLS);
   const register = server.registerTool.bind(server);
   // Remote profile: tools outside the allow-list are never registered, so they can't be listed or called.
@@ -744,7 +772,7 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
   tool(
     "add_event",
     {
-      description: "Add an event to the user's schedule (synced to the 'Panya' Google calendar). Omit start/end for all-day.",
+      description: "Add an event to the user's schedule (synced to the 'Tesseract' Google calendar). Omit start/end for all-day.",
       inputSchema: {
         title: z.string(),
         date,

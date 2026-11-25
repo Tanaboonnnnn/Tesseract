@@ -1,5 +1,5 @@
 {
-  "name": "panya",
+  "name": "tesseract",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -8,19 +8,19 @@
   ],
   "scripts": {
     "setup": "node scripts/setup-data.ts",
-    "start": "node scripts/setup-data.ts && npm run build -w @brain/web && node apps/server/src/main.ts",
-    "lan": "node scripts/setup-data.ts && npm run build -w @brain/web && node apps/server/src/main.ts --lan",
+    "start": "node scripts/setup-data.ts && npm run build -w @tesseract/web && node apps/server/src/main.ts",
+    "lan": "node scripts/setup-data.ts && npm run build -w @tesseract/web && node apps/server/src/main.ts --lan",
     "server": "node apps/server/src/main.ts",
-    "web:dev": "npm run dev -w @brain/web",
+    "web:dev": "npm run dev -w @tesseract/web",
     "mcp": "node apps/mcp/src/main.ts",
     "build:server": "esbuild apps/server/src/main.ts --bundle --platform=node --format=esm --target=node22 --splitting --outdir=apps/server/dist --entry-names=server --chunk-names=chunk-[hash] --out-extension:.js=.mjs --log-level=warning \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
-    "build:desktop": "npm run build -w @brain/web && npm run build:server",
+    "build:desktop": "npm run build -w @tesseract/web && npm run build:server",
     "desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launch.ps1",
     "desktop:install": "node scripts/setup-data.ts && npm run build:desktop && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop.ps1 install",
     "desktop:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop.ps1 uninstall",
     "autostart:on": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop.ps1 autostart-on",
     "autostart:off": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop.ps1 autostart-off",
-    "test": "npm run test --workspaces --if-present",
+    "test": "node --test scripts/setup-data.test.ts && npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {

@@ -1,14 +1,14 @@
 /**
  * Local, private files for Google Calendar — outside the repo and data folder (never committed):
- *   ~/.panya/google-client.json   OAuth client downloaded from Google Cloud (Desktop app)
- *   ~/.panya/google-token.json    access + refresh token
- *   ~/.panya/google-sync.json     sync cursor and what was pushed (machine-local cache)
+ *   ~/.tesseract/google-client.json   OAuth client downloaded from Google Cloud (Desktop app)
+ *   ~/.tesseract/google-token.json    access + refresh token
+ *   ~/.tesseract/google-sync.json     sync cursor and what was pushed (machine-local cache)
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export const DEFAULT_DIR = join(homedir(), ".panya");
+export const DEFAULT_DIR = join(homedir(), ".tesseract");
 
 export function readJson<T>(path: string): T | null {
   if (!existsSync(path)) return null;

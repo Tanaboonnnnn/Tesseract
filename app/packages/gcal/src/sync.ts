@@ -1,5 +1,5 @@
 /**
- * Two-way sync between data/schedule/events.yaml and a dedicated "Panya" Google calendar.
+ * Two-way sync between data/schedule/events.yaml and a dedicated "Tesseract" Google calendar.
  *
  * - Own events: two-way. Edits/deletes made in Google (or Notion Calendar, which shows Google calendars)
  *   come back; the newer `updated` wins. Events created directly in that calendar are imported.
@@ -8,11 +8,11 @@
  * All data writes go through Store (logged as the store's agent, e.g. "google-sync").
  */
 import { createHash } from "node:crypto";
-import { courseSlots, type ScheduleEvent, type ScheduleItem, type Store } from "@brain/core";
+import { courseSlots, type ScheduleEvent, type ScheduleItem, type Store } from "@tesseract/core";
 import { GoogleApiError, type CalendarApi, type GEvent, type GEventBody } from "./api.ts";
 import { readJson, writeJson } from "./files.ts";
 
-export const CALENDAR_NAME = "Panya";
+export const CALENDAR_NAME = "Tesseract";
 const KEY = "sb_key";
 
 export interface SyncState {
@@ -82,8 +82,15 @@ export function fromGoogle(g: GEvent, timeZone: string): EventFields | null {
   const notes = g.description ?? "";
   if (g.start.date) return { title, date: g.start.date, start: null, end: null, notes };
   if (!g.start.dateTime) return null;
-  const s = localParts(g.start.dateTime, timeZone);
-  const e = g.end?.dateTime ? localParts(g.end.dateTime, timeZone) : s;
+  // Google can represent a wall time without an offset when the event includes a time zone.
+  // In our target zone, do not let Date parse it in the server's (possibly different) zone.
+  const parts = (value: { dateTime?: string; timeZone?: string }) => {
+    const t = value.dateTime!;
+    const wall = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(t);
+    return wall && value.timeZone === timeZone ? { date: wall[1]!, time: wall[2]! } : localParts(t, timeZone);
+  };
+  const s = parts(g.start);
+  const e = g.end?.dateTime ? parts(g.end) : s;
   let end = e.date === s.date ? e.time : "23:59";
   let start = s.time;
   if (end <= start) [start, end] = start === "23:59" ? ["23:58", "23:59"] : [start, "23:59"];

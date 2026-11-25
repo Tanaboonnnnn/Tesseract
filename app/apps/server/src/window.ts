@@ -1,6 +1,6 @@
 /**
  * Desktop window opacity (Windows only): runs scripts/window-opacity.ps1 against the app window and saves the
- * value in ~/.panya/window.json, which the launcher applies every time the window opens.
+ * value in ~/.tesseract/window.json, which the launcher applies every time the window opens.
  * The blending itself is done by the Windows compositor: no memory or CPU cost after the call.
  */
 import { execFile } from "node:child_process";
@@ -15,7 +15,7 @@ export interface WindowControl {
   set(percent: number): Promise<number>;
 }
 
-const SETTINGS = join(homedir(), ".panya", "window.json");
+const SETTINGS = join(homedir(), ".tesseract", "window.json");
 
 export function windowControl(): WindowControl | undefined {
   const script = resolve(import.meta.dirname, "../../../scripts/window-opacity.ps1");

@@ -1,4 +1,4 @@
-# Panya — Agent Guide
+# Tesseract — Agent Guide
 
 AI-native, local-first personal workspace: Projects, Learning, Skills, Goals, Notes.
 **SPEC.md is the source of truth.** Read the relevant section before changing anything. If code and spec disagree, ask — don't guess.
@@ -11,13 +11,13 @@ AI-native, local-first personal workspace: Projects, Learning, Skills, Goals, No
   - `apps/mcp` — MCP server (stdio) → core. Tools in `src/server.ts`; compact views live in `packages/core/src/views.ts`
   - `apps/server` — HTTP API (Hono) → core. Localhost only; Host + same-origin JSON checks
   - `apps/web` — React + Vite + Tailwind 4 + TanStack Query. Types imported from core (type-only)
-- `data/` — the user's data (Markdown + YAML). Not in git; `npm run setup` creates it from `app/fixtures/sample-data`.
+- `data/` — the user's data (Markdown + YAML). Not in git; `npm run setup` creates an empty workspace with the default skill taxonomy. Fixtures remain test-only.
 
 ## Commands (run in `app/`)
 - `npm install`
-- `npm start` — build web + serve app and API at http://localhost:4310 (this computer only)
+- `npm start` — build web + serve app and API at http://localhost:4320 (this computer only)
 - `npm run lan` — same, plus phone access with device pairing (docs/MOBILE.md)
-- Dev: `npm run server` and `npm run web:dev` (http://localhost:5173, proxies /api) in two terminals
+- Dev: `npm run server` and `npm run web:dev` (http://localhost:5180, proxies /api) in two terminals
 - `npm run desktop:install` — Windows desktop app (own window, opens at sign-in); `npm run build:desktop` after code changes
 - `npm test` — all workspace tests (they read `app/fixtures/sample-data`, never the real `data/`)
 - `npm run typecheck`

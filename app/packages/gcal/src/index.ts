@@ -1,5 +1,5 @@
-/** Google Calendar for Panya: OAuth (loopback + PKCE), REST client, two-way sync. */
-import { Store, type ScheduleItem } from "@brain/core";
+/** Google Calendar for Tesseract: OAuth (loopback + PKCE), REST client, two-way sync. */
+import { Store, type ScheduleItem } from "@tesseract/core";
 import { calendarApi, type CalendarApi } from "./api.ts";
 import { googlePaths } from "./files.ts";
 import { accessToken, disconnect, loadClient, loadToken, startAuth, type Fetch, type PendingAuth } from "./oauth.ts";
@@ -11,7 +11,7 @@ export * from "./oauth.ts";
 export * from "./sync.ts";
 
 export interface GoogleStatus {
-  /** OAuth client file is present (~/.panya/google-client.json). */
+  /** OAuth client file is present (~/.tesseract/google-client.json). */
   client: boolean;
   connected: boolean;
   calendar_id: string | null;

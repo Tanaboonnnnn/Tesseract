@@ -1,10 +1,10 @@
-# Panya desktop launcher (Windows).
+# Tesseract desktop launcher (Windows).
 # Starts the local server if it isn't running (hidden, low priority, small memory limits,
 # exits on its own 15 min after the last window closes), then opens the app in its own window.
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launch.ps1 [-Data <dir>] [-Port 4310] [-NoWindow]
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launch.ps1 [-Data <dir>] [-Port 4320] [-NoWindow]
 param(
   [string]$Data = "",
-  [int]$Port = 4310,
+  [int]$Port = 4320,
   [double]$IdleExit = 15,
   [switch]$NoWindow
 )
@@ -12,13 +12,15 @@ $ErrorActionPreference = "Stop"
 $app = Split-Path -Parent $PSScriptRoot           # .../app
 if (-not $Data) { $Data = Join-Path (Split-Path -Parent $app) "data" }
 $url = "http://localhost:$Port"
-$logDir = Join-Path $env:USERPROFILE ".panya"
+$logDir = Join-Path $env:USERPROFILE ".tesseract"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 function Test-Server {
   try {
     $r = Invoke-WebRequest "http://127.0.0.1:$Port/api/session" -UseBasicParsing -TimeoutSec 1
-    return $r.StatusCode -eq 200
+    if ($r.StatusCode -ne 200) { return $false }
+    $state = $r.Content | ConvertFrom-Json
+    return ($state.app -ceq "tesseract") -and ($state.ok -eq $true) -and ($state.local -eq $true)
   } catch { return $false }
 }
 
@@ -41,7 +43,7 @@ if (-not (Test-Server)) {
   try { $p.PriorityClass = "BelowNormal" } catch {}
   $ready = $false
   for ($i = 0; $i -lt 50 -and -not $ready; $i++) { Start-Sleep -Milliseconds 200; $ready = Test-Server }
-  if (-not $ready) { throw "Server did not start. See $logDir\server-error.log" }
+  if (-not $ready) { throw "Tesseract did not respond on port $Port. Another app may be using it. See $logDir\server-error.log" }
 }
 
 if (-not $NoWindow) {

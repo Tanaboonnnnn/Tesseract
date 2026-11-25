@@ -1,4 +1,4 @@
-# Install / uninstall Panya as a desktop app (Windows).
+# Install / uninstall Tesseract as a desktop app (Windows).
 #   install        Start menu shortcut + open at sign-in
 #   uninstall      remove both shortcuts
 #   autostart-on   open at sign-in
@@ -7,8 +7,8 @@ param([Parameter(Mandatory)][ValidateSet("install", "uninstall", "autostart-on",
 $ErrorActionPreference = "Stop"
 
 $launcher = Join-Path $PSScriptRoot "launch.ps1"
-$icon = Join-Path $PSScriptRoot "panya.ico"
-$name = "Panya.lnk"
+$icon = Join-Path $PSScriptRoot "tesseract.ico"
+$name = "Tesseract.lnk"
 $startMenu = Join-Path ([Environment]::GetFolderPath("Programs")) $name
 $startup = Join-Path ([Environment]::GetFolderPath("Startup")) $name
 
@@ -19,7 +19,7 @@ function New-Shortcut([string]$path) {
   $lnk.TargetPath = Join-Path $env:WINDIR "System32\conhost.exe"
   $lnk.Arguments = "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$launcher`""
   $lnk.WorkingDirectory = Split-Path -Parent $PSScriptRoot
-  $lnk.Description = "Panya"
+  $lnk.Description = "Tesseract"
   if (Test-Path $icon) { $lnk.IconLocation = $icon }
   $lnk.Save()
   Write-Host "Created $path"

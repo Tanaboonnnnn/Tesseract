@@ -41,14 +41,14 @@ import {
   type TaskPatch,
   type TopicInput,
   type TopicPatch,
-} from "@brain/core";
-import type { GoogleService } from "@brain/gcal";
+} from "@tesseract/core";
+import type { GoogleService } from "@tesseract/gcal";
 import { MIN_WINDOW_OPACITY, type WindowControl } from "./window.ts";
 import type { RemoteControl } from "./remote.ts";
 import type { PhoneControl } from "./phone.ts";
 
 export interface AppOptions {
-  /** Host header values the server answers to, e.g. ["localhost:4310", "192.168.1.5:4310"]. */
+  /** Host header values the server answers to, e.g. ["localhost:4320", "192.168.1.5:4320"]. */
   allowedHosts: string[];
   /** Built web app (Vite dist). Served with SPA fallback when present. */
   webDir?: string;
@@ -162,7 +162,7 @@ export function createApp(store: Store, options: AppOptions): Hono {
   };
 
   api.get("/health", (c) => c.json({ ok: true, agent: store.agent, problems: store.validateAll() }));
-  api.get("/session", (c) => c.json({ ok: true, local: isLocal(c) }));
+  api.get("/session", (c) => c.json({ app: "tesseract", ok: true, local: isLocal(c) }));
   api.post("/pair", async (c) => {
     const body = await json(c);
     if (!token || typeof body.token !== "string" || !sameSecret(body.token.trim(), token)) {
@@ -324,7 +324,7 @@ export function createApp(store: Store, options: AppOptions): Hono {
   });
   // Connecting opens a browser on this PC and stores a token here: this machine only.
   const localOnly = (c: Context) =>
-    isLocal(c) ? null : c.json({ error: "FORBIDDEN", message: "Do this on the computer running Panya" }, 403);
+    isLocal(c) ? null : c.json({ error: "FORBIDDEN", message: "Do this on the computer running Tesseract" }, 403);
   // Desktop window opacity: changes a window on this PC, so this machine only.
   api.get("/window", (c) => c.json(options.window ? { available: true, opacity: options.window.get() } : { available: false }));
   api.put("/window", async (c) => {
@@ -397,7 +397,7 @@ export function createApp(store: Store, options: AppOptions): Hono {
   let tokenCache: { at: number; data: unknown } | null = null;
   api.get("/guide/tokens", async (c) => {
     if (!tokenCache || Date.now() - tokenCache.at > 60_000) {
-      const { measureTokens } = await import("@brain/mcp/measure");
+      const { measureTokens } = await import("@tesseract/mcp/measure");
       tokenCache = { at: Date.now(), data: await measureTokens(store) };
     }
     return c.json(tokenCache.data);

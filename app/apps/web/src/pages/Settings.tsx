@@ -43,7 +43,7 @@ export function Settings() {
       <Card className="mb-6">
         <SectionTitle>Remote access (ChatGPT)</SectionTitle>
         <RemoteAccess />
-        <p className="mt-2 text-xs text-slate-500">Lets ChatGPT on the web or your phone reach a read-mostly Panya through OpenAI's outbound-only tunnel. Setup: docs/REMOTE_ACCESS.md.</p>
+        <p className="mt-2 text-xs text-slate-500">Lets ChatGPT on the web or your phone reach a read-mostly Tesseract through OpenAI's outbound-only tunnel. Setup: docs/REMOTE_ACCESS.md.</p>
       </Card>
     </>
   );
@@ -169,7 +169,7 @@ function Mini({ id }: { id: LayoutId }) {
       <div>$ overview</div>
       <div>&gt; weather [#####---]</div>
       <div>&gt; review 7 topics</div>
-      <div className="mt-1 bg-[var(--line)] px-0.5">[0] panya · 02:53</div>
+      <div className="mt-1 bg-[var(--line)] px-0.5">[0] tesseract · 02:53</div>
     </div>
   );
 }
@@ -215,7 +215,7 @@ function PhoneAccess() {
         const now = await api.phone().catch(() => null);
         if (now?.available && now.on === on) return now;
       }
-      throw new Error("The switch did not apply. Close this window and open Panya again from the Start menu.");
+      throw new Error("The switch did not apply. Close this window and open Tesseract again from the Start menu.");
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["phone"] }),
   });
@@ -229,7 +229,7 @@ function PhoneAccess() {
     return <p className="text-sm text-amber-600">Phone access is on, but no Wi-Fi or Tailscale address was found. Connect the PC to Wi-Fi (or start Tailscale) and turn it off and on again.</p>;
   }
   if (!p.available) {
-    return <p className="text-sm text-slate-500">Available in the desktop app (Start menu → Panya). From a terminal: <code>npm run lan</code>, see docs/MOBILE.md.</p>;
+    return <p className="text-sm text-slate-500">Available in the desktop app (Start menu → Tesseract). From a terminal: <code>npm run lan</code>, see docs/MOBILE.md.</p>;
   }
   const local = !!session.data?.local;
   return (
@@ -253,7 +253,7 @@ function PhoneAccess() {
           <div className="size-44 shrink-0 rounded-lg bg-white p-1" aria-label="Pairing QR code" dangerouslySetInnerHTML={{ __html: qr }} />
           <ol className="list-decimal space-y-1.5 pl-5 text-slate-600 dark:text-slate-300">
             <li>Scan with the phone or iPad camera (same Wi-Fi, or Tailscale on both).</li>
-            <li>It opens Panya and pairs automatically.</li>
+            <li>It opens Tesseract and pairs automatically.</li>
             <li>
               Add to home screen: iPhone/iPad Safari → Share → <em>Add to Home Screen</em>; Android → ⋮ → <em>Add to Home screen</em>.
             </li>

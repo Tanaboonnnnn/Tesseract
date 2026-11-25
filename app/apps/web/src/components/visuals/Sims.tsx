@@ -1,9 +1,9 @@
 /**
- * Lesson `sim` blocks: the app runs the real algorithm (engines in @brain/core/pure) from the AI's inputs and
+ * Lesson `sim` blocks: the app runs the real algorithm (engines in @tesseract/core/pure) from the AI's inputs and
  * shows every step's state. Inputs can be changed live (K, algorithm, quantum, learning rate…).
  * Nothing runs at rest: autoplay is a timer that stops at the end or when the page is hidden.
  */
-import { type Action, gradientDescent, kmeans, qLearning, type SchedAlgo, schedule, valueIteration } from "@brain/core/pure";
+import { type Action, gradientDescent, kmeans, qLearning, type SchedAlgo, schedule, valueIteration } from "@tesseract/core/pure";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import type { PlotData } from "../../lib/api.ts";

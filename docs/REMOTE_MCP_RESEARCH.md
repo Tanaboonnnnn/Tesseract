@@ -1,6 +1,6 @@
-# Connecting Panya to normal chat apps safely (research, 2026-11-25)
+# Connecting Tesseract to normal chat apps safely (research, 2026-11-25)
 
-Goal: use the Panya MCP tools from ChatGPT (web/mobile chat) and Claude.ai, not only from local clients
+Goal: use the Tesseract MCP tools from ChatGPT (web/mobile chat) and Claude.ai, not only from local clients
 (Codex, Claude Code, Claude Desktop, ChatGPT Work mode), without putting the data at risk.
 
 **The core problem:** cloud chat apps call MCP servers **from their own servers**, so they can't reach `localhost`.
@@ -13,7 +13,7 @@ Something has to carry their requests to this PC. Three ways exist today.
 - It can start a **stdio** MCP server directly (`--mcp-command`), so our existing server works as is.
 - In ChatGPT: Plugins → Add custom MCP server → Connection: **Tunnel**. Also works in Codex and the Responses API.
 - Access: OpenAI Platform roles (Tunnels Read/Manage/Use) + ChatGPT workspace permissions. Setup needs an OpenAI
-  Platform API key for the control plane (store it in `~/.panya`, never in the repo).
+  Platform API key for the control plane (store it in `~/.tesseract`, never in the repo).
 - Limits: 600 MCP requests/min, 10 MiB per message, 120 s per request.
 - **Unknowns to check before building:** which ChatGPT plans show "Connection: Tunnel" for a personal account
   (the docs list no plans; developer-mode eligibility differs between OpenAI pages), whether a personal Platform org

@@ -1,4 +1,4 @@
-# Panya — Spec v0.1
+# Tesseract — Spec v0.1
 
 > AI-native, local-first personal workspace. You set goals and decide; AI clients read and update one shared dataset; a clean dashboard shows progress.
 > Status: **draft for review** · Last updated: 2026-11-23
@@ -35,12 +35,12 @@ read-only tools + "open page" (Gemini Live API is the free-tier candidate; its f
 Writes need a spoken or clicked confirm. "System assistant" persona ("Report: … / Answer: …"), a chime and a HUD
 caption. Voices: (1) preset picker (Gemini / Edge) with speed, pitch and a "system voice" filter; (2) voice design
 from a text description (e.g. ElevenLabs); (3) any voice ID from the user's own provider account. Only voices the
-user has rights to: no cloning of actors or anime characters without consent. Keys live in `~/.panya`.
+user has rights to: no cloning of actors or anime characters without consent. Keys live in `~/.tesseract`.
 
 ## 3. Layout
 
 ```
-panya/
+tesseract/
 ├── SPEC.md
 ├── AGENTS.md                # rules for AI coding agents
 ├── app/                      # code (TypeScript monorepo)
@@ -261,16 +261,16 @@ questions:
 ```
 ```yaml
 # google.yaml — settings only, no secrets
-calendar_id: null         # the dedicated "Panya" calendar (created on first sync)
+calendar_id: null         # the dedicated "Tesseract" calendar (created on first sync)
 pull_calendars: [primary] # shown read-only, never stored
 push: { events: true, task_dues: true, course_slots: true, exams: true }   # exams also covers assignments
 ```
 - **Schedule view** = own events + weekly course `schedule` slots (courses without a `grade`) + open task `due` dates +
   open assignment `due` dates + exam dates (+ read-only Google events). Max range 92 days.
 - **Google sync** (`packages/gcal`): own events two-way (Google/Notion Calendar edits and deletes come back; events created
-  in the Panya calendar are imported); dues, exams, assignments and classes (weekly `RRULE`) one-way.
-  Writes only the Panya calendar. Scopes `calendar.app.created` + `calendar.events.readonly`.
-  OAuth: Desktop client, loopback + PKCE. Secrets, token and sync cursor live in `~/.panya/`, never in data/.
+  in the Tesseract calendar are imported); dues, exams, assignments and classes (weekly `RRULE`) one-way.
+  Writes only the Tesseract calendar. Scopes `calendar.app.created` + `calendar.events.readonly`.
+  OAuth: Desktop client, loopback + PKCE. Secrets, token and sync cursor live in `~/.tesseract/`, never in data/.
   Sync writes are logged as agent `google-sync`. Setup: docs/GOOGLE_CALENDAR.md.
 
 ### 4.14 System map — `projects/<id>/map.yaml` (optional, Phase 6c)
@@ -394,7 +394,7 @@ List/get tools return compact summaries by default; `detail: true` for full data
   3. **Learning** — cards: roadmap/course % + upcoming exams
   4. **Skills** — mini radar
   5. **Goals** — progress bars
-- **Full views:** Project (Kanban / checklist, phase stepper, system map, timeline, notes) · Learning (roadmap path by phase, topic status, course assignments/exams) · Skills (2-level radar, level history, AI adjustments with reasons) · Quizzes · Notes (Markdown, resolved `[[wikilinks]]`, backlinks; raw HTML never rendered) · Activity (last 20 changes, undo) · Visual (one study visual, step player: ◀ ▶, keys ← →, autoplay; topic rows show ▶ Review, learning pages list visuals) · **Settings** (`/settings`, ⚙ in every nav): **Layout** (UI theme, `data-ui`: Solo Leveling System = HUD sidebar (default), Minimal = top bar + hairlines, Bento = icon rail + rounded tiles + progress rings + hero clock, Notebook = paper index cards + bookmark tabs, Terminal = monospace panes + tmux status bar), **Colours** (`data-palette`: System Blue, Aurora, Crimson, Sepia, Neutral, Amber CRT; any with any layout), light/dark/system, one **Transparency** slider (0–80%, per device, “auto” = theme default) for the cards and, in the Windows desktop app, the window itself at half strength (80% → window 60%, never below 50%) via a layered window (`scripts/window-opacity.ps1`, saved in `~/.panya/window.json`, applied by the launcher; `PUT /api/window` is this-machine-only) · Guide (how AI works with the data as boxes: flow diagram, per-feature input → tool → file → screen, live token cost measured by running the MCP server in memory on read-only tools, ≈ chars ÷ 4).
+- **Full views:** Project (Kanban / checklist, phase stepper, system map, timeline, notes) · Learning (roadmap path by phase, topic status, course assignments/exams) · Skills (2-level radar, level history, AI adjustments with reasons) · Quizzes · Notes (Markdown, resolved `[[wikilinks]]`, backlinks; raw HTML never rendered) · Activity (last 20 changes, undo) · Visual (one study visual, step player: ◀ ▶, keys ← →, autoplay; topic rows show ▶ Review, learning pages list visuals) · **Settings** (`/settings`, ⚙ in every nav): **Layout** (UI theme, `data-ui`: Solo Leveling System = HUD sidebar (default), Minimal = top bar + hairlines, Bento = icon rail + rounded tiles + progress rings + hero clock, Notebook = paper index cards + bookmark tabs, Terminal = monospace panes + tmux status bar), **Colours** (`data-palette`: System Blue, Aurora, Crimson, Sepia, Neutral, Amber CRT; any with any layout), light/dark/system, one **Transparency** slider (0–80%, per device, “auto” = theme default) for the cards and, in the Windows desktop app, the window itself at half strength (80% → window 60%, never below 50%) via a layered window (`scripts/window-opacity.ps1`, saved in `~/.tesseract/window.json`, applied by the launcher; `PUT /api/window` is this-machine-only) · Guide (how AI works with the data as boxes: flow diagram, per-feature input → tool → file → screen, live token cost measured by running the MCP server in memory on read-only tools, ≈ chars ÷ 4).
 - **Schedule:** Day / Week (agenda columns, color by kind), add/edit events, Google Calendar panel (connect, sync now, what to push).
 - **Mobile nav:** Home, Schedule, Projects, Learning, More (Skills, Quizzes, Notes, Activity, Guide).
 - **Web quiz:** take an AI-written quiz in the UI → graded on the server → recorded as a `web-quiz` assessment (§4.12).
@@ -406,17 +406,17 @@ List/get tools return compact summaries by default; `detail: true` for full data
 - `npm start`: listens on 127.0.0.1 only. `npm run lan`: also listens on the PC's network addresses (Wi‑Fi, Tailscale).
 - **Trust model:** only this machine (loopback address *and* loopback Host) is trusted without login. Every other
   device, and any local proxy forwarding a different Host (e.g. `tailscale serve`), must **pair once** with an access
-  token → httpOnly, SameSite=Strict cookie (or `Authorization: Bearer`). Token lives in `~/.panya/token`,
+  token → httpOnly, SameSite=Strict cookie (or `Authorization: Bearer`). Token lives in `~/.tesseract/token`,
   rotate with `--reset-token`.
-- **Phone & tablet switch** (Settings, desktop app only): saves `lan` in `~/.panya/desktop.json`, the running server applies it in place (rebuilds its host list and token, re-listens on 0.0.0.0 or 127.0.0.1; no restart, Remote access stays on; the launcher passes `--lan` at the next start), and Settings shows a pairing **QR** (`http://ip:port/#pair=<token>`; the fragment never reaches the server; the token is only returned to this PC). Home Wi‑Fi (plain http, home network only) or **Tailscale** (encrypted, anywhere; HTTPS via `tailscale serve` for full install). See docs/MOBILE.md.
+- **Phone & tablet switch** (Settings, desktop app only): saves `lan` in `~/.tesseract/desktop.json`, the running server applies it in place (rebuilds its host list and token, re-listens on 0.0.0.0 or 127.0.0.1; no restart, Remote access stays on; the launcher passes `--lan` at the next start), and Settings shows a pairing **QR** (`http://ip:port/#pair=<token>`; the fragment never reaches the server; the token is only returned to this PC). Home Wi‑Fi (plain http, home network only) or **Tailscale** (encrypted, anywhere; HTTPS via `tailscale serve` for full install). See docs/MOBILE.md.
 - **Desktop app (Windows, Phase 6a):** `scripts/launch.ps1` starts the server if needed (pre-built esbuild bundle,
   `--max-old-space-size=48 --max-semi-space-size=1`, BelowNormal priority, hidden) and opens `msedge --app=…`.
   `--idle-exit 15`: the server exits 15 min after the last request; open windows ping `/api/session` every 4 min.
   `scripts/desktop.ps1` adds Start menu + Startup shortcuts (`conhost --headless`, no console flash).
-- **Remote access (Phase 8a):** OpenAI Secure MCP Tunnel. The server runs `~/.panya/bin/tunnel-client` (outbound
+- **Remote access (Phase 8a):** OpenAI Secure MCP Tunnel. The server runs `~/.tesseract/bin/tunnel-client` (outbound
   only, no public URL) which starts the MCP server with `--profile remote --agent remote-chatgpt`. Off by default; on for
   1 / 8 / 24 h from this PC only (`POST /api/remote/start|stop`, local-only); stops at expiry and with the server;
-  `--idle-exit` is suspended while on. Key in `~/.panya/openai-tunnel-key` (Tunnels: Read + Use), passed only in
+  `--idle-exit` is suspended while on. Key in `~/.tesseract/openai-tunnel-key` (Tunnels: Read + Use), passed only in
   the child's env, never logged or returned. Setup: docs/REMOTE_ACCESS.md.
   Measured (private memory): ~120 MB before → ~60 MB API only, ~70–95 MB with the app open (Phase 6 features included). Tauri/Electron rejected: no memory gain (same WebView2 + Node) or more (Chromium).
 
@@ -425,7 +425,7 @@ List/get tools return compact summaries by default; `detail: true` for full data
 - TypeScript monorepo (npm workspaces; Node 24 runs `.ts` directly, tsc is type-check only)
 - `core`: Zod schemas, gray-matter (frontmatter), yaml, simple-git
 - `mcp`: official MCP TypeScript SDK, stdio transport
-- `server`: Hono on 127.0.0.1:4310 (Host-header check, same-origin JSON-only writes)
+- `server`: Hono on 127.0.0.1:4320 (Host-header check, same-origin JSON-only writes)
 - `web`: Vite 8 + React 19 + Tailwind 4 + TanStack Query + lucide icons (no shadcn: small hand-written UI kit). Recharts (radar) and PWA plugin come in Phases 4–5
 - Tests: Vitest 5 (required for `core`)
 
@@ -452,3 +452,21 @@ List/get tools return compact summaries by default; `detail: true` for full data
 
 - Codex / Antigravity MCP config — verify per client during Phase 2.
 - Recency half-life (90 days) and difficulty factors — tune after real use.
+
+## 11. Tesseract foundation and Classroom draft contract
+
+This fork keeps existing Projects, Goals, Learning, Skills, Notes, Quizzes, Activity, Calendar, themes, Windows launcher, phone pairing, local MCP and legacy remote MCP. New installations have no sample courses; fixtures are private to tests. Host settings, tokens and service credentials are isolated under `~/.tesseract/`; the fork never automatically reads or moves upstream credentials.
+
+### Classroom data (v1)
+
+Classrooms are separate from the existing Markdown/YAML workspace tools. A course bundle uses schema_version 1, stable course/lesson/question IDs, source links and rights status, Markdown or typed visuals, optional manual labs, and multiple-choice or explanation questions. Raw HTML, executable lesson content, imported scripts, cross-workspace embeds and remote asset loading are not part of this contract. The app does not run lab commands, verify factual claims, or auto-score an explanation.
+
+Core alone writes the local `data/.classroom/classroom.sqlite`. Revisions are immutable; published pointer changes, the history and an audit journal are transactional. Attempts reference the exact revision/question and do not inherit scores from another version. This independent SQLite store does not alter legacy files or the legacy activity log. Neither SQLite nor personal workspace data goes in Git. In this foundation, publish/restore/revision-bound attempts are exercised in private core tests only. There is no new HTTP or user-facing Classroom route. Later, paired devices must use the shared host HTTP server, never direct DB file sharing; draft administration must stay on host loopback.
+
+### Isolated MCP profile
+
+`npm run mcp -- --profile classroom --data <isolated-data-directory>` exposes only `classroom_format`, `submit_course_draft`, and `get_draft_receipt`. Validation is before writes, input is capped at 256 KiB, a retry of the same request returns the original receipt, and conflicting IDs/stale revisions fail explicitly. Submission never publishes. The existing remote mode remains available for legacy workspace features but has no write path into Classroom. No production tunnel is configured by this work. The classroom profile is for isolated test data; it is not routed by the normal app or legacy tunnel. User-facing classroom implementation and real classroom creation are later steps, separate from foundation verification.
+
+### Performance verification
+
+Build the pinned upstream and fork with the same toolchain. Sum the JS and CSS reachable from the production Vite entry using only static imports; do not count lazy pages as first-load JS. Run `node scripts/perf-web.ts <upstream-dist> <fork-dist>` in app/. Run `node apps/mcp/src/benchmark.ts` for in-process MCP latencies: list tools, stage a synthetic draft, and read a receipt. These numbers exclude tunnel/network, rendering time, RAM and browser caches; do not present them as such. Measure desktop UI and live tunnel separately before making end-to-end claims.

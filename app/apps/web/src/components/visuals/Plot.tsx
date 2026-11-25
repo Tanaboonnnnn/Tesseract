@@ -3,7 +3,7 @@
  * Functions come from the safe expression parser in core; sliders (params) re-evaluate them live.
  * Hover shows exact values; legend items toggle traces; steps highlight traces like other visuals.
  */
-import { compile, type Compiled } from "@brain/core/pure";
+import { compile, type Compiled } from "@tesseract/core/pure";
 import { useMemo, useRef, useState } from "react";
 import type { PlotData, PlotTrace } from "../../lib/api.ts";
 import { cn } from "../../lib/format.ts";

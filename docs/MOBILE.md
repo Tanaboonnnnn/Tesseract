@@ -1,4 +1,4 @@
-# Using Panya on your phone
+# Using Tesseract on your phone
 
 `npm start` serves **this computer only** (127.0.0.1); nothing else on the network can reach it.
 
@@ -16,13 +16,13 @@ npm run lan
 
 It prints the addresses to open on your phone and an **access token**. Each device pairs once with
 the token (stored as a secure cookie on that device). The token is saved in
-`%USERPROFILE%\.panya\token`, outside the repo, so it is never committed.
+`%USERPROFILE%\.tesseract\token`, outside the repo, so it is never committed.
 
 ## Option A: home Wi-Fi
 
 1. Run `npm run lan`. When Windows Firewall asks about Node.js, allow **Private networks only**.
    Your Wi-Fi must be set as a *Private* network in Windows settings.
-2. On the phone (same Wi-Fi), open the printed `http://192.168.x.x:4310` address.
+2. On the phone (same Wi-Fi), open the printed `http://192.168.x.x:4320` address.
 3. Enter the access token, then tap **Pair device**.
 4. Add it to your home screen: iPhone Safari → Share → *Add to Home Screen*; Android Chrome → ⋮ → *Add to Home screen*.
 
@@ -32,11 +32,11 @@ the token (stored as a secure cookie on that device). The token is saved in
 ## Option B: Tailscale (recommended, works anywhere, encrypted)
 
 1. Install Tailscale on the PC and the phone, signed in to the same account.
-2. Run `npm run lan`. It also prints your Tailscale address (`http://100.x.y.z:4310`); open that on the phone and pair.
+2. Run `npm run lan`. It also prints your Tailscale address (`http://100.x.y.z:4320`); open that on the phone and pair.
    Traffic is end-to-end encrypted (WireGuard) even outside home.
 3. Optional: **HTTPS + full app install** (offline shell, no browser bar):
    - In the Tailscale admin console enable *MagicDNS* and *HTTPS certificates*.
-   - On the PC: `tailscale serve --bg 4310` (check `tailscale serve --help`; the syntax differs between versions).
+   - On the PC: `tailscale serve --bg 4320` (check `tailscale serve --help`; the syntax differs between versions).
    - Start with your Tailscale name allowed:
      ```powershell
      npm run lan -- --allow-host your-pc.your-tailnet.ts.net

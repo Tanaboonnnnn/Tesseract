@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type { Store } from "@brain/core";
+import type { Store } from "@tesseract/core";
 import { createServer } from "./server.ts";
 
 export const CHARS_PER_TOKEN = 4;

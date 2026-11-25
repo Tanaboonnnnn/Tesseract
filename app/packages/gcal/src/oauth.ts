@@ -1,6 +1,6 @@
 /**
  * OAuth for an installed ("Desktop app") client: loopback redirect + PKCE (RFC 8252).
- * No secrets in the repo; the client file and token live in ~/.panya.
+ * No secrets in the repo; the client file and token live in ~/.tesseract.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
@@ -78,7 +78,7 @@ export async function startAuth(paths: GooglePaths, fetchFn: Fetch = fetch): Pro
     if (url.pathname !== "/callback") return void res.writeHead(404).end();
     const reply = (ok: boolean, text: string) => {
       res.writeHead(ok ? 200 : 400, { "content-type": "text/html; charset=utf-8" });
-      res.end(`<!doctype html><meta charset="utf-8"><title>Panya</title><body style="font-family:system-ui;padding:3rem"><h2>${text}</h2><p>You can close this window.</p>`);
+      res.end(`<!doctype html><meta charset="utf-8"><title>Tesseract</title><body style="font-family:system-ui;padding:3rem"><h2>${text}</h2><p>You can close this window.</p>`);
     };
     try {
       if (url.searchParams.get("state") !== state) throw new Error("State mismatch");

@@ -40,7 +40,7 @@ import type {
   TopicInput,
   TopicPatch,
   TopicView,
-} from "@brain/core";
+} from "@tesseract/core";
 
 export type Overview = ReturnType<typeof overview>;
 export type ProjectSummary = ReturnType<typeof projectSummary>;
@@ -64,7 +64,7 @@ export type QuizSummary = {
 };
 export type { ActivitySummary, Assessment, DomainLevel, LearningView, ProjectView, QuizResult, ReviewItem, SkillView, Task, TopicView };
 export type { ScheduleEvent, ScheduleItem, ProjectMapView, LearningMapView, Visual, VisualSummary, PlotData, PlotTrace, LessonBlock };
-import type { TokenReport } from "@brain/mcp/measure";
+import type { TokenReport } from "@tesseract/mcp/measure";
 export type { TokenReport };
 /** Phone & tablet (LAN) state; pairUrls only on this PC (apps/server/src/phone.ts). */
 export type PhoneInfo = { available: false } | { available: true; on: boolean; urls: string[]; pairUrls?: string[] };

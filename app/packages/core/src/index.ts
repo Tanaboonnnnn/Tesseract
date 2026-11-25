@@ -5,3 +5,5 @@ export * from "./schemas.ts";
 export * from "./store.ts";
 export * from "./views.ts";
 export * from "./visuals.ts";
+
+export * from "./classroom.ts";

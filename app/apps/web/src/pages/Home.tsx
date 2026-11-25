@@ -1,15 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, CalendarDays, CircleCheck, FolderKanban, ListChecks, RotateCcw, Target } from "lucide-react";
-import type { ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { LearningCard, ProjectCard } from "../components/cards.tsx";
-import { SkillRadar } from "../components/SkillRadar.tsx";
 import { Card, Chip, Empty, ErrorNote, Loading, PageHeader, ProgressBar, SectionTitle } from "../components/ui.tsx";
 import { api, type Overview } from "../lib/api.ts";
 import { cn, dueLabel, greeting, longToday, shortDate } from "../lib/format.ts";
 import { useNow } from "../lib/now.ts";
 import { useLayout } from "../lib/theme.ts";
 import { REVIEW_REASON as REASON } from "../lib/labels.ts";
+
+const SkillRadar = lazy(() => import("../components/SkillRadar.tsx").then((m) => ({ default: m.SkillRadar })));
+
+function DashboardRadar({ data }: { data: Overview["skills"] }) {
+  const host = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(() => typeof IntersectionObserver === "undefined");
+  useEffect(() => {
+    if (shown || !host.current) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) { setShown(true); io.disconnect(); }
+    }, { rootMargin: "100px" });
+    io.observe(host.current);
+    return () => io.disconnect();
+  }, [shown]);
+  const placeholder = <div className="h-[230px]" aria-hidden="true" />;
+  return <div ref={host}>{shown
+    ? <Suspense fallback={placeholder}><SkillRadar data={data} height={230} compact /></Suspense>
+    : placeholder}</div>;
+}
 
 const PRIORITY_DOT: Record<string, string> = {
   urgent: "bg-rose-500",
@@ -291,7 +309,7 @@ function Skills({ o }: { o: Overview }) {
         Skills
       </SectionTitle>
       {!assessed && <p className="mb-3 text-xs text-slate-400">Levels come from assessments. None yet.</p>}
-      <SkillRadar data={o.skills} height={230} compact />
+      <DashboardRadar data={o.skills} />
     </Card>
   );
 }

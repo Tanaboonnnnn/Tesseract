@@ -3,10 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Trash } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Button, Card, Chip, ErrorNote, Loading } from "../components/ui.tsx";
+import { VisualList } from "../components/VisualList.tsx";
 import { Visual } from "../components/visuals/Visual.tsx";
 import { VISUAL_META } from "../components/visuals/meta.tsx";
 import { api } from "../lib/api.ts";
-import { cn, shortDate } from "../lib/format.ts";
+import { shortDate } from "../lib/format.ts";
 
 export function VisualPage() {
   const { id = "", vid = "" } = useParams();
@@ -79,24 +80,5 @@ export function VisualPage() {
         </Card>
       )}
     </>
-  );
-}
-
-export function VisualList({ learning, items, className }: { learning: string; items: { id: string; title: string; type: keyof typeof VISUAL_META; steps: number }[]; className?: string }) {
-  return (
-    <ul className={cn("grid gap-2 sm:grid-cols-2", className)}>
-      {items.map((x) => {
-        const M = VISUAL_META[x.type];
-        return (
-          <li key={x.id}>
-            <Link to={`/learning/${learning}/visuals/${x.id}`} className="flex items-center gap-2.5 rounded-lg px-3 py-2 ring-1 ring-[var(--line)] hover:bg-[var(--lane)] hover:ring-accent-400/50">
-              <M.icon size={16} className="shrink-0 text-accent-600 dark:text-sky-300" />
-              <span className="min-w-0 flex-1 truncate text-sm">{x.title}</span>
-              <span className="shrink-0 text-[11px] text-slate-400">{x.steps ? `${x.steps} steps` : M.label}</span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
   );
 }

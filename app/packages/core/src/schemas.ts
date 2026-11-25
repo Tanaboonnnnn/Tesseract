@@ -277,9 +277,9 @@ export const EventSchema = z
   .refine((e) => e.start === null || e.end! > e.start, { message: "end must be after start", path: ["end"] });
 export const EventListSchema = z.array(EventSchema).refine(uniqueIds, "event ids must be unique");
 
-/** Google Calendar settings. Secrets and sync cursors live outside data/ (~/.panya). */
+/** Google Calendar settings. Secrets and sync cursors live outside data/ (~/.tesseract). */
 export const GoogleSettingsSchema = z.object({
-  /** The dedicated "Panya" calendar the app writes to. */
+  /** The dedicated "Tesseract" calendar the app writes to. */
   calendar_id: z.string().nullable().default(null),
   /** Calendars shown read-only in the Schedule. */
   pull_calendars: z.array(z.string().min(1)).default(["primary"]),

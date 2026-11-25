@@ -1,5 +1,5 @@
 {
-  "name": "@brain/server",
+  "name": "@tesseract/server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -9,9 +9,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@brain/core": "*",
-    "@brain/gcal": "*",
-    "@brain/mcp": "*",
+    "@tesseract/core": "*",
+    "@tesseract/gcal": "*",
+    "@tesseract/mcp": "*",
     "@hono/node-server": "^2.1.11",
     "hono": "^4.13.20"
   },

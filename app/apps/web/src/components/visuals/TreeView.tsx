@@ -1,5 +1,5 @@
 /** Tree: tidy layout (leaves in order, parents centered over their children), top-down or left-to-right. */
-import type { TreeNode } from "@brain/core";
+import type { TreeNode } from "@tesseract/core";
 import type { Visual } from "../../lib/api.ts";
 import { Fit } from "../SystemMap.tsx";
 import { ACCENT, type Fx, PALETTE, trunc } from "./shared.ts";

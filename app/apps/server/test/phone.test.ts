@@ -40,7 +40,7 @@ describe("phoneControl", () => {
     expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ other: 1, lan: true });
 
     // live state: the getters follow the server's current mode
-    Object.assign(state, { on: true, urls: ["http://192.168.1.23:4310"], token: "t".repeat(32) });
-    expect([p.on, p.urls, p.token]).toEqual([true, ["http://192.168.1.23:4310"], "t".repeat(32)]);
+    Object.assign(state, { on: true, urls: ["http://192.168.1.23:4320"], token: "t".repeat(32) });
+    expect([p.on, p.urls, p.token]).toEqual([true, ["http://192.168.1.23:4320"], "t".repeat(32)]);
   });
 });

@@ -336,7 +336,7 @@ function GoogleState({ g }: { g: GoogleInfo }) {
   if (g.connected) {
     return (
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        Two-way sync with the “Panya” calendar (also shows in Notion Calendar).{" "}
+        Two-way sync with the “Tesseract” calendar (also shows in Notion Calendar).{" "}
         {g.last_sync ? `Last sync ${ago(g.last_sync)}.` : "Not synced yet."}
         {g.last_error && <span className="block text-rose-600 dark:text-rose-300">{g.last_error}</span>}
       </p>
@@ -347,7 +347,7 @@ function GoogleState({ g }: { g: GoogleInfo }) {
       <div className="text-sm text-slate-500 dark:text-slate-400">
         <Empty>Not set up.</Empty>
         <p>
-          Save your Google OAuth client file as <code>~/.panya/google-client.json</code> (steps in{" "}
+          Save your Google OAuth client file as <code>~/.tesseract/google-client.json</code> (steps in{" "}
           <code>docs/GOOGLE_CALENDAR.md</code>), then reload this page.
         </p>
       </div>

@@ -1,8 +1,8 @@
-# Make the Panya app window see-through (whole window, Windows "layered window").
+# Make the Tesseract app window see-through (whole window, Windows "layered window").
 # The compositor (GPU) blends it with the desktop: no extra memory, nothing runs afterwards.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/window-opacity.ps1 -Percent 90 [-WaitSeconds 10] [-Save]
 # -Percent: 100 = solid ... 50 = half see-through (lower is clamped to 50 so text stays readable).
-# -Save: remember it in ~/.panya/window.json; the launcher applies it every time the window opens.
+# -Save: remember it in ~/.tesseract/window.json; the launcher applies it every time the window opens.
 param(
   [ValidateRange(0, 100)][int]$Percent = 90,
   [double]$WaitSeconds = 0,
@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 $Percent = [Math]::Max(50, $Percent)
 
 if ($Save) {
-  $dir = Join-Path $env:USERPROFILE ".panya"
+  $dir = Join-Path $env:USERPROFILE ".tesseract"
   New-Item -ItemType Directory -Force -Path $dir | Out-Null
   @{ opacity = $Percent } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $dir "window.json")
 }
@@ -42,7 +42,7 @@ public static class SbWindow {
       var t = new StringBuilder(256); GetWindowText(h, t, 256);
       var c = new StringBuilder(64); GetClassName(h, c, 64);
       var title = t.ToString();
-      if (c.ToString() == "Chrome_WidgetWin_1" && title.StartsWith("Panya") && !title.Contains("Microsoft") && !title.Contains("Edge"))
+      if (c.ToString() == "Chrome_WidgetWin_1" && title.StartsWith("Tesseract") && !title.Contains("Microsoft") && !title.Contains("Edge"))
         found.Add(h);
       return true;
     }, IntPtr.Zero);

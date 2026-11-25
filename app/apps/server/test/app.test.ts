@@ -1,12 +1,12 @@
 import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { resolveDataDir, Store, VISUAL_EXAMPLES } from "@brain/core";
+import { resolveDataDir, Store, VISUAL_EXAMPLES } from "@tesseract/core";
 import { describe, expect, it } from "vitest";
 import { createApp, type AppOptions } from "../src/app.ts";
 
 const NOW = () => new Date(2026, 10, 23, 12, 0, 0);
-const HOST = "localhost:4310";
+const HOST = "localhost:4320";
 
 function setup(
   webDir?: string,
@@ -108,20 +108,20 @@ describe("guide API", () => {
 describe("phone access API", () => {
   it("shows pairing links to this PC only and switches from this PC only", async () => {
     const calls: boolean[] = [];
-    const phone = { on: true, urls: ["http://192.168.1.5:4310"], token: "t".repeat(32), set: (on: boolean) => void calls.push(on) };
-    const local = setup(undefined, { token: "t".repeat(32), hosts: ["192.168.1.5:4310"] }, undefined, undefined, undefined, phone);
+    const phone = { on: true, urls: ["http://192.168.1.5:4320"], token: "t".repeat(32), set: (on: boolean) => void calls.push(on) };
+    const local = setup(undefined, { token: "t".repeat(32), hosts: ["192.168.1.5:4320"] }, undefined, undefined, undefined, phone);
     expect(await (await local.req("GET", "/api/phone")).json()).toEqual({
       available: true,
       on: true,
-      urls: ["http://192.168.1.5:4310"],
-      pairUrls: [`http://192.168.1.5:4310/#pair=${"t".repeat(32)}`],
+      urls: ["http://192.168.1.5:4320"],
+      pairUrls: [`http://192.168.1.5:4320/#pair=${"t".repeat(32)}`],
     });
     expect(await (await local.req("POST", "/api/phone", { on: false })).json()).toMatchObject({ on: false, switching: true });
     expect(calls).toEqual([false]);
     expect((await local.req("POST", "/api/phone", { on: "yes" })).status).toBe(400);
 
-    const lanPhone = setup(undefined, { address: "192.168.1.20", token: "t".repeat(32), hosts: ["192.168.1.5:4310"] }, undefined, undefined, undefined, phone);
-    const auth = { host: "192.168.1.5:4310", authorization: `Bearer ${"t".repeat(32)}` };
+    const lanPhone = setup(undefined, { address: "192.168.1.20", token: "t".repeat(32), hosts: ["192.168.1.5:4320"] }, undefined, undefined, undefined, phone);
+    const auth = { host: "192.168.1.5:4320", authorization: `Bearer ${"t".repeat(32)}` };
     const seen = await (await lanPhone.req("GET", "/api/phone", undefined, auth)).json();
     expect(seen.pairUrls).toBeUndefined(); // never hand the token to another device
     expect((await lanPhone.req("POST", "/api/phone", { on: false }, auth)).status).toBe(403);
@@ -152,8 +152,8 @@ describe("remote access API", () => {
     expect(await (await local.req("POST", "/api/remote/start", { hours: 8 })).json()).toMatchObject({ available: true, on: true });
     expect(await (await local.req("POST", "/api/remote/stop", {})).json()).toMatchObject({ on: false });
 
-    const phone = setup(undefined, { address: "192.168.1.20", token: "t".repeat(32), hosts: ["192.168.1.5:4310"] }, undefined, undefined, remote);
-    const auth = { host: "192.168.1.5:4310", authorization: `Bearer ${"t".repeat(32)}` };
+    const phone = setup(undefined, { address: "192.168.1.20", token: "t".repeat(32), hosts: ["192.168.1.5:4320"] }, undefined, undefined, remote);
+    const auth = { host: "192.168.1.5:4320", authorization: `Bearer ${"t".repeat(32)}` };
     expect((await phone.req("POST", "/api/remote/start", { hours: 1 }, auth)).status).toBe(403);
     expect(remote.state().on).toBe(false);
     expect((await phone.req("GET", "/api/remote", undefined, auth)).status).toBe(200); // status is fine to show
@@ -175,8 +175,8 @@ describe("window opacity API", () => {
     expect(await (await local.req("GET", "/api/window")).json()).toEqual({ available: true, opacity: 85 });
     expect((await local.req("PUT", "/api/window", { opacity: 20 })).status).toBe(400);
 
-    const phone = setup(undefined, { address: "192.168.1.20", token: "t".repeat(32), hosts: ["192.168.1.5:4310"] }, undefined, win);
-    const res = await phone.req("PUT", "/api/window", { opacity: 60 }, { host: "192.168.1.5:4310", authorization: `Bearer ${"t".repeat(32)}` });
+    const phone = setup(undefined, { address: "192.168.1.20", token: "t".repeat(32), hosts: ["192.168.1.5:4320"] }, undefined, win);
+    const res = await phone.req("PUT", "/api/window", { opacity: 60 }, { host: "192.168.1.5:4320", authorization: `Bearer ${"t".repeat(32)}` });
     expect(res.status).toBe(403);
     expect(current).toBe(85);
   });
@@ -269,8 +269,8 @@ describe("schedule API", () => {
     expect(await (await local.req("PATCH", "/api/google/settings", { push: { exams: false } })).json()).toMatchObject({ push: { exams: false } });
     expect(await (await local.req("GET", "/api/google")).json()).toMatchObject({ available: true, connected: true, settings: { push: { exams: false } } });
 
-    const phone = setup(undefined, { address: "192.168.1.20", token: "x".repeat(32), hosts: ["192.168.1.5:4310"] }, google);
-    const res = await phone.req("POST", "/api/google/connect", {}, { host: "192.168.1.5:4310", authorization: `Bearer ${"x".repeat(32)}` });
+    const phone = setup(undefined, { address: "192.168.1.20", token: "x".repeat(32), hosts: ["192.168.1.5:4320"] }, google);
+    const res = await phone.req("POST", "/api/google/connect", {}, { host: "192.168.1.5:4320", authorization: `Bearer ${"x".repeat(32)}` });
     expect(res.status).toBe(403);
     expect(calls).toEqual(["connect", "sync"]);
   });
@@ -339,7 +339,7 @@ describe("notes API", () => {
 
 describe("remote access (LAN / Tailscale)", () => {
   const TOKEN = "t0ken-for-tests-0123456789abcdef";
-  const LAN = "192.168.1.5:4310";
+  const LAN = "192.168.1.5:4320";
   const phone = () => setup(undefined, { address: "192.168.1.20", token: TOKEN, hosts: [LAN] });
 
   it("is off without a token", async () => {
@@ -394,7 +394,7 @@ describe("remote access (LAN / Tailscale)", () => {
 describe("security", () => {
   it("rejects unknown Host headers (DNS rebinding)", async () => {
     const { req } = setup();
-    expect((await req("GET", "/api/overview", undefined, { host: "evil.example:4310" })).status).toBe(403);
+    expect((await req("GET", "/api/overview", undefined, { host: "evil.example:4320" })).status).toBe(403);
   });
 
   it("blocks cross-origin writes", async () => {
@@ -431,4 +431,11 @@ describe("web app hosting", () => {
     expect((await req("GET", "/api/missing")).headers.get("content-type")).toContain("json");
     expect((await req("GET", "/assets/old-hash.js")).status).toBe(404);
   });
+});
+
+it("identifies this app at the desktop readiness endpoint", async () => {
+  const { req } = setup();
+  const result = await req("GET", "/api/session");
+  expect(result.status).toBe(200);
+  expect(await result.json()).toMatchObject({ app: "tesseract", ok: true, local: true });
 });

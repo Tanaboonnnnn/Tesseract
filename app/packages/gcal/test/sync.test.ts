@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveDataDir, Store } from "@brain/core";
+import { resolveDataDir, Store } from "@tesseract/core";
 import { fromGoogle, GoogleApiError, readState, syncGoogle, type CalendarApi, type GEvent, type GEventBody } from "../src/index.ts";
 
 const TZ = "Asia/Bangkok";
@@ -94,13 +94,13 @@ describe("fromGoogle", () => {
 });
 
 describe("two-way sync", () => {
-  it("creates the Panya calendar and pushes events, dues, exams and classes", async () => {
+  it("creates the Tesseract calendar and pushes events, dues, exams and classes", async () => {
     const { store, google, run } = setup();
     store.addEvent({ title: "Study pods", date: "2026-11-25", start: "14:00", end: "16:00" });
     store.addTask("weather-app", { title: "Demo", due: "2026-12-01" });
 
     const r = await run();
-    expect(google.calls[0]).toBe("createCalendar Panya");
+    expect(google.calls[0]).toBe("createCalendar Tesseract");
     expect(store.getGoogleSettings().calendar_id).toBe("cal-1");
     expect(r.pushed).toBeGreaterThanOrEqual(5); // event, 5 open tasks with due dates, assignment, exam, class
     expect(store.listEvents()[0]!.google_id).toBe(google.byKey("event:2026-11-25-study-pods")!.id);
@@ -134,7 +134,7 @@ describe("two-way sync", () => {
     expect(store.listEvents()).toEqual([]);
   });
 
-  it("imports events created in the Panya calendar and tags them", async () => {
+  it("imports events created in the Tesseract calendar and tags them", async () => {
     const { store, google, run } = setup();
     await run();
     const g = google.userCreate("cal-1", { summary: "Dentist", start: { date: "2026-11-28" }, end: { date: "2026-11-29" } });

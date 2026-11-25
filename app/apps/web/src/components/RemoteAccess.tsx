@@ -1,5 +1,5 @@
 /**
- * Remote access switch (Phase 8a): lets ChatGPT (web/phone) reach a read-mostly Panya through OpenAI's
+ * Remote access switch (Phase 8a): lets ChatGPT (web/phone) reach a read-mostly Tesseract through OpenAI's
  * outbound-only tunnel. Off by default, on for 1 / 8 / 24 hours, then off by itself. Only this PC can switch it.
  * `onDark` = placed on the always-dark sidebar.
  */
@@ -36,7 +36,7 @@ export function RemoteAccess({ onDark = false, className }: { onDark?: boolean; 
         <span className="flex-1">
           Remote access{" "}
           {r.on ? (
-            <span className="font-semibold text-emerald-400" title="ChatGPT can reach a read-mostly Panya">
+            <span className="font-semibold text-emerald-400" title="ChatGPT can reach a read-mostly Tesseract">
               On · until {until}
             </span>
           ) : (

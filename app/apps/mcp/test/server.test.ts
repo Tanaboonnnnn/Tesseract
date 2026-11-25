@@ -4,14 +4,14 @@ import { join, resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { resolveDataDir, Store } from "@brain/core";
+import { resolveDataDir, Store } from "@tesseract/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { createServer, REMOTE_TOOLS, type ServerOptions } from "../src/server.ts";
 
 const NOW = () => new Date(2026, 10, 23, 12, 0, 0);
 
 function tempDataDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "brain-mcp-"));
+  const dir = mkdtempSync(join(tmpdir(), "tesseract-mcp-"));
   cpSync(resolveDataDir(), dir, { recursive: true });
   return dir;
 }
@@ -393,4 +393,18 @@ describe("stdio process", () => {
     const store = new Store({ dataDir, agent: "check" });
     expect(store.listActivity()[0]).toMatchObject({ agent: "stdio-test" });
   }, 20_000);
+});
+
+it("classroom profile stages an inert draft and cannot invoke legacy live writers", async () => {
+  const { client, call, store } = await connect("classroom-synthetic-test", { profile: "classroom" });
+  expect((await client.listTools()).tools.map((t) => t.name).sort()).toEqual(["classroom_format", "get_draft_receipt", "submit_course_draft"]);
+  const format = await call("classroom_format");
+  const first = await call("submit_course_draft", { request_id: "synthetic-01", bundle: format.example });
+  expect(first).toMatchObject({ ok: true, status: "staged" });
+  expect(await call("submit_course_draft", { request_id: "synthetic-01", bundle: format.example })).toEqual(first);
+  expect(await call("get_draft_receipt", { request_id: "synthetic-01" })).toEqual(first);
+  for (const name of ["create_course", "create_quiz", "save_visual", "get_overview", "publish_course", "undo_change"]) {
+    expect((await client.callTool({ name, arguments: {} })).isError).toBe(true);
+  }
+  expect(store.listLearning().some((item) => item.id === format.example.course_id)).toBe(false);
 });

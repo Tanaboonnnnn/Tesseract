@@ -49,7 +49,7 @@ function Pills({ vertical = false }: { vertical?: boolean }) {
 const Brand = ({ className }: { className?: string }) => (
   <Link to="/" className={cn("sb-brand flex items-center gap-2.5", className)}>
     <Hexagon size={22} className="sb-brand-icon shrink-0" />
-    <span className="brand-title">Panya</span>
+    <span className="brand-title">Tesseract</span>
   </Link>
 );
 
@@ -92,7 +92,7 @@ export function TopNav({ terminal = false }: { terminal?: boolean }) {
       <div className={cn("mx-auto flex h-14 items-center gap-6 px-6", terminal ? "max-w-6xl" : "max-w-5xl")}>
         {terminal ? (
           <Link to="/" className="sb-brand shrink-0 font-bold">
-            panya<span className="sb-caret">_</span>
+            tesseract<span className="sb-caret">_</span>
           </Link>
         ) : (
           <Brand />
@@ -117,7 +117,7 @@ export function TopNav({ terminal = false }: { terminal?: boolean }) {
 export function RailNav() {
   return (
     <aside className="sb-rail fixed inset-y-0 left-0 z-20 hidden w-20 flex-col items-center gap-2 py-5 lg:flex">
-      <Link to="/" title="Panya" className="sb-rail-brand mb-4 grid size-11 place-items-center">
+      <Link to="/" title="Tesseract" className="sb-rail-brand mb-4 grid size-11 place-items-center">
         <Hexagon size={24} />
       </Link>
       {NAV.map(({ to, label, icon: Icon, end }) => (
@@ -170,7 +170,7 @@ export function StatusBar() {
   const page = pathname === "/" ? "home" : pathname.slice(1).split("/").join(":");
   return (
     <footer className="sb-statusbar fixed inset-x-0 bottom-0 z-20 hidden h-7 items-center gap-3 px-4 text-[12px] lg:flex">
-      <span className="sb-status-chip">[0] panya</span>
+      <span className="sb-status-chip">[0] tesseract</span>
       <span className="min-w-0 flex-1 truncate">{page}</span>
       {p.remote && <span className="sb-status-chip">remote:on</span>}
       {p.phone && <span className="sb-status-chip">phone:on</span>}

@@ -7,7 +7,7 @@ node <repo>/app/apps/mcp/src/main.ts --agent <name> [--data <data dir>]
 ```
 
 - Requires Node 22.18+ (runs TypeScript directly). Check: `node -v`.
-- `<repo>` = the folder you cloned this repo into (examples below use `C:/path/to/panya`; replace it with yours, forward slashes).
+- `<repo>` = the folder you cloned this repo into (examples below use `C:/path/to/tesseract`; replace it with yours, forward slashes).
 - Optional env: `BRAIN_DATA_DIR` (data folder), `BRAIN_GIT_COMMIT=1` (git-commit each change).
 - If a GUI app can't find `node`, use the full path from `(Get-Command node).Source`.
 
@@ -16,7 +16,7 @@ node <repo>/app/apps/mcp/src/main.ts --agent <name> [--data <data dir>]
 Add it once from the repo folder, then check with `/mcp`:
 
 ```powershell
-claude mcp add panya -- node C:/path/to/panya/app/apps/mcp/src/main.ts --agent claude-code
+claude mcp add tesseract -- node C:/path/to/tesseract/app/apps/mcp/src/main.ts --agent claude-code
 ```
 
 ## Claude Desktop
@@ -26,10 +26,10 @@ Settings → Developer → Edit Config (`%APPDATA%\Claude\claude_desktop_config.
 ```json
 {
   "mcpServers": {
-    "panya": {
+    "tesseract": {
       "command": "node",
       "args": [
-        "C:/path/to/panya/app/apps/mcp/src/main.ts",
+        "C:/path/to/tesseract/app/apps/mcp/src/main.ts",
         "--agent", "claude-desktop"
       ]
     }
@@ -44,9 +44,9 @@ Restart Claude Desktop.
 Add to `~/.codex/config.toml`, then restart Codex:
 
 ```toml
-[mcp_servers.panya]
+[mcp_servers.tesseract]
 command = "node"
-args = ["C:/path/to/panya/app/apps/mcp/src/main.ts", "--agent", "codex"]
+args = ["C:/path/to/tesseract/app/apps/mcp/src/main.ts", "--agent", "codex"]
 ```
 
 ## Antigravity

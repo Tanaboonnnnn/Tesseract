@@ -2,7 +2,7 @@
  * Remote access (SPEC §7, Phase 8a): runs OpenAI's tunnel-client so ChatGPT (web/phone) can reach the
  * least-privilege "remote" MCP profile on this PC. Outbound-only: no port is opened, no public URL exists.
  *
- * Off by default; turned on for a limited time and stops by itself. Everything it needs lives in ~/.panya:
+ * Off by default; turned on for a limited time and stops by itself. Everything it needs lives in ~/.tesseract:
  *   bin/tunnel-client-runtime.exe   the official binary (downloaded once, checksum-verified, outside the repo)
  *   openai-tunnel-key         restricted Platform key (Tunnels: Read + Use); tunnel-client reads it from the file
  *   tunnel.json               { "tunnel_id": "...", "args"?: [...] }  (args = override if the CLI flags change)
@@ -47,14 +47,14 @@ const fwd = (p: string) => p.replaceAll("\\", "/");
 
 /** Known failures in tunnel-client's log, turned into something the card can show. */
 const PROBLEMS: [RegExp, string][] = [
-  [/status 401|invalid_api_key/, "OpenAI rejected the tunnel key (401). Check ~/.panya/openai-tunnel-key."],
+  [/status 401|invalid_api_key/, "OpenAI rejected the tunnel key (401). Check ~/.tesseract/openai-tunnel-key."],
   [/status 403/, "The key has no access to this tunnel (403). It needs Tunnels: Read + Use."],
-  [/status 404/, "Tunnel not found (404). Check the tunnel ID in ~/.panya/tunnel.json."],
+  [/status 404/, "Tunnel not found (404). Check the tunnel ID in ~/.tesseract/tunnel.json."],
   [/invalid tunnel ID/, "The tunnel ID looks wrong (it starts with tunnel_)."],
 ];
 
 export function remoteControl(options: RemoteOptions = {}): RemoteControl {
-  const dir = options.dir ?? join(homedir(), ".panya");
+  const dir = options.dir ?? join(homedir(), ".tesseract");
   const appDir = options.appDir ?? resolve(import.meta.dirname, "../../..");
   const spawn = options.spawn ?? defaultSpawn;
   const now = options.now ?? Date.now;
@@ -155,7 +155,7 @@ export function remoteControl(options: RemoteOptions = {}): RemoteControl {
           child = null;
           until = null;
           clearTimeout(timer);
-          error ??= `tunnel-client stopped (exit code ${code ?? "?"}). See ~/.panya/tunnel.log`;
+          error ??= `tunnel-client stopped (exit code ${code ?? "?"}). See ~/.tesseract/tunnel.log`;
         });
       }
       until = now() + hours * 3_600_000;

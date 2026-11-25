@@ -40,7 +40,7 @@ function Screen({ children }: { children: ReactNode }) {
   );
 }
 
-/** Token from a scanned pairing QR: http://pc:4310/#pair=… (a URL fragment never reaches the server or its logs). */
+/** Token from a scanned pairing QR: http://pc:4320/#pair=… (a URL fragment never reaches the server or its logs). */
 function tokenFromLink(): string {
   const m = /[#&]pair=([^&]+)/.exec(location.hash);
   if (!m) return "";

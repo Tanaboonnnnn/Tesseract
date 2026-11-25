@@ -1,6 +1,6 @@
 /**
  * Phone & tablet access for the desktop app (SPEC §7). LAN mode itself is the existing `--lan` (pairing token,
- * docs/MOBILE.md); this only makes it a switch: the choice is saved in ~/.panya/desktop.json, read by
+ * docs/MOBILE.md); this only makes it a switch: the choice is saved in ~/.tesseract/desktop.json, read by
  * scripts/launch.ps1 at the next start, and applied right away by re-listening in-process (no restart).
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -18,7 +18,7 @@ export interface PhoneControl {
   set(on: boolean): void;
 }
 
-const SETTINGS = join(homedir(), ".panya", "desktop.json");
+const SETTINGS = join(homedir(), ".tesseract", "desktop.json");
 
 /**
  * Addresses a phone can actually reach, best first: real Wi-Fi/Ethernet, then Tailscale (100.64.0.0/10).
