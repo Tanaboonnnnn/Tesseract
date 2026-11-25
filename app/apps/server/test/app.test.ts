@@ -472,6 +472,9 @@ describe("classroom onboarding", () => {
     expect(await (await req("GET","/api/classroom/drafts")).json()).toEqual([]);
     expect((await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"test-receipt"})).status).toBe(201);
     const first = (await (await req("GET","/api/classroom/drafts")).json())[0].revision_id;
+    expect(await (await req("GET","/api/classroom/drafts/"+first)).json()).toMatchObject({
+      published:false, previously_published:false, latest:true
+    });
     expect((await (await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"test-receipt"})).json()).revision_id).toBe(first);
     expect((await req("GET","/api/classroom/published/course-fixture")).status).toBe(404);
     expect((await req("POST","/api/classroom/drafts/"+first+"/publish",{})).status).toBe(200);
@@ -484,6 +487,12 @@ describe("classroom onboarding", () => {
     expect((await (await req("GET","/api/learning-related-tasks/course-fixture")).json())[0].status).toBe("done");
     const second = (await (await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"test-receipt-2",base_revision:first})).json()).revision_id;
     expect((await req("POST","/api/classroom/drafts/"+second+"/publish",{})).status).toBe(200);
+    expect(await (await req("GET","/api/classroom/published")).json()).toHaveLength(1);
+    const history=await (await req("GET","/api/classroom/drafts")).json();
+    expect(history).toEqual([
+      expect.objectContaining({revision_id:second,published:true,previously_published:true,latest:true}),
+      expect.objectContaining({revision_id:first,published:false,previously_published:true,latest:false})
+    ]);
     expect(await (await req("GET",path)).json()).toEqual([]);
     expect((await req("POST","/api/classroom/drafts/"+first+"/restore",{})).status).toBe(200);
     expect((await (await req("GET",path)).json())[0].score).toBe(1);

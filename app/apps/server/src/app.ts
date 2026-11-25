@@ -357,7 +357,8 @@ export function createApp(store: Store, options: AppOptions): Hono {
     if (denied) return denied;
     const detail = classroom.getRevision(c.req.param("revision"));
     if (!detail) throw new BrainError("NOT_FOUND", "Draft not found");
-    return c.json(detail);
+    const state = classroom.listDrafts().find(r => r.revision_id === detail.revision_id);
+    return c.json({ ...detail, ...state });
   });
   api.post("/classroom/import", bodyLimit({ maxSize: Math.ceil(COURSE_BYTES_LIMIT * 4 / 3) + 2048 }), async (c) => {
     const denied = localOnly(c);

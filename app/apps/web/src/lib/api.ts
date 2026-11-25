@@ -106,8 +106,8 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   return data as T;
 }
 
-export type CourseRevision = { revision_id: string; course_id: string; title: string; created_at: string; published: boolean };
-export type CourseDetail = CourseRevision & { bundle: ClassroomBundle };
+export type CourseRevision = { revision_id: string; course_id: string; title: string; created_at: string; published: boolean; previously_published: boolean; latest: boolean };
+export type CourseDetail = Omit<CourseRevision, "published" | "previously_published" | "latest"> & Partial<Pick<CourseRevision, "published" | "previously_published" | "latest">> & { bundle: ClassroomBundle };
 export type LessonOption = { ref: string; course: string; title: string; url: string };
 export type RelatedTask = { ref: string; project: string; projectTitle: string; title: string; status: string };
 export type CourseAttempt = { attempt_id: string; lesson_id: string; question_id: string; score: number | null };

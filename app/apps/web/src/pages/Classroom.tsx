@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { api, type CourseDetail } from "../lib/api.ts";
+import { api, type CourseDetail, type CourseRevision } from "../lib/api.ts";
 import { Button, Card, ErrorNote, Loading, PageHeader, inputClass } from "../components/ui.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 const Visual = lazy(() => import("../components/visuals/Visual.tsx").then(m => ({ default: m.Visual })));
@@ -72,11 +72,38 @@ export function CourseDraftList() {
   const session = useQuery({ queryKey: ["session"], queryFn: api.session });
   const drafts = useQuery({ queryKey: ["classroom-drafts"], queryFn: api.courseDrafts, enabled: session.data?.local === true, refetchInterval: 15000 });
   if (!session.data?.local) return null;
-  return <section className="mt-8 space-y-2">
-    <h2 className="font-semibold">Course drafts & revisions</h2>
+  const groups = new Map<string, CourseRevision[]>();
+  for (const rev of drafts.data ?? []) groups.set(rev.course_id, [...(groups.get(rev.course_id) ?? []), rev]);
+  return <section className="mt-8 space-y-3 border-t border-slate-500/20 pt-5">
+    <div>
+      <h2 className="font-semibold">Manage course versions</h2>
+      <p className="text-sm muted">A review replaces the current version of the same course. Older versions and their answers stay in history.</p>
+    </div>
     <ErrorNote error={drafts.error}/>
-    {!drafts.data?.length && <p className="text-sm muted">Imported packages and drafts from ChatGPT appear here.</p>}
-    {drafts.data?.map(d => <Link key={d.revision_id} className="block underline" to={"/learning/drafts/"+d.revision_id}>{d.title} · {d.published ? "Current" : "Review revision"} · {new Date(d.created_at).toLocaleString()}</Link>)}
+    {!groups.size && <p className="text-sm muted">Imported packages and drafts from ChatGPT appear here.</p>}
+    {[...groups].map(([course, rows]) => {
+      const current = rows.find(r => r.published);
+      const pending = rows.find(r => r.latest && !r.published && !r.previously_published);
+      const history = rows.filter(r => r.revision_id !== current?.revision_id && r.revision_id !== pending?.revision_id);
+      return <Card key={course} className="space-y-3 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0"><p className="font-semibold">{current?.title ?? rows[0]!.title}</p>
+            <p className="text-sm muted">{current ? "One published version" : "Not published yet"}{pending ? " · Draft ready to review" : ""}</p>
+          </div>
+          <div className="flex flex-wrap gap-3 text-sm">
+            {current && <Link className="underline" to={"/learning/classroom/" + course}>Open current</Link>}
+            {pending && <Link className="font-semibold underline" to={"/learning/drafts/" + pending.revision_id}>Review draft</Link>}
+          </div>
+        </div>
+        {history.length > 0 && <details className="text-sm">
+          <summary>Version history ({history.length})</summary>
+          <ul className="mt-2 space-y-2">{history.map(r => <li key={r.revision_id}>
+            <Link className="underline" to={"/learning/drafts/" + r.revision_id}>{new Date(r.created_at).toLocaleString()}</Link>
+            <span className="ml-2 muted">{r.previously_published ? "Previously published" : "Older draft"}</span>
+          </li>)}</ul>
+        </details>}
+      </Card>;
+    })}
   </section>;
 }
 
@@ -92,14 +119,15 @@ export function RelatedTasks({id}: {id:string}) {
 export function ClassroomPage({draft=false}:{draft?:boolean}) {
   const {id=""} = useParams();
   const query = useQuery({queryKey:[draft?"classroom-draft":"classroom-course",id],queryFn:()=>draft?api.courseDraft(id):api.publishedCourse(id)});
-  const hash = useLocation().hash;
-  useEffect(() => { if (query.data && hash) document.getElementById(hash.slice(1))?.scrollIntoView(); }, [query.data, hash]);
+  const { hash, search } = useLocation();
+  const requested = new URLSearchParams(search).get("tab");
+  const tab = requested === "lab" || requested === "check" ? requested : "learn";
   const attempts = useQuery({queryKey:["classroom-attempts",id],queryFn:()=>api.courseAttempts(id),enabled:!draft});
   const qc=useQueryClient();
   const nav=useNavigate();
   const action=useMutation({
     mutationFn:(mode:"publish"|"restore")=>api.makeCourseCurrent(id,mode),
-    onSuccess:()=>{void qc.invalidateQueries(); nav("/learning/classroom/"+query.data?.course_id);}
+    onSuccess:()=>{void qc.invalidateQueries(); nav("/learning/classroom/"+query.data?.course_id+search+hash);}
   });
   if(query.isPending) return <Loading/>;
   if(query.error || !query.data) return <ErrorNote error={query.error}/>;
@@ -107,32 +135,51 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
   const selected = Math.max(0, d.bundle.lessons.findIndex(l => l.id === hash.slice(1)));
   const lesson = d.bundle.lessons[selected]!;
   const path = draft ? "/learning/drafts/" + id : "/learning/classroom/" + id;
-  const lessonLink = (topic: string) => path + "#" + topic;
+  const lessonLink = (topic: string, panel = tab) => path + (panel === "learn" ? "" : "?tab=" + panel) + "#" + topic;
+  const sections = [{id:"learn", label:"Learn"}, {id:"lab",label:"Lab"}, {id:"check",label:"Check"}] as const;
+  const sources = d.bundle.sources.filter(s => lesson.source_ids.includes(s.id));
+  const downloads = sources.filter(s => /[.](pcap|pcapng)(?:$|[?#])/i.test(s.url));
+  const dayBased = d.bundle.lessons.every(l => /^day-[0-9]+$/.test(l.id));
+  const dayLabel = (i: number) => (dayBased ? "Day " : "Lesson ") + (i + 1);
   return <div className="space-y-5">
     <Link to="/learning" className="underline">Back to Learning</Link>
     <PageHeader title={d.title}/>
     {draft && <Card className="p-4 space-y-2">
-      <p>Revision preview. Only the main computer can make a revision available in Learning. Publishing replaces the current revision, not previous scores.</p>
+      <p className="font-semibold">{d.published ? "Current version" : d.previously_published ? "Version history preview" : "Draft preview"}</p>
+      <p className="text-sm muted">Updating changes which version opens in Learning. It does not create a second course or delete earlier answers.</p>
       <div className="flex flex-wrap gap-2">
-        <Button disabled={action.isPending} onClick={()=>{if(confirm("Publish this reviewed revision in Learning?")) action.mutate("publish");}}>Publish to Learning</Button>
-        <Button disabled={action.isPending} onClick={()=>{if(confirm("Restore this previously published revision?")) action.mutate("restore");}}>Restore a previous publication</Button>
+        {d.latest && !d.previously_published && <Button disabled={action.isPending} onClick={()=>{if(confirm("Make this reviewed draft the current course version?")) action.mutate("publish");}}>Update current course</Button>}
+        {d.previously_published && !d.published && <Button disabled={action.isPending} onClick={()=>{if(confirm("Restore this previously published revision?")) action.mutate("restore");}}>Restore this version</Button>}
+        {d.published && <Link className="underline" to={"/learning/classroom/" + d.course_id}>Open in Learning</Link>}
       </div><ErrorNote error={action.error}/>
     </Card>}
-    <nav aria-label="Lessons" className="flex flex-wrap items-end gap-2">
-      <label className="min-w-0 grow basis-64">Lesson {selected + 1} of {d.bundle.lessons.length}
-        <select className={inputClass} value={lesson.id} onChange={e => nav(lessonLink(e.target.value))}>
-          {d.bundle.lessons.map((l,i) => <option key={l.id} value={l.id}>{i + 1}. {l.title}</option>)}
+    <nav aria-label="Lesson days">
+      <label className="block sm:hidden">{dayLabel(selected)} of {d.bundle.lessons.length}
+        <select className={inputClass} value={lesson.id} onChange={e => nav(lessonLink(e.target.value,"learn"))}>
+          {d.bundle.lessons.map((l,i) => <option key={l.id} value={l.id}>{dayLabel(i)}: {l.title}</option>)}
         </select>
       </label>
-      {selected > 0 && <Link className="underline px-2 py-2" to={lessonLink(d.bundle.lessons[selected-1]!.id)}>Previous lesson</Link>}
-      {selected + 1 < d.bundle.lessons.length && <Link className="underline px-2 py-2" to={lessonLink(d.bundle.lessons[selected+1]!.id)}>Next lesson</Link>}
+      <div className="hidden flex-wrap gap-2 sm:flex">
+        {d.bundle.lessons.map((l,i)=><Link key={l.id} to={lessonLink(l.id,"learn")} title={l.title}
+          aria-current={l.id===lesson.id?"step":undefined}
+          className={l.id===lesson.id?"rounded-lg bg-accent-600 px-3 py-2 text-sm font-semibold text-white":"rounded-lg border border-slate-500/25 px-3 py-2 text-sm hover:bg-[var(--panel-solid)]"}>
+          {dayLabel(i)}
+        </Link>)}
+      </div>
     </nav>
-    {!draft && <p className="text-sm muted">{attempts.data?.filter(a=>a.lesson_id===lesson.id).length ?? 0} saved answers for this lesson</p>}
-    {[lesson].map(l=><section key={l.id} id={l.id} className="space-y-4 scroll-mt-5 border-t border-slate-500/20 pt-5">
-      <h2 className="text-xl font-semibold">{l.title}</h2><p>{l.objective}</p>
-      {l.blocks.some(b=>b.type==="visual") && <section aria-label="Interactive visuals" className="space-y-3">
+    <section key={lesson.id} id={lesson.id} className="min-w-0 space-y-4 scroll-mt-5">
+      <div><p className="muted text-xs uppercase tracking-wide">{dayLabel(selected)} / {d.bundle.lessons.length}</p><h2 className="text-xl font-semibold">{lesson.title}</h2></div>
+      <nav aria-label="Lesson sections" className="flex flex-wrap gap-2 border-b border-slate-500/25">
+        {sections.map(p=><Link key={p.id} to={lessonLink(lesson.id,p.id)} aria-current={p.id===tab?"page":undefined}
+          className={p.id===tab?"border-b-2 border-accent-500 px-4 py-2 font-semibold":"px-4 py-2 muted hover:underline"}>
+          {p.label}
+        </Link>)}
+      </nav>
+      {tab === "learn" && <div className="space-y-4">
+        <p>{lesson.objective}</p>
+      {lesson.blocks.some(b=>b.type==="visual") && <section aria-label="Interactive visuals" className="space-y-3">
         <h3 className="font-semibold">Interactive visuals</h3>
-        {l.blocks.flatMap((b,i)=> b.type==="visual" ? [<Card key={i} className="space-y-2 p-3 sm:p-4">
+        {lesson.blocks.flatMap((b,i)=> b.type==="visual" ? [<Card key={i} className="space-y-2 p-3 sm:p-4">
           <h4 className="font-semibold">{b.visual.title}</h4>
           <Suspense fallback={<Loading/>}><Visual visual={b.visual}/></Suspense>
           <details className="text-sm muted"><summary>Read the steps</summary><p>{b.fallback}</p></details>
@@ -140,19 +187,38 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
       </section>}
       <details className="rounded-lg border border-slate-500/25 p-3" open>
         <summary className="font-semibold">Lesson notes</summary>
-        {l.blocks.map((b,i) => b.type==="text" ? <Markdown key={i} text={b.markdown}/> : null)}
+        {lesson.blocks.map((b,i) => b.type==="text" ? <Markdown key={i} text={b.markdown}/> : null)}
       </details>
-      {l.labs.map((lab,i)=><details key={i}><summary>{lab.platform} lab · {lab.environment}</summary>
-        <p>{lab.prerequisites.join(" · ")}</p><ol className="ml-5 list-decimal">{lab.steps.map((x,j)=><li key={j}>{x}</li>)}</ol><p>Expected: {lab.expected}</p>{lab.cleanup && <p>Cleanup: {lab.cleanup}</p>}
-      </details>)}
-      {!!l.questions.length && <h3 className="font-semibold">Check your understanding</h3>}
-      {l.questions.map(q=>draft ? <details key={q.id}><summary>{q.prompt}</summary>{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> :
-        <><ul className="list-disc ml-5">{q.choices.map((choice,i)=><li key={i}>{choice}{q.correct.includes(i) ? " (correct)" : ""}</li>)}</ul><p>{q.explanation}</p></>}</details> :
-        <Answer key={d.revision_id+":"+l.id+":"+q.id} course={d} lesson={l.id} q={q}/>)}
-      <div className="flex flex-wrap gap-3 text-sm">
-        {d.bundle.sources.filter(s=>l.source_ids.includes(s.id)).map(s=><a key={s.id} href={s.url} className="underline" target="_blank" rel="noreferrer">{s.title}</a>)}
-      </div>
-    </section>)}
+      </div>}
+      {tab === "lab" && <div className="space-y-4">
+        {!lesson.labs.length && <Card className="p-4"><p>No lab is assigned to this day.</p><p className="muted text-sm">Choose another day or check your understanding here.</p></Card>}
+        {downloads.length > 0 && <Card className="space-y-2 p-4">
+          <h3 className="font-semibold">Practice files</h3>
+          {downloads.map(s=><a key={s.id} href={s.url} className="block underline break-words" target="_blank" rel="noreferrer">{s.title}</a>)}
+        </Card>}
+        {lesson.labs.map((lab,i)=><details key={i} className="rounded-lg border border-slate-500/25 p-4" open={i===0}>
+          <summary className="font-semibold">{lab.prerequisites[0] ?? "Lab " + (i+1)}</summary>
+          <div className="mt-3 space-y-3">
+            <p className="text-sm muted">{lab.platform === "both" ? "Windows and Linux" : lab.platform} · {lab.environment}</p>
+            {lab.prerequisites.length>1 && <p>{lab.prerequisites.slice(1).join(" · ")}</p>}
+            <ol className="ml-5 list-decimal space-y-2">{lab.steps.map((x,j)=><li className="whitespace-pre-wrap break-words" key={j}>{x}</li>)}</ol>
+            <p><strong>Expected:</strong> {lab.expected}</p>{lab.cleanup && <p><strong>Cleanup:</strong> {lab.cleanup}</p>}
+          </div>
+        </details>)}
+      </div>}
+      {tab === "check" && <div className="space-y-4">
+        <h3 className="font-semibold">Check your understanding</h3>
+        {!draft && <p className="text-sm muted">{attempts.data?.filter(a=>a.lesson_id===lesson.id).length ?? 0} saved answers for this lesson</p>}
+        {lesson.questions.length===0 && <p>No questions are assigned to this day.</p>}
+        {lesson.questions.map(q=>draft ? <details key={q.id} className="rounded-lg border border-slate-500/25 p-4"><summary>{q.prompt}</summary>{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> :
+          <><ul className="list-disc ml-5">{q.choices.map((choice,i)=><li key={i}>{choice}{q.correct.includes(i) ? " (correct)" : ""}</li>)}</ul><p>{q.explanation}</p></>}</details> :
+          <Answer key={d.revision_id+":"+lesson.id+":"+q.id} course={d} lesson={lesson.id} q={q}/>)}
+      </div>}
+      {tab !== "check" && sources.length>0 && <details className="text-sm muted">
+        <summary>Sources and further reading</summary>
+        <ul className="mt-2 space-y-1">{sources.map(s=><li key={s.id}><a href={s.url} className="underline break-words" target="_blank" rel="noreferrer">{s.title}</a></li>)}</ul>
+      </details>}
+    </section>
     {!draft && <RelatedTasks id={d.course_id}/>}
   </div>;
 }

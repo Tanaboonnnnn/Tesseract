@@ -73,7 +73,7 @@ export const ClassroomSubmitSchema = z.strictObject({
 });
 export type ClassroomIssue = { code: string; path: string; message: string };
 type Receipt = { ok: true; status: "staged"; course_id: string; revision_id: string } | { ok: false; issues: ClassroomIssue[] };
-type RevisionSummary = { revision_id: string; course_id: string; title: string; created_at: string; published: boolean };
+type RevisionSummary = { revision_id: string; course_id: string; title: string; created_at: string; published: boolean; previously_published: boolean; latest: boolean };
 type RevisionRow = RevisionSummary & { body: string; sequence: number };
 type AttemptRow = { attempt_id: string; revision_id: string; lesson_id: string; question_id: string; answer: string; score: number | null; created_at: string };
 
@@ -156,10 +156,12 @@ export class ClassroomStore {
   private summaries(onlyPublished: boolean): RevisionSummary[] {
     return this.use<RevisionSummary[]>(false, [], (db) => db.prepare(`
       SELECT r.revision_id, r.course_id, r.title, r.created_at,
-             (p.revision_id IS NOT NULL) AS published
+             (p.revision_id IS NOT NULL) AS published,
+             EXISTS(SELECT 1 FROM history h WHERE h.revision_id = r.revision_id) AS previously_published,
+             (r.sequence = (SELECT MAX(newer.sequence) FROM revisions newer WHERE newer.course_id = r.course_id)) AS latest
       FROM revisions r LEFT JOIN published p ON p.revision_id = r.revision_id
       ${onlyPublished ? "WHERE p.revision_id IS NOT NULL" : ""} ORDER BY r.sequence DESC
-    `).all().map((r) => ({ ...r, published: Boolean(r.published) }) as RevisionSummary));
+    `).all().map((r) => ({ ...r, published: Boolean(r.published), previously_published: Boolean(r.previously_published), latest: Boolean(r.latest) }) as RevisionSummary));
   }
   listDrafts() { return this.summaries(false); }
   listPublished() { return this.summaries(true); }
