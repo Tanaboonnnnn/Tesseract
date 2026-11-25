@@ -1,7 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { KeyRound } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "../lib/api.ts";
+import { parsePairingFragment, type PairingHint } from "../lib/pairing.ts";
+import { applyPairedAppearance } from "../lib/theme.ts";
 import { Button, ErrorNote, inputClass } from "./ui.tsx";
 
 /**
@@ -9,6 +11,19 @@ import { Button, ErrorNote, inputClass } from "./ui.tsx";
  * until the device is paired once with the access token printed by `npm run lan`.
  */
 export function SessionGate({ children }: { children: ReactNode }) {
+  const [fromLink, setFromLink] = useState(() => parsePairingFragment(location.hash));
+  useEffect(() => {
+    // Scanning again can navigate to a new hash on the already-open page.
+    const readLink = () => {
+      const hint = parsePairingFragment(location.hash);
+      if (!hint) return;
+      history.replaceState(history.state, "", location.pathname + location.search);
+      setFromLink(hint);
+    };
+    readLink();
+    window.addEventListener("hashchange", readLink);
+    return () => window.removeEventListener("hashchange", readLink);
+  }, []);
   const session = useQuery({
     queryKey: ["session"], queryFn: api.session, retry: false, networkMode: "always",
     refetchInterval: ({ state }) => {
@@ -20,7 +35,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const err = session.error instanceof ApiError ? session.error : null;
 
   if (session.isPending) return <div className="min-h-dvh" />;
-  if (err?.status === 401) return <Pair />;
+  if (err?.status === 401 || (fromLink && session.data?.local === false)) return <Pair fromLink={fromLink} />;
   if (err?.status === 403) {
     return (
       <Screen>
@@ -56,22 +71,22 @@ function Screen({ children }: { children: ReactNode }) {
   );
 }
 
-/** Token from a scanned pairing QR: http://pc:4320/#pair=… (a URL fragment never reaches the server or its logs). */
-function tokenFromLink(): string {
-  const m = /[#&]pair=([^&]+)/.exec(location.hash);
-  if (!m) return "";
-  history.replaceState(null, "", location.pathname + location.search); // drop it from the address bar right away
-  return decodeURIComponent(m[1]!);
-}
-
-function Pair() {
-  const [fromLink] = useState(tokenFromLink);
-  const [token, setToken] = useState(fromLink);
-  const pair = useMutation({ mutationFn: (t: string) => api.pair(t.trim()), onSuccess: () => location.reload() });
+function Pair({ fromLink }: { fromLink: PairingHint | null }) {
+  const [token, setToken] = useState(fromLink?.token ?? "");
+  const handled = useRef<PairingHint | null>(null);
+  const pair = useMutation({
+    mutationFn: ({ token }: { token: string; hint?: PairingHint }) => api.pair(token.trim()),
+    onSuccess: (_result, { hint }) => {
+      if (hint) applyPairedAppearance(hint.layout, hint.palette);
+      location.reload();
+    },
+  });
   useEffect(() => {
-    if (fromLink) pair.mutate(fromLink);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!fromLink || fromLink === handled.current) return;
+    handled.current = fromLink;
+    setToken(fromLink.token);
+    pair.mutate({ token: fromLink.token, hint: fromLink });
+  }, [fromLink, pair.mutate]);
   return (
     <Screen>
       <p className="mb-4 text-sm text-slate-500">Pair this device once with the access token shown on your computer.</p>
@@ -79,7 +94,7 @@ function Pair() {
         className="space-y-3 text-left"
         onSubmit={(e) => {
           e.preventDefault();
-          if (token.trim()) pair.mutate(token);
+          if (token.trim()) pair.mutate({ token });
         }}
       >
         <label className="relative block">

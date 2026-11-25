@@ -144,3 +144,60 @@ html[data-palette="amber"].dark {
   --lane: rgb(255 176 0 / 0.05);
   --chart-accent: #ffb000; --chart-grid: rgb(255 176 0 / 0.16); --chart-text: #d9b46a; --chart-glow: drop-shadow(0 0 5px rgb(255 176 0 / 0.55));
 }
+
+/* indigo: adapted semantic colours, independent of navigation. */
+html[data-palette="indigo"] {
+  --preset-cta: #4e52b5; --preset-highlight: #8291ff; --color-sidebar: #101114; --glow-rgb: 130 145 255;
+  --bg: #f4f5fa; --panel-solid: #fdfdff; --panel-base: 253 253 255; --panel-opacity: 1;
+  --chart-accent: #4e52b5; --chart-text: #48516b;
+}
+html[data-palette="indigo"].dark {
+  --bg: #101114; --panel-solid: #1a1c23; --panel-base: 26 28 35;
+  --chart-accent: #8291ff; --chart-text: #c4c6db;
+}
+
+/* paper: adapted semantic colours, independent of navigation. */
+html[data-palette="paper"] {
+  --preset-cta: #1264a6; --preset-highlight: #83baf1; --color-sidebar: #232220; --glow-rgb: 131 186 241;
+  --bg: #f6f3ef; --panel-solid: #fdfbf8; --panel-base: 253 251 248; --panel-opacity: 1;
+  --chart-accent: #1264a6; --chart-text: #5d5146;
+}
+html[data-palette="paper"].dark {
+  --bg: #232220; --panel-solid: #2c2b28; --panel-base: 44 43 40;
+  --chart-accent: #83baf1; --chart-text: #cec4b7;
+}
+
+/* terracotta: adapted semantic colours, independent of navigation. */
+html[data-palette="terracotta"] {
+  --preset-cta: #a33f25; --preset-highlight: #f09e86; --color-sidebar: #241915; --glow-rgb: 240 158 134;
+  --bg: #faf7f2; --panel-solid: #fffaf4; --panel-base: 255 250 244; --panel-opacity: 1;
+  --chart-accent: #a33f25; --chart-text: #694735;
+}
+html[data-palette="terracotta"].dark {
+  --bg: #241915; --panel-solid: #32221d; --panel-base: 50 34 29;
+  --chart-accent: #f09e86; --chart-text: #e5c4b6;
+}
+
+html:is([data-palette="indigo"], [data-palette="paper"], [data-palette="terracotta"]),
+html:is([data-palette="indigo"], [data-palette="paper"], [data-palette="terracotta"]).dark {
+  --bg-glow: transparent; --grid: transparent; --corner: var(--line-strong);
+  --line: color-mix(in srgb, currentColor 13%, transparent);
+  --line-strong: color-mix(in srgb, var(--preset-cta) 55%, transparent);
+  --lane: color-mix(in srgb, var(--preset-cta) 10%, transparent);
+  --glow: none; --glow-hover: 0 0 0 1px var(--line-strong);
+  --chart-grid: var(--line); --chart-glow: none;
+  --color-accent-50: color-mix(in srgb, var(--preset-cta) 7%, white);
+  --color-accent-100: color-mix(in srgb, var(--preset-cta) 13%, white);
+  --color-accent-200: color-mix(in srgb, var(--preset-cta) 24%, white);
+  --color-accent-300: color-mix(in srgb, var(--preset-cta) 42%, white);
+  --color-accent-400: color-mix(in srgb, var(--preset-cta) 65%, white);
+  --color-accent-500: var(--preset-cta);
+  --color-accent-600: var(--preset-cta);
+  --color-accent-700: color-mix(in srgb, var(--preset-cta) 84%, black);
+  --color-sky-50: #f7f6f5; --color-sky-100: #edecef;
+  --color-sky-200: color-mix(in srgb, var(--preset-highlight) 48%, white);
+  --color-sky-300: color-mix(in srgb, var(--preset-highlight) 73%, white);
+  --color-sky-400: var(--preset-highlight);
+  --color-sky-500: var(--preset-cta); --color-sky-600: var(--preset-cta);
+  --color-sky-700: var(--color-accent-700);
+}

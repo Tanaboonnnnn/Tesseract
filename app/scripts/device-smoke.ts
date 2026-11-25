@@ -7,7 +7,8 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import { Store } from "@tesseract/core";
-import { checkAppearance } from "./appearance-checks.ts";
+import { withPairingAppearance } from "../apps/web/src/lib/pairing.ts";
+import { checkLayouts } from "./layout-checks.ts";
 import { createApp } from "../apps/server/src/app.ts";
 
 const playwrightEntry = process.env.TESSERACT_PLAYWRIGHT_ENTRY;
@@ -63,10 +64,10 @@ try {
   const phone = await android.newPage();
   const ipad = await tablet.newPage();
   for (const page of [dp, phone, ipad]) page.setDefaultTimeout(8_000);
-  if (process.argv.includes("--appearance-only")) {
-    await checkAppearance(dp, pc);
-    await checkAppearance(phone, pc);
-    await checkAppearance(ipad, pc);
+  if (process.argv.includes("--layouts-only")) {
+    await checkLayouts(dp, pc);
+    await checkLayouts(phone, pc);
+    await checkLayouts(ipad, pc);
   } else {
     const note = "/notes/why-typescript-monorepo";
     const quiz = "/quizzes/2026-11-23-kubernetes-deployments";
@@ -75,6 +76,10 @@ try {
     console.log("PASS desktop opens note without pairing");
     await phone.goto(device + note);
     assert.equal(await phone.evaluate(async () => (await fetch("/api/notes")).status), 401);
+    await phone.goto(device + note + "#pair=not-the-test-token&layout=notion&palette=paper");
+    await phone.getByText("Wrong token", { exact: false }).waitFor();
+    assert.equal(await phone.evaluate(() => localStorage.getItem("sb-ui")), null);
+    assert.equal(await phone.evaluate(() => localStorage.getItem("sb-palette")), null);
     await phone.getByLabel("Access token").fill("not-the-test-token");
     await phone.getByRole("button", { name: "Pair device" }).click();
     await phone.getByText("Wrong token", { exact: false }).waitFor();
@@ -85,10 +90,28 @@ try {
     ipad.on("response", (r: { url(): string; status(): number }) => {
       if (r.url().endsWith("/api/pair")) pairPosts.push(r.status());
     });
-    await ipad.goto(device + note + "#pair=" + encodeURIComponent(token));
+    await ipad.goto(withPairingAppearance(device + note + "#pair=" + encodeURIComponent(token), "notion", "paper"));
     await ipad.getByRole("heading", { name: /typescript/i }).first().waitFor();
     assert.equal(new URL(ipad.url()).hash, "");
     assert.deepEqual(pairPosts, [200]);
+    const appearance = (page: typeof ipad) => page.evaluate(() => [
+      document.documentElement.dataset.ui, document.documentElement.dataset.palette,
+    ]);
+    assert.deepEqual(await appearance(ipad), ["notion", "paper"]);
+    await ipad.reload();
+    await ipad.getByRole("heading", { name: /typescript/i }).first().waitFor();
+    assert.deepEqual(await appearance(ipad), ["notion", "paper"]);
+    await ipad.goto(withPairingAppearance(device + note + "#pair=" + encodeURIComponent(token), "linear", "crimson"));
+    await ipad.getByRole("heading", { name: /typescript/i }).first().waitFor();
+    await ipad.waitForFunction(() => !location.hash && document.documentElement.dataset.ui === "linear");
+    assert.deepEqual(await appearance(ipad), ["linear", "crimson"]);
+    assert.deepEqual(pairPosts, [200, 200]);
+    assert.equal(new URL(ipad.url()).hash, "");
+    await ipad.goto(device + note + "#pair=" + encodeURIComponent(token) + "&layout=unknown&palette=unknown");
+    await ipad.getByRole("heading", { name: /typescript/i }).first().waitFor();
+    assert.deepEqual(await appearance(ipad), ["linear", "crimson"]);
+    assert.equal(new URL(ipad.url()).hash, "");
+    console.log("PASS QR pairing and rescan copy validated layout and colours without saving the fragment");
     assert((await tablet.cookies()).some((c: { httpOnly: boolean }) => c.httpOnly));
     console.log("PASS Android viewport manual pairing and iPad viewport QR-fragment pairing");
 

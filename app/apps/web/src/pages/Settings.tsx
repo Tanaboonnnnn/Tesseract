@@ -11,8 +11,9 @@ import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import { TransparencySlider } from "../components/TransparencySlider.tsx";
 import { Button, Card, ErrorNote, PageHeader, SectionTitle } from "../components/ui.tsx";
 import { api } from "../lib/api.ts";
+import { withPairingAppearance } from "../lib/pairing.ts";
 import { cn } from "../lib/format.ts";
-import { APPEARANCES, LAYOUTS, type LayoutId, PALETTES, useAppearance, usePalette, useLayout } from "../lib/theme.ts";
+import { LAYOUTS, type LayoutId, PALETTES, usePalette, useLayout } from "../lib/theme.ts";
 
 export function Settings() {
   return (
@@ -45,10 +46,6 @@ export function Settings() {
         <RemoteAccess />
         <p className="mt-2 text-xs text-slate-500">Lets ChatGPT on the web or your phone reach a read-mostly Tesseract through OpenAI's outbound-only tunnel. Setup: docs/REMOTE_ACCESS.md.</p>
       </Card>
-      <Card className="mb-6">
-        <SectionTitle>Appearance presets</SectionTitle>
-        <AppearancePicker />
-      </Card>
     </>
   );
 }
@@ -68,7 +65,11 @@ function LayoutPicker() {
             key={l.id}
             role="radio"
             aria-checked={l.id === layout}
-            onClick={() => setLayout(l.id)}
+            aria-label={l.name}
+            onClick={() => {
+              setLayout(l.id);
+              if ("inspired" in l && l.id !== layout) setPalette(l.palette);
+            }}
             className={cn(
               "group rounded-xl p-2 text-left ring-1 transition",
               l.id === layout ? "bg-[var(--lane)] ring-2 ring-accent-500" : "ring-[var(--line)] hover:ring-accent-400/60",
@@ -100,6 +101,32 @@ function Mini({ id }: { id: LayoutId }) {
   const box = "h-20 w-full overflow-hidden rounded-md bg-[var(--bg)] ring-1 ring-[var(--line)]";
   const card = "rounded-[3px] bg-[var(--panel-solid)] ring-1 ring-[var(--line)]";
   const accent = { background: "var(--color-accent-500)" };
+  if (id === "linear" || id === "notion" || id === "editorial") {
+    const editorial = id === "editorial";
+    const paper = id === "notion";
+    return (
+      <div aria-hidden="true" className={cn(box, "flex p-2 gap-2", editorial && "flex-col")}>
+        {editorial ? (
+          <div className="flex flex-col items-center gap-1 border-b border-[var(--line)] pb-1">
+            <i className="h-1.5 w-14 rounded-full" style={accent} />
+            <div className="flex gap-1">{[1, 2, 3, 4].map((i) => <i key={i} className="h-0.5 w-3 rounded bg-[var(--line-strong)]" />)}</div>
+          </div>
+        ) : (
+          <div className={cn(card, "flex flex-col gap-1.5 p-1.5", paper ? "w-12" : "w-9")}>
+            <i className="h-1 w-full rounded" style={accent} />
+            {[1, 2, 3, 4].map((i) => <i key={i} className="h-0.5 rounded bg-[var(--line-strong)]" />)}
+          </div>
+        )}
+        <div className={cn("flex flex-1 flex-col gap-1.5", editorial && "items-center pt-1")}>
+          {paper && <i className="mb-1 h-0.5 w-1/2 bg-[var(--line-strong)]" />}
+          <i className="h-1 w-2/5 rounded" style={accent} />
+          <div className={cn("grid min-h-0 flex-1 gap-1", !paper && !editorial && "grid-cols-2", editorial && "w-3/4 grid-cols-2")}>
+            <div className={card} /><div className={card} />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (id === "system")
     return (
       <div className={cn(box, "flex")}>
@@ -178,55 +205,21 @@ function Mini({ id }: { id: LayoutId }) {
   );
 }
 
-function AppearancePicker() {
-  const [appearance, setAppearance] = useAppearance();
-  return (
-    <fieldset className="min-w-0">
-      <legend className="sr-only">Appearance presets</legend>
-      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-        Change the look, not the layout. Pick a colour above any time to return to Original.
-      </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {APPEARANCES.map((preset) => (
-          <label key={preset.id} className={cn(
-            "group relative cursor-pointer rounded-md p-2 text-sm ring-1 transition focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent-600",
-            appearance === preset.id ? "bg-[var(--lane)] ring-2 ring-accent-600" : "ring-[var(--line-strong)]",
-          )}>
-            <input type="radio" name="appearance" className="absolute inset-0 m-0 size-full cursor-pointer opacity-0"
-              aria-label={preset.name} checked={appearance === preset.id} onChange={() => setAppearance(preset.id)} />
-            <span className="mb-2 flex h-7 overflow-hidden rounded-sm ring-1 ring-[var(--line)]" aria-hidden="true">
-              {(preset.swatch ?? ["var(--bg)", "var(--panel-solid)", "var(--color-accent-600)"]).map((colour) => (
-                <span key={colour} className="flex-1" style={{ backgroundColor: colour }} />
-              ))}
-            </span>
-            <span className="flex items-center gap-1 font-semibold">
-              {appearance === preset.id && <Check size={14} aria-hidden="true" />}
-              {preset.name}
-            </span>
-            <span className="block text-[11px] leading-snug text-slate-500 dark:text-slate-400">{preset.hint}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
 /* ---------- colours ---------- */
 
 function PalettePicker() {
   const [palette, setPalette] = usePalette();
-  const [appearance] = useAppearance();
   return (
     <div role="radiogroup" aria-label="Colours" className="flex flex-wrap gap-3">
       {PALETTES.map((p) => (
         <button
           key={p.id}
           role="radio"
-          aria-checked={appearance === "original" && p.id === palette}
+          aria-checked={p.id === palette}
           onClick={() => setPalette(p.id)}
           className={cn(
             "flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs ring-1 transition",
-            appearance === "original" && p.id === palette ? "font-semibold ring-2 ring-accent-500" : "ring-[var(--line)] hover:ring-accent-400/60",
+            p.id === palette ? "font-semibold ring-2 ring-accent-500" : "ring-[var(--line)] hover:ring-accent-400/60",
           )}
         >
           <span className="size-6 rounded-full" style={{ background: `conic-gradient(from 210deg, ${p.swatch[0]} 0 33%, ${p.swatch[1]} 0 66%, ${p.swatch[2]} 0)` }} />
@@ -240,6 +233,8 @@ function PalettePicker() {
 /* ---------- phone & tablet ---------- */
 
 function PhoneAccess() {
+  const [layout] = useLayout();
+  const [palette] = usePalette();
   const qc = useQueryClient();
   const phone = useQuery({ queryKey: ["phone"], queryFn: api.phone });
   const session = useQuery({ queryKey: ["session"], queryFn: api.session, staleTime: Infinity });
@@ -260,7 +255,9 @@ function PhoneAccess() {
   const [pick, setPick] = useState(0);
   const p = phone.data;
   const pairUrl = p?.available ? (p.pairUrls?.[pick] ?? p.pairUrls?.[0]) : undefined;
-  const qr = useMemo(() => (pairUrl ? renderSVG(pairUrl, { border: 2, whiteColor: "#ffffff", blackColor: "#0b1020" }) : null), [pairUrl]);
+  const qr = useMemo(() => pairUrl
+    ? renderSVG(withPairingAppearance(pairUrl, layout, palette), { border: 2, whiteColor: "#ffffff", blackColor: "#0b1020" })
+    : null, [pairUrl, layout, palette]);
 
   if (!p) return null;
   if (p.available && p.on && p.urls.length === 0) {
@@ -291,7 +288,7 @@ function PhoneAccess() {
           <div className="size-44 shrink-0 rounded-lg bg-white p-1" aria-label="Pairing QR code" dangerouslySetInnerHTML={{ __html: qr }} />
           <ol className="list-decimal space-y-1.5 pl-5 text-slate-600 dark:text-slate-300">
             <li>Scan with the phone or iPad camera (same Wi-Fi, or Tailscale on both).</li>
-            <li>It opens Tesseract and pairs automatically.</li>
+            <li>It opens Tesseract with this computer’s current layout and colours. Scan again to copy a new look.</li>
             <li>
               Add to home screen: iPhone/iPad Safari → Share → <em>Add to Home Screen</em>; Android → ⋮ → <em>Add to Home screen</em>.
             </li>

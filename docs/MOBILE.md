@@ -51,3 +51,6 @@ the token (stored as a secure cookie on that device). The token is saved in
 - The phone caches only the app shell, never your data.
 
 If the host disappears while a paired screen is open, Tesseract displays a connection warning and keeps that screen mounted while you reconnect. Check the host before saving; this is not offline editing or automatic cross-device sync. For the release checks see [DEVICE_QA.md](DEVICE_QA.md).
+
+
+A pairing QR shown in Settings includes the current layout and colours of the browser on the host. After a successful scan the phone applies those preferences locally. Scan a fresh QR to copy another snapshot later, or change Layout and Colours on the phone without affecting the PC. There is no background sync of preferences. The QR still contains the pairing key, so do not share it.

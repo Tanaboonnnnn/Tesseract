@@ -186,7 +186,7 @@ export function BottomNav() {
   const inMore = pathname === "/more" || MORE.some((n) => pathname.startsWith(n.to));
   const item = "flex flex-1 flex-col items-center gap-0.5 py-2.5 font-display text-[11px] font-semibold tracking-wider uppercase";
   return (
-    <nav className="sb-bottombar glass-bar fixed inset-x-0 bottom-0 z-10 flex border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <nav aria-label="Mobile navigation" className="sb-bottombar glass-bar fixed inset-x-0 bottom-0 z-10 flex border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
       {NAV.filter((n) => n.mobile).map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
@@ -203,5 +203,69 @@ export function BottomNav() {
         More
       </Link>
     </nav>
+  );
+}
+
+
+/** OpenDesign-inspired frame variants, reusing every existing route and status indicator. */
+function DesignLink({ item }: { item: (typeof NAV)[number] }) {
+  const { to, label, icon: Icon, end } = item;
+  return (
+    <NavLink to={to} end={end} className={({ isActive }) => cn("design-nav-link", isActive && "is-active")}>
+      <Icon size={17} aria-hidden="true" />
+      {label}
+    </NavLink>
+  );
+}
+
+export function WorkspaceNav({ kind }: { kind: "linear" | "notion" }) {
+  const paper = kind === "notion";
+  const groups = [
+    { label: paper ? "Workspace" : "Work", items: NAV.slice(0, 4) },
+    { label: paper ? "Library" : "Knowledge", items: paper ? [NAV[6]!, ...NAV.slice(4, 6)] : NAV.slice(4, 7) },
+    { label: "History & help", items: NAV.slice(7) },
+  ];
+  return (
+    <nav aria-label={paper ? "Notion navigation" : "Linear navigation"}
+      className={cn("design-sidebar fixed inset-y-0 left-0 z-20 hidden flex-col overflow-y-auto border-r px-3 py-4 lg:flex", paper ? "w-64" : "w-56")}>
+      <Brand className="mb-5 px-2 py-2" />
+      <div className="flex-1 space-y-5">
+        {groups.map((group) => (
+          <section key={group.label}>
+            <p className="design-nav-caption">{group.label}</p>
+            <div className="space-y-0.5">{group.items.map((item) => <DesignLink key={item.to} item={item} />)}</div>
+          </section>
+        ))}
+      </div>
+      <div className="mt-5 space-y-2 border-t pt-2 [border-color:var(--line)]">
+        <DesignLink item={MORE.at(-1)!} />
+        <Pills vertical />
+      </div>
+    </nav>
+  );
+}
+
+export function WorkspaceTrail() {
+  const { pathname } = useLocation();
+  const section = [...NAV, MORE.at(-1)!].find(({ to, end }) => end ? pathname === to : pathname === to || pathname.startsWith(to + "/"));
+  return (
+    <header className="design-trail sticky top-0 z-10 hidden items-center gap-3 border-b px-8 py-3 text-sm lg:flex">
+      <Link to="/">Workspace</Link><span aria-hidden="true">/</span><span className="font-medium">{section?.label ?? "Page"}</span>
+    </header>
+  );
+}
+
+export function EditorialNav() {
+  return (
+    <header className="design-masthead hidden border-b lg:block">
+      <div className="mx-auto max-w-6xl px-5 pt-5 text-center">
+        <p className="design-nav-caption">Personal workspace</p>
+        <Brand className="justify-center py-1" />
+        <nav aria-label="Warm Editorial navigation" className="mt-3 flex flex-wrap items-center justify-center gap-x-1 border-t py-2 [border-color:var(--line)]">
+          {[...NAV, MORE.at(-1)!].map((item) => <DesignLink key={item.to} item={item} />)}
+        </nav>
+        <div className="flex justify-center"><Pills /></div>
+      </div>
+    </header>
   );
 }

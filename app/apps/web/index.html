@@ -18,8 +18,6 @@
           var ui = localStorage.getItem("sb-ui"), pal = localStorage.getItem("sb-palette");
           if (ui && ui !== "system") document.documentElement.setAttribute("data-ui", ui);
           if (pal && pal !== "blue") document.documentElement.setAttribute("data-palette", pal);
-          var look = localStorage.getItem("sb-appearance");
-          if (["graphite", "pine", "clay", "plum"].indexOf(look) !== -1) document.documentElement.setAttribute("data-appearance", look);
           var g = localStorage.getItem("sb-transparency"); // mirrors src/lib/glass.ts
           if (g !== null && !isNaN(+g)) document.documentElement.style.setProperty("--panel-opacity", String(1 - Math.min(80, Math.max(0, +g)) / 100));
         } catch (e) {}

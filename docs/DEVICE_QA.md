@@ -12,6 +12,6 @@ The script checks desktop access, a wrong token, manual pairing in a Pixel-sized
 - **Android and iPad:** on a trusted network or a private tailnet, pair each device separately. Open a note with a distinctive title; take a disposable quiz on Android, see its result from Windows and iPad, then relaunch the app on each device. Check the iPad in portrait and landscape; test iPad Safari and Android Chrome rather than user-agent emulation.
 - For each paired device, shut down the host from the host console, verify the connection warning and that data is not available after reopening an offline shell, restart without resetting the token, and verify recovery. This app is not a cross-device offline sync engine. Never capture pairing tokens in screenshots.
 
-## Appearance presets
+## Layouts and pairing appearance
 
-Run the same production smoke with `--appearance-only` to exercise Settings on desktop, Android-sized and iPad-sized Chromium viewports. It checks all four presets in light and dark, essential contrast pairs, layout preservation, reload persistence and the return to the original colour palette. Presets use browser-local storage; when testing an iPad Home Screen installation, check the selected appearance separately from whether the device remains paired.
+With the same prerequisites, run `node scripts/device-smoke.ts --layouts-only` against each production build. Desktop and mobile-sized Chromium verify the three new presets, routes, independent colour override, light/dark and reload. The regular smoke covers copying layout and colour at QR pairing or rescanning, rejection of a wrong token, and ignoring unknown appearance values. Safari and physical device checks remain separate.

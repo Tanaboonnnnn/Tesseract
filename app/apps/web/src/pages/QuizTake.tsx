@@ -174,7 +174,7 @@ export function QuizTake() {
         ))}
       </ol>
 
-      <div className="glass-bar fixed inset-x-0 bottom-14 z-10 border-t lg:bottom-0 lg:left-60">
+      <div className="sb-quiz-submit glass-bar fixed inset-x-0 bottom-14 z-10 border-t lg:bottom-0 lg:left-60">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-10">
           <span className="text-sm text-slate-500 tabular-nums">
             {answered} of {total} answered

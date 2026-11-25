@@ -44,6 +44,9 @@ export const LAYOUTS = [
   { id: "bento", name: "Bento", hint: "Icon rail, rounded tiles, big numbers, progress rings", palette: "aurora" },
   { id: "notebook", name: "Notebook", hint: "Paper index cards, ruled lines, bookmark tabs", palette: "sepia" },
   { id: "terminal", name: "Terminal", hint: "Monospace console, boxed panes, status bar", palette: "amber" },
+  { id: "linear", name: "Linear", hint: "Compact sidebar, grouped workspaces and a wider desk", palette: "indigo", inspired: true },
+  { id: "notion", name: "Notion", hint: "Workspace sidebar, breadcrumbs and a centred writing column", palette: "paper", inspired: true },
+  { id: "editorial", name: "Warm Editorial", hint: "Centred masthead, horizontal index and a reading-first column", palette: "terracotta", inspired: true },
 ] as const;
 export type LayoutId = (typeof LAYOUTS)[number]["id"];
 
@@ -54,17 +57,11 @@ export const PALETTES = [
   { id: "sepia", name: "Sepia", swatch: ["#f4ede0", "#8b5a2b", "#d6a35e"] },
   { id: "neutral", name: "Neutral", swatch: ["#f7f7f8", "#18181b", "#2563eb"] },
   { id: "amber", name: "Amber CRT", swatch: ["#0a0700", "#ffb000", "#ffd27a"] },
+  { id: "indigo", name: "Indigo", swatch: ["#101114", "#8291ff", "#4e52b5"] },
+  { id: "paper", name: "Paper", swatch: ["#f6f3ef", "#2c2b28", "#1264a6"] },
+  { id: "terracotta", name: "Terracotta", swatch: ["#faf7f2", "#241915", "#a33f25"] },
 ] as const;
 export type PaletteId = (typeof PALETTES)[number]["id"];
-
-export const APPEARANCES = [
-  { id: "original", name: "Original", hint: "Keep your own colour palette", swatch: null },
-  { id: "graphite", name: "Graphite", hint: "Cool grey, crisp edges", swatch: ["#171a20", "#f3f5f7", "#434f5e"] },
-  { id: "pine", name: "Pine", hint: "Forest green, soft edges", swatch: ["#111e18", "#eef5ee", "#276348"] },
-  { id: "clay", name: "Clay", hint: "Warm cream, editorial headings", swatch: ["#241713", "#f8eee5", "#91462f"] },
-  { id: "plum", name: "Plum", hint: "Muted violet, rounded cards", swatch: ["#201724", "#f5eef6", "#754b7f"] },
-] as const;
-export type AppearanceId = (typeof APPEARANCES)[number]["id"];
 
 /** A setting saved per device, shared by every component (useSyncExternalStore). */
 function pref<T extends string>(key: string, values: readonly T[], fallback: T, apply: (v: T) => void) {
@@ -102,20 +99,20 @@ if (old) {
 }
 
 export const layoutPref = pref<LayoutId>("sb-ui", LAYOUTS.map((l) => l.id), "system", attr("data-ui", "system"));
-export const appearancePref = pref<AppearanceId>("sb-appearance", APPEARANCES.map((p) => p.id), "original", attr("data-appearance", "original"));
 export const palettePref = pref<PaletteId>("sb-palette", PALETTES.map((p) => p.id), "blue", attr("data-palette", "blue"));
 
 export function useLayout(): [LayoutId, (v: LayoutId) => void] {
   return [useSyncExternalStore(layoutPref.subscribe, layoutPref.get), layoutPref.set];
 }
-function selectPalette(v: PaletteId) {
-  appearancePref.set("original");
-  palettePref.set(v);
+export function usePalette(): [PaletteId, (v: PaletteId) => void] {
+  return [useSyncExternalStore(palettePref.subscribe, palettePref.get), palettePref.set];
 }
 
-export function usePalette(): [PaletteId, (v: PaletteId) => void] {
-  return [useSyncExternalStore(palettePref.subscribe, palettePref.get), selectPalette];
-}
-export function useAppearance(): [AppearanceId, (v: AppearanceId) => void] {
-  return [useSyncExternalStore(appearancePref.subscribe, appearancePref.get), appearancePref.set];
+
+/** Apply metadata from a successfully authenticated pairing only. */
+export function applyPairedAppearance(layout: string | null, palette: string | null): void {
+  const nextLayout = LAYOUTS.find((value) => value.id === layout);
+  const nextPalette = PALETTES.find((value) => value.id === palette);
+  if (nextLayout) layoutPref.set(nextLayout.id);
+  if (nextPalette) palettePref.set(nextPalette.id);
 }
