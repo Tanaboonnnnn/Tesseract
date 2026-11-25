@@ -165,6 +165,24 @@ export class ClassroomStore {
   }
   listDrafts() { return this.summaries(false); }
   listPublished() { return this.summaries(true); }
+  /** Narrow concurrency metadata; requires an existing publication and never loads draft content. */
+  revisionAnchor(courseId: string) {
+    return this.use<{ course_id: string; published_revision_id: string; base_revision: string; pending_draft: boolean } | null>(false, null, db => {
+      const owner = db.prepare("SELECT revision_id FROM published WHERE course_id = ?").get(courseId);
+      if (!owner) return null;
+      const latest = db.prepare("SELECT r.revision_id, EXISTS(SELECT 1 FROM history h WHERE h.revision_id = r.revision_id) AS was_published FROM revisions r WHERE r.course_id = ? ORDER BY r.sequence DESC LIMIT 1").get(courseId);
+      const published = String(owner.revision_id);
+      const base = String(latest?.revision_id ?? published);
+      return { course_id: courseId, published_revision_id: published, base_revision: base, pending_draft: base !== published && !latest?.was_published };
+    });
+  }
+
+  /** Only events about published content; omit private drafts, attempts and raw stored contents. */
+  publishedActivity(courseId: string, limit: number) {
+    return this.use<{at:string; action:string; revision_id:string}[]>(false, [], db => db.prepare(
+      "SELECT j.at, j.action, j.revision_id FROM journal j JOIN revisions r ON r.revision_id=j.revision_id WHERE r.course_id=? AND j.action IN ('publish','restore') ORDER BY j.rowid DESC LIMIT ?"
+    ).all(courseId,limit).map(r => ({at:String(r.at),action:String(r.action),revision_id:String(r.revision_id)})));
+  }
 
   private unpack(row: RevisionRow | undefined) {
     if (!row) return null;

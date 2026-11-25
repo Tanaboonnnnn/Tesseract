@@ -83,3 +83,7 @@ The application still uses the original workspace pages. No classroom page, publ
 A separate `--profile classroom` MCP test process can stage drafts without any legacy live-write tools. See [SPEC §11](SPEC.md#11-tesseract-foundation-and-classroom-draft-contract). Keep this test profile local until the classroom UI and live integration are separately approved.
 
 Workspace recovery: [Offline backups and restore preview](docs/BACKUP.md). Paired-device checks: [Device QA checklist](docs/DEVICE_QA.md).
+
+### Optional local MCP over HTTP
+
+For native clients that cannot launch the stdio server, see [Local MCP (Streamable HTTP)](docs/LOCAL-MCP.md). This is opt-in and separate from phone pairing and OpenAI Tunnel.

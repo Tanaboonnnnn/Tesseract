@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { resolveDataDir, Store } from "@tesseract/core";
+import { ClassroomStore, resolveDataDir, Store } from "@tesseract/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { createServer, REMOTE_TOOLS, type ServerOptions } from "../src/server.ts";
 
@@ -52,6 +52,7 @@ describe("tool list", () => {
         "get_schedule", "add_event", "update_event", "delete_event", "sync_calendar",
         "get_project_map", "set_project_map", "update_map_node", "set_map_focus",
         "visual_formats", "save_visual", "get_visuals", "delete_visual",
+        "list_published_courses", "get_published_course", "get_course_lesson", "get_course_visuals", "get_course_revision_anchor", "get_course_activity",
       ].sort(),
     );
     expect(client.getInstructions()).toMatch(/get_overview/);
@@ -453,3 +454,52 @@ it("reports draft execution via stdio and recovers the same receipt after reconn
     request_id: "synthetic-rejected", status: "unknown",
   });
 }, 20_000);
+
+describe("published classroom read model", () => {
+  it("makes current courses discoverable, scopes reads, and does not return drafts or answers", async () => {
+    const { call, store, client } = await connect("remote-chatgpt", {profile:"remote"});
+    const db = new ClassroomStore(store.dataDir);
+    const format=await call("classroom_format",{include_schema:true});
+    expect(format.schema.properties).toHaveProperty("lessons");
+    const sample=format.example;
+    sample.title="Imported networking test course";
+    const lesson=sample.lessons[0]!;
+    lesson.questions[0].model_answer="SECRET-CLASSROOM-ANSWER";
+    lesson.questions[0].rubric=["SECRET-CLASSROOM-RUBRIC"];
+    lesson.blocks.push({type:"visual",fallback:"Worked example",visual:{id:"native-visual",title:"Native visual",type:"lesson",data:{blocks:[{
+      kind:"check",q:"Explain the example",a:"SECRET-INLINE-CHECK"
+    }]}}});
+    const first=db.submit({request_id:"read-classroom-first",bundle:sample});
+    expect(first.ok).toBe(true);
+    if(!first.ok)throw Error(JSON.stringify(first));
+    expect(await call("list_published_courses")).toEqual([]);
+    expect(await call("get_published_course",{course_id:sample.course_id})).toMatchObject({ok:false,error:{code:"NOT_FOUND",retryable:false}});
+    db.publish(first.revision_id);
+    const next=db.submit({request_id:"read-classroom-pending",base_revision:first.revision_id,bundle:{...sample,title:"PRIVATE-PENDING-DRAFT"}});
+    if(!next.ok)throw Error(JSON.stringify(next));
+    const [overview,search,list,course,legacyAlias,visuals,section,visual,anchor]=await Promise.all([
+      call("get_overview"),call("search",{query:"networking test"}),call("list_learning"),
+      call("get_published_course",{course_id:sample.course_id}),
+      call("get_learning",{id:sample.course_id}),
+      call("get_visuals",{learning:sample.course_id}),
+      call("get_course_lesson",{course_id:sample.course_id,lesson_id:lesson.id,section:"check",limit:1}),
+      call("get_course_visuals",{course_id:sample.course_id,lesson_id:lesson.id,visual_id:"native-visual"}),
+      call("get_course_revision_anchor",{course_id:sample.course_id})
+    ]);
+    expect(overview.classroom).toMatchObject({published_count:1,courses:[{course_id:sample.course_id,revision_id:first.revision_id}]});
+    expect(search.hits).toContainEqual(expect.objectContaining({ref:"courses/"+sample.course_id}));
+    expect(list).toContainEqual(expect.objectContaining({id:sample.course_id,kind:"classroom",progress:null}));
+    expect(legacyAlias).toEqual(course);
+    expect(course.lessons).toHaveLength(1);
+    expect(visuals[0]).toMatchObject({lesson_id:lesson.id,id:"native-visual"});
+    expect(section.entries[0]).toMatchObject({type:"explain",prompt:lesson.questions[0].prompt});
+    expect(visual.visual.data.blocks[0]).toEqual({kind:"check",q:"Explain the example"});
+    expect(anchor).toEqual({course_id:sample.course_id,published_revision_id:first.revision_id,base_revision:next.revision_id,pending_draft:true});
+    expect(JSON.stringify([overview,search,list,course,legacyAlias,visuals,section,visual,anchor])).not.toMatch(/SECRET-|PRIVATE-PENDING-DRAFT/);
+    expect((await call("get_course_activity",{course_id:sample.course_id})).events).toEqual([
+      expect.objectContaining({action:"publish",revision_id:first.revision_id})
+    ]);
+    expect(await call("get_published_course",{course_id:sample.course_id,revision_id:next.revision_id})).toMatchObject({ok:false,error:{code:"CONFLICT"}});
+    expect((await client.listTools()).tools.map(t=>t.name)).not.toContain("publish_course");
+  });
+});

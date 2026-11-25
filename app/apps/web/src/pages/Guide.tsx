@@ -123,6 +123,7 @@ const FEATURES: Record<string, Feature> = {
     example: "Settings → OpenAI Tunnel → Save setup → Connect for 8 h\n# ChatGPT reaches this PC through OpenAI's\n# outbound-only tunnel; read-mostly tool set",
     see: "Answers in ChatGPT; changes in Activity as remote-chatgpt",
     rule: "Tunnel is off by default and has a time limit. It cannot create a live course, publish a draft, delete, undo, or change skills. Pairing a phone with a QR code opens the app; it does not connect AI.",
+
   },
   schedule: {
     say: "“Block 2 hours on Friday afternoon for MT2 networking”",
@@ -170,8 +171,9 @@ export function Guide() {
       <section aria-label="Start here" className="mb-5 grid gap-3 md:grid-cols-3">
         <Card className="p-4"><h2 className="font-semibold">Projects</h2><p>Organize deliverables and link tasks to related lessons. Task status is separate from learning progress.</p></Card>
         <Card className="p-4"><h2 className="font-semibold">Learning</h2><p>Create a course or preview a JSON/ZIP package on the main computer. Review and publish drafts in your workspace.</p></Card>
-        <Card className="p-4"><h2 className="font-semibold">ChatGPT, local AI &amp; phone</h2><p>Tunnel sends drafts for review; local MCP has more tools. QR pairing opens the app and copies the current layout and colors, not an AI connection or live appearance sync.</p></Card>
+        <Card className="p-4"><h2 className="font-semibold">ChatGPT, local AI &amp; phone</h2><p>Tunnel can discover published courses and send drafts for your review. It cannot publish or see answer keys or your attempts. QR pairing opens the app; it does not connect AI.</p></Card>
       </section>
+      <p className="mb-5 text-sm muted">Workspace export v1 does not include classroom versions or answers. To back those up, stop the app and MCP and copy the whole workspace data folder, including .classroom.</p>
 
       {/* 1 */}
       <Card className="mb-6">

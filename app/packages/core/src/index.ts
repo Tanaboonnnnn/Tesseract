@@ -11,3 +11,5 @@ export * from "./classroom.ts";
 export * from "./backup.ts";
 
 export * from "./course-package.ts";
+
+export * from "./classroom-read.ts";

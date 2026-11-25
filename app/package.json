@@ -13,6 +13,7 @@
     "server": "node apps/server/src/main.ts",
     "web:dev": "npm run dev -w @tesseract/web",
     "mcp": "node apps/mcp/src/main.ts",
+    "mcp:local-http": "node apps/mcp/src/local-http.ts",
     "build:server": "esbuild apps/server/src/main.ts --bundle --platform=node --format=esm --target=node22 --splitting --outdir=apps/server/dist --entry-names=server --chunk-names=chunk-[hash] --out-extension:.js=.mjs --log-level=warning \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
     "build:desktop": "npm run build -w @tesseract/web && npm run build:server",
     "desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launch.ps1",

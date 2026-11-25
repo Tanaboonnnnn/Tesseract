@@ -5,7 +5,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
-import { Component, type ReactNode, useEffect, useState } from "react";
+import { Component, type ReactNode, useEffect, useId, useState } from "react";
 import { api, type LessonBlock, type Visual as VisualData } from "../../lib/api.ts";
 import { cn } from "../../lib/format.ts";
 import { texToMathML } from "../../lib/math.ts";
@@ -112,32 +112,43 @@ function Tex({ tex, display = true, className }: { tex: string; display?: boolea
 }
 
 function FormulaBlock({ b }: { b: Extract<LessonBlock, { kind: "formula" }> }) {
-  const [active, setActive] = useState<number>(-1);
+  const [selected, setActive] = useState<number>(-1);
+  const [pointed, setPointed] = useState<number>(-1);
+  const active = pointed >= 0 ? pointed : selected;
+  const scope = useId();
   const color = (i: number) => PALETTE[i % PALETTE.length]!;
   const css = b.terms
     .map((t, i) => {
       const dim = active >= 0 && active !== i;
-      return `.sb-formula .sb-term-${t.id}{color:${color(i)};opacity:${dim ? 0.3 : 1};transition:opacity .25s${active === i ? `;filter:drop-shadow(0 0 6px ${color(i)})` : ""}}`;
+      return `[data-formula-scope="${scope}"] .sb-term-${t.id}{color:${color(i)};opacity:${dim ? 0.3 : 1};transition:opacity .25s${active === i ? `;filter:drop-shadow(0 0 6px ${color(i)})` : ""}}`;
     })
     .join("");
   const term = b.terms[active];
   return (
-    <div className="sb-formula space-y-3">
+    <div className="sb-formula space-y-3" data-formula-scope={scope}>
       <style>{css}</style>
-      <Tex tex={b.tex} />
+      <div onPointerMove={event => {
+        if (event.pointerType === "touch" || !(event.target instanceof Element)) return;
+        const target = event.target;
+        const index = b.terms.findIndex(t => target.closest(".sb-term-" + t.id));
+        setPointed(index);
+      }} onPointerLeave={() => setPointed(-1)}>
+        <Tex tex={b.tex} />
+      </div>
       {b.terms.length > 0 && (
         <>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button className="grid size-7 place-items-center rounded-md ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Previous term" disabled={active <= -1} onClick={() => setActive(active - 1)}>
+            <button className="grid size-7 place-items-center rounded-md ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Previous term" disabled={selected <= -1} onClick={() => setActive(selected - 1)}>
               <ChevronLeft size={14} />
             </button>
-            <button className="grid size-7 place-items-center rounded-md ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Next term" disabled={active >= b.terms.length - 1} onClick={() => setActive(active + 1)}>
+            <button className="grid size-7 place-items-center rounded-md ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Next term" disabled={selected >= b.terms.length - 1} onClick={() => setActive(selected + 1)}>
               <ChevronRight size={14} />
             </button>
             {b.terms.map((t, i) => (
               <button
                 key={t.id}
-                onClick={() => setActive(active === i ? -1 : i)}
+                aria-pressed={selected === i}
+                onClick={() => setActive(selected === i ? -1 : i)}
                 className={cn("rounded-full px-2.5 py-1 text-xs font-semibold ring-1 transition", active === i ? "ring-2" : "ring-[var(--line)]")}
                 style={{ color: color(i), ...(active === i ? { boxShadow: `0 0 0 2px ${color(i)}` } : {}) }}
               >
@@ -145,7 +156,7 @@ function FormulaBlock({ b }: { b: Extract<LessonBlock, { kind: "formula" }> }) {
               </button>
             ))}
           </div>
-          <p className="min-h-5 text-sm text-slate-600 dark:text-slate-300">{term ? (term.note ?? term.label) : "Tap a part (or ▶) to see what it means."}</p>
+          <p className="min-h-5 text-sm text-slate-600 dark:text-slate-300">{term ? (term.note ?? term.label) : "Point to a term, or select its label to pin the explanation."}</p>
         </>
       )}
       {b.where.length > 0 && (

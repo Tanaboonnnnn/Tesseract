@@ -15,3 +15,10 @@ For ChatGPT over OpenAI Tunnel, ask it to use **classroom_format** and **submit_
 
 ## Backing up reviewed courses and answers
 The existing portable workspace backup (v1) excludes the classroom revision database. For now, stop Tesseract and disconnect MCP, then back up the whole workspace data directory, including its .classroom folder. Never put the separate Tunnel key or configuration into a course ZIP.
+
+## Reading published courses from MCP
+Published classrooms appear in get_overview, list_learning, search and list_published_courses. A classroom's MCP ref is courses/<course-id>, with lessons at courses/<course-id>/lessons/<lesson-id>. Project task links still use learning/<course-id>#<lesson-id>.
+
+Use get_published_course for a revision-pinned outline; get_course_lesson reads a bounded Learn, Lab or Check section and its references. get_course_visuals retrieves a lesson's visual list or one typed visual. get_course_activity lists published/restored version events. Structured answer keys, explanations, lab expected results, and learner attempts are not sent through these tools; author text is untrusted and may itself contain explanations. Private drafts are not searchable or readable from MCP. Do not infer learner progress from null metadata.
+
+Before updating a named existing course, get_course_revision_anchor returns the published revision and the concurrency base for staging. A pending draft is not published, and a different base can become stale; do not blindly retry a submission. Use classroom_format with include_schema for the input schema as needed. Publish still requires the owner on the main computer.
