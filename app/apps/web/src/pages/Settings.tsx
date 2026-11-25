@@ -12,7 +12,7 @@ import { TransparencySlider } from "../components/TransparencySlider.tsx";
 import { Button, Card, ErrorNote, PageHeader, SectionTitle } from "../components/ui.tsx";
 import { api } from "../lib/api.ts";
 import { cn } from "../lib/format.ts";
-import { LAYOUTS, type LayoutId, PALETTES, usePalette, useLayout } from "../lib/theme.ts";
+import { APPEARANCES, LAYOUTS, type LayoutId, PALETTES, useAppearance, usePalette, useLayout } from "../lib/theme.ts";
 
 export function Settings() {
   return (
@@ -44,6 +44,10 @@ export function Settings() {
         <SectionTitle>Remote access (ChatGPT)</SectionTitle>
         <RemoteAccess />
         <p className="mt-2 text-xs text-slate-500">Lets ChatGPT on the web or your phone reach a read-mostly Tesseract through OpenAI's outbound-only tunnel. Setup: docs/REMOTE_ACCESS.md.</p>
+      </Card>
+      <Card className="mb-6">
+        <SectionTitle>Appearance presets</SectionTitle>
+        <AppearancePicker />
       </Card>
     </>
   );
@@ -174,21 +178,55 @@ function Mini({ id }: { id: LayoutId }) {
   );
 }
 
+function AppearancePicker() {
+  const [appearance, setAppearance] = useAppearance();
+  return (
+    <fieldset className="min-w-0">
+      <legend className="sr-only">Appearance presets</legend>
+      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+        Change the look, not the layout. Pick a colour above any time to return to Original.
+      </p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {APPEARANCES.map((preset) => (
+          <label key={preset.id} className={cn(
+            "group relative cursor-pointer rounded-md p-2 text-sm ring-1 transition focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent-600",
+            appearance === preset.id ? "bg-[var(--lane)] ring-2 ring-accent-600" : "ring-[var(--line-strong)]",
+          )}>
+            <input type="radio" name="appearance" className="absolute inset-0 m-0 size-full cursor-pointer opacity-0"
+              aria-label={preset.name} checked={appearance === preset.id} onChange={() => setAppearance(preset.id)} />
+            <span className="mb-2 flex h-7 overflow-hidden rounded-sm ring-1 ring-[var(--line)]" aria-hidden="true">
+              {(preset.swatch ?? ["var(--bg)", "var(--panel-solid)", "var(--color-accent-600)"]).map((colour) => (
+                <span key={colour} className="flex-1" style={{ backgroundColor: colour }} />
+              ))}
+            </span>
+            <span className="flex items-center gap-1 font-semibold">
+              {appearance === preset.id && <Check size={14} aria-hidden="true" />}
+              {preset.name}
+            </span>
+            <span className="block text-[11px] leading-snug text-slate-500 dark:text-slate-400">{preset.hint}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 /* ---------- colours ---------- */
 
 function PalettePicker() {
   const [palette, setPalette] = usePalette();
+  const [appearance] = useAppearance();
   return (
     <div role="radiogroup" aria-label="Colours" className="flex flex-wrap gap-3">
       {PALETTES.map((p) => (
         <button
           key={p.id}
           role="radio"
-          aria-checked={p.id === palette}
+          aria-checked={appearance === "original" && p.id === palette}
           onClick={() => setPalette(p.id)}
           className={cn(
             "flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs ring-1 transition",
-            p.id === palette ? "font-semibold ring-2 ring-accent-500" : "ring-[var(--line)] hover:ring-accent-400/60",
+            appearance === "original" && p.id === palette ? "font-semibold ring-2 ring-accent-500" : "ring-[var(--line)] hover:ring-accent-400/60",
           )}
         >
           <span className="size-6 rounded-full" style={{ background: `conic-gradient(from 210deg, ${p.swatch[0]} 0 33%, ${p.swatch[1]} 0 66%, ${p.swatch[2]} 0)` }} />

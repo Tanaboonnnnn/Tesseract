@@ -57,6 +57,15 @@ export const PALETTES = [
 ] as const;
 export type PaletteId = (typeof PALETTES)[number]["id"];
 
+export const APPEARANCES = [
+  { id: "original", name: "Original", hint: "Keep your own colour palette", swatch: null },
+  { id: "graphite", name: "Graphite", hint: "Cool grey, crisp edges", swatch: ["#171a20", "#f3f5f7", "#434f5e"] },
+  { id: "pine", name: "Pine", hint: "Forest green, soft edges", swatch: ["#111e18", "#eef5ee", "#276348"] },
+  { id: "clay", name: "Clay", hint: "Warm cream, editorial headings", swatch: ["#241713", "#f8eee5", "#91462f"] },
+  { id: "plum", name: "Plum", hint: "Muted violet, rounded cards", swatch: ["#201724", "#f5eef6", "#754b7f"] },
+] as const;
+export type AppearanceId = (typeof APPEARANCES)[number]["id"];
+
 /** A setting saved per device, shared by every component (useSyncExternalStore). */
 function pref<T extends string>(key: string, values: readonly T[], fallback: T, apply: (v: T) => void) {
   const listeners = new Set<() => void>();
@@ -93,11 +102,20 @@ if (old) {
 }
 
 export const layoutPref = pref<LayoutId>("sb-ui", LAYOUTS.map((l) => l.id), "system", attr("data-ui", "system"));
+export const appearancePref = pref<AppearanceId>("sb-appearance", APPEARANCES.map((p) => p.id), "original", attr("data-appearance", "original"));
 export const palettePref = pref<PaletteId>("sb-palette", PALETTES.map((p) => p.id), "blue", attr("data-palette", "blue"));
 
 export function useLayout(): [LayoutId, (v: LayoutId) => void] {
   return [useSyncExternalStore(layoutPref.subscribe, layoutPref.get), layoutPref.set];
 }
+function selectPalette(v: PaletteId) {
+  appearancePref.set("original");
+  palettePref.set(v);
+}
+
 export function usePalette(): [PaletteId, (v: PaletteId) => void] {
-  return [useSyncExternalStore(palettePref.subscribe, palettePref.get), palettePref.set];
+  return [useSyncExternalStore(palettePref.subscribe, palettePref.get), selectPalette];
+}
+export function useAppearance(): [AppearanceId, (v: AppearanceId) => void] {
+  return [useSyncExternalStore(appearancePref.subscribe, appearancePref.get), appearancePref.set];
 }
