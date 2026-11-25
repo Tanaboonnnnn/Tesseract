@@ -104,6 +104,10 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
   if(query.isPending) return <Loading/>;
   if(query.error || !query.data) return <ErrorNote error={query.error}/>;
   const d=query.data;
+  const selected = Math.max(0, d.bundle.lessons.findIndex(l => l.id === hash.slice(1)));
+  const lesson = d.bundle.lessons[selected]!;
+  const path = draft ? "/learning/drafts/" + id : "/learning/classroom/" + id;
+  const lessonLink = (topic: string) => path + "#" + topic;
   return <div className="space-y-5">
     <Link to="/learning" className="underline">Back to Learning</Link>
     <PageHeader title={d.title}/>
@@ -114,15 +118,34 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
         <Button disabled={action.isPending} onClick={()=>{if(confirm("Restore this previously published revision?")) action.mutate("restore");}}>Restore a previous publication</Button>
       </div><ErrorNote error={action.error}/>
     </Card>}
-    <nav aria-label="Lessons" className="flex flex-wrap gap-3">{d.bundle.lessons.map(l=><a key={l.id} className="underline" href={"#"+l.id} onClick={e=>{e.preventDefault(); history.replaceState(history.state,"","#"+l.id);document.getElementById(l.id)?.scrollIntoView();}}>{l.title}</a>)}</nav>
-    {!draft && <p className="text-sm muted">{attempts.data?.length ?? 0} saved answers for this revision</p>}
-    {d.bundle.lessons.map(l=><section key={l.id} id={l.id} className="space-y-3 scroll-mt-5 border-t border-slate-500/20 pt-5">
+    <nav aria-label="Lessons" className="flex flex-wrap items-end gap-2">
+      <label className="min-w-0 grow basis-64">Lesson {selected + 1} of {d.bundle.lessons.length}
+        <select className={inputClass} value={lesson.id} onChange={e => nav(lessonLink(e.target.value))}>
+          {d.bundle.lessons.map((l,i) => <option key={l.id} value={l.id}>{i + 1}. {l.title}</option>)}
+        </select>
+      </label>
+      {selected > 0 && <Link className="underline px-2 py-2" to={lessonLink(d.bundle.lessons[selected-1]!.id)}>Previous lesson</Link>}
+      {selected + 1 < d.bundle.lessons.length && <Link className="underline px-2 py-2" to={lessonLink(d.bundle.lessons[selected+1]!.id)}>Next lesson</Link>}
+    </nav>
+    {!draft && <p className="text-sm muted">{attempts.data?.filter(a=>a.lesson_id===lesson.id).length ?? 0} saved answers for this lesson</p>}
+    {[lesson].map(l=><section key={l.id} id={l.id} className="space-y-4 scroll-mt-5 border-t border-slate-500/20 pt-5">
       <h2 className="text-xl font-semibold">{l.title}</h2><p>{l.objective}</p>
-      {l.blocks.map((b,i)=> b.type==="text" ? <Markdown key={i} text={b.markdown}/> :
-        <div key={i} className="space-y-2"><Suspense fallback={<Loading/>}><Visual visual={b.visual}/></Suspense><p className="text-sm muted">{b.fallback}</p></div>)}
+      {l.blocks.some(b=>b.type==="visual") && <section aria-label="Interactive visuals" className="space-y-3">
+        <h3 className="font-semibold">Interactive visuals</h3>
+        {l.blocks.flatMap((b,i)=> b.type==="visual" ? [<Card key={i} className="space-y-2 p-3 sm:p-4">
+          <h4 className="font-semibold">{b.visual.title}</h4>
+          <Suspense fallback={<Loading/>}><Visual visual={b.visual}/></Suspense>
+          <details className="text-sm muted"><summary>Read the steps</summary><p>{b.fallback}</p></details>
+        </Card>] : [])}
+      </section>}
+      <details className="rounded-lg border border-slate-500/25 p-3" open>
+        <summary className="font-semibold">Lesson notes</summary>
+        {l.blocks.map((b,i) => b.type==="text" ? <Markdown key={i} text={b.markdown}/> : null)}
+      </details>
       {l.labs.map((lab,i)=><details key={i}><summary>{lab.platform} lab · {lab.environment}</summary>
         <p>{lab.prerequisites.join(" · ")}</p><ol className="ml-5 list-decimal">{lab.steps.map((x,j)=><li key={j}>{x}</li>)}</ol><p>Expected: {lab.expected}</p>{lab.cleanup && <p>Cleanup: {lab.cleanup}</p>}
       </details>)}
+      {!!l.questions.length && <h3 className="font-semibold">Check your understanding</h3>}
       {l.questions.map(q=>draft ? <details key={q.id}><summary>{q.prompt}</summary>{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> :
         <><ul className="list-disc ml-5">{q.choices.map((choice,i)=><li key={i}>{choice}{q.correct.includes(i) ? " (correct)" : ""}</li>)}</ul><p>{q.explanation}</p></>}</details> :
         <Answer key={d.revision_id+":"+l.id+":"+q.id} course={d} lesson={l.id} q={q}/>)}
