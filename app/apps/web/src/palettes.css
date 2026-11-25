@@ -1,0 +1,146 @@
+/*
+ * Colour palettes (data-palette on <html>; any palette works with any layout, light + dark).
+ * "blue" is the default in index.css. A palette only swaps CSS variables (Tailwind reads var(--color-*)).
+ * Rule order matters: html[data-palette].dark must restate every token the light block sets.
+ */
+
+/* ============================== Neutral ============================== */
+/* Calm greys with one soft blue accent; faint corners, no colour glow. */
+html[data-palette="neutral"] {
+  --color-accent-50: #eff6ff; --color-accent-100: #dbeafe; --color-accent-200: #bfdbfe; --color-accent-300: #93c5fd;
+  --color-accent-400: #60a5fa; --color-accent-500: #3b82f6; --color-accent-600: #2563eb; --color-accent-700: #1d4ed8;
+  --color-sky-50: #f8fafc; --color-sky-100: #f1f5f9; --color-sky-200: #e2e8f0; --color-sky-300: #93c5fd;
+  --color-sky-400: #94a3b8; --color-sky-500: #64748b; --color-sky-600: #475569; --color-sky-700: #334155;
+  --color-sidebar: #18181b;
+  --glow-rgb: 148 163 184;
+  --bg: #f7f7f8; --bg-glow: transparent; --grid: transparent;
+  --panel-base: 255 255 255; --panel-opacity: 1; --panel-solid: #ffffff;
+  --line: rgb(24 24 27 / 0.1); --line-strong: rgb(24 24 27 / 0.28); --corner: rgb(24 24 27 / 0.35);
+  --glow: 0 1px 2px rgb(0 0 0 / 0.04); --glow-hover: 0 4px 14px rgb(0 0 0 / 0.08);
+  --lane: rgb(24 24 27 / 0.03);
+  --chart-accent: #2563eb; --chart-grid: rgb(24 24 27 / 0.1); --chart-text: #52525b; --chart-glow: none;
+}
+html[data-palette="neutral"].dark {
+  --bg: #111113; --bg-glow: transparent; --grid: transparent;
+  --panel-base: 24 24 27; --panel-opacity: 1; --panel-solid: #1c1c1f;
+  --line: rgb(255 255 255 / 0.08); --line-strong: rgb(255 255 255 / 0.22); --corner: rgb(255 255 255 / 0.35);
+  --glow: none; --glow-hover: 0 0 0 1px rgb(255 255 255 / 0.12);
+  --lane: rgb(255 255 255 / 0.03);
+  --chart-accent: #60a5fa; --chart-grid: rgb(255 255 255 / 0.08); --chart-text: #a1a1aa; --chart-glow: none;
+}
+
+/* ============================== Crimson ============================== */
+/* The HUD, re-forged: crimson glow with gold corners. */
+html[data-palette="crimson"] {
+  --color-accent-50: #fff1f2; --color-accent-100: #ffe4e6; --color-accent-200: #fecdd3; --color-accent-300: #fda4af;
+  --color-accent-400: #fb7185; --color-accent-500: #e11d48; --color-accent-600: #be123c; --color-accent-700: #9f1239;
+  --color-sky-50: #fff1f2; --color-sky-100: #ffe4e6; --color-sky-200: #fecdd3; --color-sky-300: #fda4af;
+  --color-sky-400: #fb7185; --color-sky-500: #f43f5e; --color-sky-600: #e11d48; --color-sky-700: #be123c;
+  --color-sidebar: #12040a;
+  --glow-rgb: 244 63 94;
+  --bg: #fff6f7; --bg-glow: rgb(225 29 72 / 0.1); --grid: rgb(190 18 60 / 0.05);
+  --panel-base: 255 255 255; --panel-solid: #ffffff;
+  --line: rgb(190 18 60 / 0.18); --line-strong: rgb(190 18 60 / 0.5); --corner: rgb(180 120 20 / 0.8);
+  --glow: 0 1px 2px rgb(80 10 20 / 0.05), 0 8px 24px rgb(190 18 60 / 0.07);
+  --glow-hover: 0 0 0 1px rgb(190 18 60 / 0.25), 0 10px 28px rgb(190 18 60 / 0.14);
+  --lane: rgb(190 18 60 / 0.04);
+  --chart-accent: #be123c; --chart-grid: rgb(190 18 60 / 0.14); --chart-text: #7a4a52; --chart-glow: none;
+}
+html[data-palette="crimson"].dark {
+  --bg: #0c0306; --bg-glow: rgb(244 63 94 / 0.14); --grid: rgb(244 63 94 / 0.045);
+  --panel-base: 30 7 14; --panel-solid: #1a060c;
+  --line: rgb(244 63 94 / 0.26); --line-strong: rgb(251 191 36 / 0.6); --corner: rgb(251 191 36 / 0.85);
+  --glow: 0 0 0 1px rgb(244 63 94 / 0.06), 0 0 22px rgb(244 63 94 / 0.1), inset 0 0 28px rgb(244 63 94 / 0.05);
+  --glow-hover: 0 0 0 1px rgb(251 191 36 / 0.45), 0 0 26px rgb(244 63 94 / 0.25), inset 0 0 28px rgb(244 63 94 / 0.08);
+  --lane: rgb(244 63 94 / 0.045);
+  --chart-accent: #f43f5e; --chart-grid: rgb(244 63 94 / 0.16); --chart-text: #e8a3ae; --chart-glow: drop-shadow(0 0 6px rgb(244 63 94 / 0.6));
+}
+
+/* ============================== Sepia ============================== */
+/* Warm cream paper and sepia ink by day; a desk lamp on dark wood by night. */
+html[data-palette="sepia"] {
+  --color-accent-50: #fbf5ec; --color-accent-100: #f5e8d3; --color-accent-200: #ead2ad; --color-accent-300: #d9b27a;
+  --color-accent-400: #c79352; --color-accent-500: #a8733a; --color-accent-600: #8b5a2b; --color-accent-700: #6f4622;
+  --color-sky-50: #fdf8f0; --color-sky-100: #f7ecda; --color-sky-200: #efd9b8; --color-sky-300: #e6c08e;
+  --color-sky-400: #d6a35e; --color-sky-500: #b9833f; --color-sky-600: #966531; --color-sky-700: #774f27;
+  --color-sidebar: #241b13;
+  --glow-rgb: 190 140 80;
+  --bg: #f4ede0; --bg-glow: rgb(214 163 94 / 0.12); --grid: rgb(120 85 40 / 0.045);
+  --panel-base: 255 252 245; --panel-solid: #fffcf5;
+  --line: rgb(120 85 40 / 0.2); --line-strong: rgb(120 85 40 / 0.5); --corner: rgb(150 100 40 / 0.55);
+  --glow: 0 1px 2px rgb(80 55 20 / 0.06), 0 6px 18px rgb(80 55 20 / 0.07);
+  --glow-hover: 0 0 0 1px rgb(120 85 40 / 0.25), 0 10px 24px rgb(80 55 20 / 0.12);
+  --lane: rgb(120 85 40 / 0.05);
+  --chart-accent: #8b5a2b; --chart-grid: rgb(120 85 40 / 0.14); --chart-text: #6b5440; --chart-glow: none;
+}
+html[data-palette="sepia"].dark {
+  --bg: #17120c; --bg-glow: rgb(214 163 94 / 0.1); --grid: rgb(230 192 142 / 0.03);
+  --panel-base: 36 29 21; --panel-solid: #221b13;
+  --line: rgb(230 192 142 / 0.17); --line-strong: rgb(230 192 142 / 0.45); --corner: rgb(230 192 142 / 0.55);
+  --glow: 0 0 0 1px rgb(230 192 142 / 0.05), 0 0 20px rgb(214 163 94 / 0.06);
+  --glow-hover: 0 0 0 1px rgb(230 192 142 / 0.35), 0 0 22px rgb(214 163 94 / 0.14);
+  --lane: rgb(230 192 142 / 0.04);
+  --chart-accent: #d6a35e; --chart-grid: rgb(230 192 142 / 0.12); --chart-text: #cbb393; --chart-glow: none;
+}
+
+/* ============================== Aurora ============================== */
+/* Northern lights: violet sky, teal ribbons of light behind glass. */
+html[data-palette="aurora"] {
+  --color-accent-50: #f5f3ff; --color-accent-100: #ede9fe; --color-accent-200: #ddd6fe; --color-accent-300: #c4b5fd;
+  --color-accent-400: #a78bfa; --color-accent-500: #8b5cf6; --color-accent-600: #7c3aed; --color-accent-700: #6d28d9;
+  --color-sky-50: #f0fdfa; --color-sky-100: #ccfbf1; --color-sky-200: #99f6e4; --color-sky-300: #5eead4;
+  --color-sky-400: #2dd4bf; --color-sky-500: #14b8a6; --color-sky-600: #0d9488; --color-sky-700: #0f766e;
+  --color-sidebar: #0b0619;
+  --glow-rgb: 45 212 191;
+  --bg: #f6f4ff; --bg-glow: rgb(139 92 246 / 0.14); --grid: rgb(124 58 237 / 0.045);
+  --panel-base: 255 255 255; --panel-solid: #ffffff;
+  --line: rgb(124 58 237 / 0.18); --line-strong: rgb(13 148 136 / 0.5); --corner: rgb(13 148 136 / 0.7);
+  --glow: 0 1px 2px rgb(40 20 90 / 0.05), 0 8px 24px rgb(124 58 237 / 0.08);
+  --glow-hover: 0 0 0 1px rgb(124 58 237 / 0.25), 0 10px 28px rgb(13 148 136 / 0.16);
+  --lane: rgb(124 58 237 / 0.04);
+  --chart-accent: #7c3aed; --chart-grid: rgb(124 58 237 / 0.14); --chart-text: #5b5478; --chart-glow: none;
+}
+html[data-palette="aurora"].dark {
+  --bg: #060312; --bg-glow: rgb(139 92 246 / 0.2); --grid: rgb(94 234 212 / 0.035);
+  --panel-base: 16 10 38; --panel-solid: #120b2a;
+  --line: rgb(167 139 250 / 0.24); --line-strong: rgb(94 234 212 / 0.6); --corner: rgb(94 234 212 / 0.85);
+  --glow: 0 0 0 1px rgb(167 139 250 / 0.07), 0 0 22px rgb(139 92 246 / 0.12), inset 0 0 28px rgb(45 212 191 / 0.04);
+  --glow-hover: 0 0 0 1px rgb(94 234 212 / 0.45), 0 0 26px rgb(139 92 246 / 0.28), inset 0 0 28px rgb(45 212 191 / 0.08);
+  --lane: rgb(167 139 250 / 0.05);
+  --chart-accent: #a78bfa; --chart-grid: rgb(167 139 250 / 0.16); --chart-text: #b9b0e0; --chart-glow: drop-shadow(0 0 6px rgb(45 212 191 / 0.55));
+}
+/* the aurora itself: two soft light ribbons painted once (no animation, no cost) */
+html[data-palette="aurora"] body {
+  background-image:
+    radial-gradient(ellipse 70% 40% at 15% -5%, rgb(45 212 191 / 0.16), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 85% 0%, rgb(139 92 246 / 0.2), transparent 70%),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+}
+
+/* ============================== Amber CRT ============================== */
+/* Phosphor amber on black, like an old terminal. Light mode: amber ink on warm paper. */
+html[data-palette="amber"] {
+  --color-accent-50: #fff8eb; --color-accent-100: #ffefc7; --color-accent-200: #ffdf8a; --color-accent-300: #ffcd4d;
+  --color-accent-400: #ffbd1f; --color-accent-500: #f5a300; --color-accent-600: #c27c00; --color-accent-700: #965f00;
+  --color-sky-50: #fffaf0; --color-sky-100: #fff1d1; --color-sky-200: #ffe2a3; --color-sky-300: #ffd27a;
+  --color-sky-400: #ffb000; --color-sky-500: #e09a00; --color-sky-600: #b37b00; --color-sky-700: #8a5f00;
+  --color-sidebar: #0d0900;
+  --glow-rgb: 255 176 0;
+  --bg: #fbf6ea; --bg-glow: rgb(255 176 0 / 0.1); --grid: rgb(150 100 0 / 0.05);
+  --panel-base: 255 253 247; --panel-solid: #fffdf7;
+  --line: rgb(150 100 0 / 0.22); --line-strong: rgb(150 100 0 / 0.55); --corner: rgb(150 100 0 / 0.7);
+  --glow: 0 1px 2px rgb(80 50 0 / 0.06); --glow-hover: 0 0 0 1px rgb(150 100 0 / 0.3);
+  --lane: rgb(150 100 0 / 0.05);
+  --chart-accent: #c27c00; --chart-grid: rgb(150 100 0 / 0.15); --chart-text: #6b5730; --chart-glow: none;
+}
+html[data-palette="amber"].dark {
+  --bg: #080600; --bg-glow: rgb(255 176 0 / 0.1); --grid: rgb(255 176 0 / 0.04);
+  --panel-base: 18 13 2; --panel-solid: #110c02;
+  --line: rgb(255 176 0 / 0.28); --line-strong: rgb(255 176 0 / 0.7); --corner: rgb(255 176 0 / 0.85);
+  --glow: 0 0 0 1px rgb(255 176 0 / 0.06), 0 0 18px rgb(255 176 0 / 0.08);
+  --glow-hover: 0 0 0 1px rgb(255 176 0 / 0.5), 0 0 22px rgb(255 176 0 / 0.2);
+  --lane: rgb(255 176 0 / 0.05);
+  --chart-accent: #ffb000; --chart-grid: rgb(255 176 0 / 0.16); --chart-text: #d9b46a; --chart-glow: drop-shadow(0 0 5px rgb(255 176 0 / 0.55));
+}

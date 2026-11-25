@@ -1,0 +1,67 @@
+# Skill taxonomy: domain -> skills. A general example; replace it with your own (SPEC.md §4.7).
+- id: programming
+  title: Programming
+  skills:
+    - { id: python, title: Python }
+    - { id: javascript, title: JavaScript & TypeScript }
+    - { id: go, title: Go }
+    - { id: git, title: Git }
+    - { id: dsa, title: Data Structures & Algorithms }
+    - { id: testing, title: Testing }
+- id: web
+  title: Web Development
+  skills:
+    - { id: html-css, title: HTML & CSS }
+    - { id: frontend-frameworks, title: Frontend Frameworks (React) }
+    - { id: web-apis, title: Web APIs (REST) }
+    - { id: databases, title: Databases & SQL }
+    - { id: web-security, title: Web Security Basics }
+- id: systems
+  title: Systems
+  skills:
+    - { id: linux-administration, title: Linux Administration }
+    - { id: bash-scripting, title: Bash Scripting }
+    - { id: os-internals, title: OS Internals }
+- id: networking
+  title: Networking
+  skills:
+    - { id: networking-fundamentals, title: Fundamentals (OSI/TCP-IP) }
+    - { id: network-protocols, title: Protocols (DNS/HTTP/TLS) }
+    - { id: packet-analysis, title: Packet Analysis }
+    - { id: network-security, title: Network Security }
+    - { id: wireless, title: Wireless }
+- id: cloud-devops
+  title: Cloud & DevOps
+  skills:
+    - { id: cloud-platforms, title: Cloud Platforms (AWS/Azure/GCP) }
+    - { id: containers, title: Docker & Containers }
+    - { id: kubernetes-ops, title: Kubernetes }
+    - { id: infrastructure-as-code, title: Infrastructure as Code }
+    - { id: ci-cd, title: CI/CD }
+- id: security
+  title: Security
+  skills:
+    - { id: security-concepts, title: Security Concepts }
+    - { id: identity-access-management, title: Identity & Access Management }
+    - { id: cryptography, title: Cryptography }
+- id: ai-data
+  title: AI & Data
+  skills:
+    - { id: statistics, title: Statistics }
+    - { id: data-analysis, title: Data Analysis }
+    - { id: ml-fundamentals, title: ML Fundamentals }
+    - { id: llm-apps, title: LLM Apps & Prompting }
+- id: math
+  title: Math
+  skills:
+    - { id: calculus, title: Calculus }
+    - { id: linear-algebra, title: Linear Algebra }
+    - { id: probability, title: Probability }
+    - { id: discrete-math, title: Discrete Math }
+- id: english
+  title: English
+  skills:
+    - { id: reading, title: Reading }
+    - { id: listening, title: Listening }
+    - { id: speaking, title: Speaking }
+    - { id: writing, title: Writing }

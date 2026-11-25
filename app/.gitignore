@@ -1,0 +1,3 @@
+
+# vendored libraries for sandboxed HTML visuals (copied by scripts/vendor.mjs)
+apps/web/public/vendor/

@@ -1,0 +1,322 @@
+@import "tailwindcss";
+
+/* Dark mode follows the `.dark` class on <html> (set by the theme toggle), not only the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Segoe UI", ui-sans-serif, system-ui, "Noto Sans Thai", sans-serif;
+  --font-display: "Rajdhani", "Segoe UI", ui-sans-serif, "Noto Sans Thai", sans-serif;
+  /* "System window" blue. Same light→dark order in both modes. */
+  --color-accent-50: #eef6ff;
+  --color-accent-100: #d9ebff;
+  --color-accent-200: #b6d8ff;
+  --color-accent-500: #3d8bff;
+  --color-accent-600: #1f6fe5;
+  --color-accent-700: #1857c2;
+  --color-glow: #38bdf8;
+  --color-sidebar: #030a1c;
+}
+
+/* ---------- theme tokens ---------- */
+
+:root {
+  color-scheme: light;
+  --bg: #edf3ff;
+  --bg-glow: rgb(61 139 255 / 0.14);
+  --grid: rgb(31 111 229 / 0.06);
+  /* Panels = base color at --panel-opacity; the Transparency slider overrides the opacity on <html>. */
+  --glow-rgb: 56 189 248; /* HUD glow color; themes override it */
+  --panel-base: 255 255 255;
+  --panel-opacity: 0.86;
+  --panel: rgb(var(--panel-base) / var(--panel-opacity));
+  --panel-solid: #ffffff;
+  --line: rgb(31 111 229 / 0.2);
+  --line-strong: rgb(31 111 229 / 0.55);
+  --corner: rgb(31 111 229 / 0.7);
+  --glow: 0 1px 2px rgb(15 40 90 / 0.05), 0 8px 24px rgb(31 111 229 / 0.07);
+  --glow-hover: 0 0 0 1px rgb(31 111 229 / 0.25), 0 10px 28px rgb(31 111 229 / 0.14);
+  --lane: rgb(31 111 229 / 0.05);
+  --chart-accent: #1f6fe5;
+  --chart-grid: rgb(31 111 229 / 0.16);
+  --chart-text: #51607a;
+  --chart-glow: none;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #030817;
+  --bg-glow: rgb(var(--glow-rgb) / 0.13);
+  --grid: rgb(var(--glow-rgb) / 0.045);
+  --panel-base: 7 20 46;
+  --panel-opacity: 0.72;
+  --panel-solid: #08162f;
+  --line: rgb(var(--glow-rgb) / 0.26);
+  --line-strong: rgb(var(--glow-rgb) / 0.7);
+  --corner: rgb(103 232 249 / 0.85);
+  --glow: 0 0 0 1px rgb(var(--glow-rgb) / 0.06), 0 0 22px rgb(var(--glow-rgb) / 0.1), inset 0 0 28px rgb(var(--glow-rgb) / 0.05);
+  --glow-hover: 0 0 0 1px rgb(var(--glow-rgb) / 0.45), 0 0 26px rgb(var(--glow-rgb) / 0.25), inset 0 0 28px rgb(var(--glow-rgb) / 0.08);
+  --lane: rgb(var(--glow-rgb) / 0.04);
+  /* Validated with the dataviz palette check on #030817 (#38bdf8 fails the lightness band). */
+  --chart-accent: #1592de;
+  --chart-glow: drop-shadow(0 0 6px rgb(var(--glow-rgb) / 0.65));
+  --chart-grid: rgb(var(--glow-rgb) / 0.16);
+  --chart-text: #8fb3d9;
+}
+
+@layer base {
+  html {
+    @apply text-slate-800 antialiased dark:text-slate-200;
+    background-color: var(--bg);
+  }
+  body {
+    min-height: 100dvh;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, var(--bg-glow), transparent 70%),
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      36px 36px,
+      36px 36px;
+    background-attachment: fixed;
+  }
+  ::selection {
+    @apply bg-accent-200 text-slate-900;
+  }
+}
+
+/* ---------- "system window" surfaces ---------- */
+
+@layer components {
+  /* Corner brackets drawn with gradients, so no extra markup. */
+  .panel,
+  .tile {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background-color: var(--panel);
+    box-shadow: var(--glow);
+    backdrop-filter: blur(6px);
+  }
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    --c: var(--corner);
+    background:
+      linear-gradient(var(--c), var(--c)) top left / 16px 2px no-repeat,
+      linear-gradient(var(--c), var(--c)) top left / 2px 16px no-repeat,
+      linear-gradient(var(--c), var(--c)) top right / 16px 2px no-repeat,
+      linear-gradient(var(--c), var(--c)) top right / 2px 16px no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom left / 16px 2px no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom left / 2px 16px no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom right / 16px 2px no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom right / 2px 16px no-repeat;
+  }
+  .tile {
+    border-radius: 8px;
+  }
+  .tile-hover {
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s,
+      border-color 0.15s;
+  }
+  .tile-hover:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-strong);
+    box-shadow: var(--glow-hover);
+  }
+  .panel-solid {
+    border: 1px solid var(--line-strong);
+    background-color: var(--panel-solid);
+    box-shadow: var(--glow-hover);
+  }
+  .lane {
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    background-color: var(--lane);
+  }
+  .glass-bar {
+    border-color: var(--line);
+    background-color: color-mix(in srgb, var(--panel-solid) 88%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+  /* Segmented filter */
+  .seg {
+    display: inline-flex;
+    gap: 2px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px;
+    background-color: var(--lane);
+  }
+  .seg > button {
+    @apply rounded-md px-3 py-1 text-sm text-slate-500 transition dark:text-slate-400;
+  }
+  .seg > button[aria-pressed="true"] {
+    @apply bg-accent-600 font-medium text-white shadow-sm;
+    box-shadow: 0 0 12px rgb(var(--glow-rgb) / 0.35);
+  }
+
+  /* HUD headings */
+  .hud-title {
+    font-family: var(--font-display);
+    @apply font-semibold tracking-[0.08em] text-slate-900 uppercase dark:text-sky-50;
+  }
+  .dark .hud-title {
+    text-shadow: 0 0 14px rgb(var(--glow-rgb) / 0.45);
+  }
+  .hud-label {
+    font-family: var(--font-display);
+    @apply text-xs font-semibold tracking-[0.14em] text-accent-600 uppercase dark:text-sky-300;
+  }
+  .hud-number {
+    font-family: var(--font-display);
+    @apply font-bold tabular-nums;
+  }
+
+  /* Notification window title box, like a system prompt */
+  .notice-title {
+    font-family: var(--font-display);
+    @apply rounded-sm px-3 py-0.5 text-sm font-bold tracking-[0.2em] text-accent-600 uppercase dark:text-sky-200;
+    border: 1px solid var(--line-strong);
+    box-shadow: inset 0 0 12px rgb(var(--glow-rgb) / 0.12);
+  }
+  .notice-icon {
+    @apply grid size-8 shrink-0 place-items-center rounded-full text-accent-600 dark:text-sky-200;
+    border: 2px solid var(--line-strong);
+    box-shadow:
+      0 0 12px rgb(var(--glow-rgb) / 0.35),
+      inset 0 0 8px rgb(var(--glow-rgb) / 0.25);
+  }
+}
+
+/* Dark mode: accent text reads as cyan light; fills (buttons, bars) keep the deeper blue. */
+.dark .text-accent-600,
+.dark .text-accent-700,
+.dark .hover\:text-accent-600:hover {
+  color: var(--color-sky-300);
+}
+
+/* Glowing progress fill (a utility so `dark:bar-glow` works). */
+@utility bar-glow {
+  box-shadow: 0 0 10px rgb(var(--glow-rgb) / 0.55);
+}
+
+/* ---------- Note body (Markdown) ---------- */
+
+.prose-note {
+  @apply text-[15px] leading-relaxed text-slate-700 dark:text-slate-300;
+}
+.prose-note > * + * {
+  @apply mt-3;
+}
+.prose-note h1,
+.prose-note h2,
+.prose-note h3 {
+  font-family: var(--font-display);
+  @apply font-semibold tracking-wide text-slate-900 dark:text-sky-50;
+}
+.prose-note h1 {
+  @apply mt-6 text-2xl;
+}
+.prose-note h2 {
+  @apply mt-6 text-xl;
+}
+.prose-note h3 {
+  @apply mt-5 text-lg;
+}
+.prose-note ul {
+  @apply list-disc pl-5;
+}
+.prose-note ol {
+  @apply list-decimal pl-5;
+}
+.prose-note li + li {
+  @apply mt-1;
+}
+.prose-note a {
+  @apply text-accent-600 underline decoration-accent-200 underline-offset-2 hover:decoration-accent-600 dark:text-sky-300;
+}
+.prose-note .wikilink {
+  @apply rounded bg-accent-50 px-1 text-accent-700 no-underline hover:bg-accent-100 dark:bg-sky-400/15 dark:text-sky-200;
+}
+.prose-note .wikilink-missing {
+  @apply rounded border border-dashed border-slate-300 px-1 text-slate-400 dark:border-white/20;
+}
+.prose-note code {
+  @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[13px] dark:bg-white/10;
+}
+.prose-note pre {
+  @apply overflow-x-auto rounded-lg bg-slate-950 p-4 text-[13px] text-slate-100;
+}
+.prose-note pre code {
+  @apply bg-transparent p-0;
+}
+.prose-note blockquote {
+  @apply border-l-2 border-accent-200 pl-4 text-slate-500 dark:border-sky-400/40;
+}
+.prose-note table {
+  @apply w-full text-left text-sm;
+}
+.prose-note th,
+.prose-note td {
+  @apply border-b border-slate-200 px-2 py-1.5 dark:border-white/10;
+}
+.prose-note input[type="checkbox"] {
+  @apply mr-1.5 accent-accent-600;
+}
+.prose-note ul.contains-task-list {
+  @apply list-none pl-0;
+}
+
+/* ---------- System map (SPEC §4.14) ---------- */
+.map-stage {
+  background:
+    radial-gradient(circle at 1px 1px, rgb(148 163 184 / 0.14) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--lane);
+}
+.dark .map-stage {
+  background:
+    radial-gradient(circle at 1px 1px, rgb(var(--glow-rgb) / 0.1) 1px, transparent 0) 0 0 / 22px 22px,
+    rgb(2 8 23 / 0.55);
+}
+/* Map effects: transform/opacity only, so they run on the compositor (no repaint, no main thread). */
+.map-spark {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  will-change: transform, opacity;
+}
+.map-focus-ring {
+  position: absolute;
+  border: 1.4px solid;
+  border-radius: 12px;
+  will-change: opacity;
+  animation: map-breathe 2.4s ease-in-out infinite;
+}
+.map-ping {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 1px solid;
+  border-radius: 9999px;
+  will-change: transform, opacity;
+  animation: map-ping 1.8s ease-out infinite;
+}
+@keyframes map-breathe { 50% { opacity: 0.2; } }
+@keyframes map-ping { from { transform: scale(0.35); opacity: 0.9; } to { transform: scale(1); opacity: 0; } }
+.map-fx-paused * { animation-play-state: paused !important; }
+
+/* Learning visuals (SPEC §4.16): steps only change opacity / a glow, with a short transition. Nothing runs at rest. */
+.vis-el { transition: opacity 0.35s ease, filter 0.35s ease; }
+.vis-dim { opacity: 0.22; }
+.vis-hidden { opacity: 0; }
+.vis-lit { filter: drop-shadow(0 0 5px rgb(var(--glow-rgb) / 0.75)); }

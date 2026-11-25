@@ -1,0 +1,42 @@
+id: 2026-11-23-kubernetes-deployments
+title: Kubernetes Deployments
+tags: []
+skills:
+  kubernetes-ops: 1
+difficulty: medium
+topic_refs:
+  - learning/kubernetes#deployments
+status: open
+assessment: null
+author: claude-code
+questions:
+  - q: Which object does a Deployment create directly to run your Pods?
+    choices: [StatefulSet, ReplicaSet, DaemonSet, Job]
+    answer: 1
+    explain: A Deployment manages ReplicaSets; each ReplicaSet keeps the desired number of Pods running.
+  - q: What happens by default when you change the container image in a Deployment?
+    choices:
+      - All Pods are deleted, then recreated
+      - A rolling update replaces Pods gradually
+      - Nothing until you restart the cluster
+      - A new Deployment object is created
+    answer: 1
+    explain: The default strategy is RollingUpdate, bounded by maxSurge and maxUnavailable.
+  - q: Which command rolls a Deployment back to its previous revision?
+    choices:
+      - kubectl rollout undo deployment/web
+      - kubectl revert deployment/web
+      - kubectl delete rs --last
+      - kubectl apply --previous
+    answer: 0
+    explain: "`kubectl rollout undo` switches back to the previous ReplicaSet revision."
+  - q: From a security view, which Deployment setting reduces impact if a container is compromised?
+    choices:
+      - replicas set to 1
+      - securityContext.runAsNonRoot set to true
+      - imagePullPolicy set to Always
+      - revisionHistoryLimit set to 0
+    answer: 1
+    explain: Running as non-root limits what an attacker can do inside the container and on the node.
+created: 2026-11-23
+updated: 2026-11-23

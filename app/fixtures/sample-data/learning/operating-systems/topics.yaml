@@ -1,0 +1,16 @@
+- id: process-scheduling
+  title: Process Scheduling
+  phase: processes
+  status: learning
+  skills: [os-internals]
+  depends_on: []
+  last_reviewed: 2026-11-18
+  last_score: null
+- id: virtual-memory
+  title: Virtual Memory
+  phase: memory
+  status: not-started
+  skills: [os-internals]
+  depends_on: [process-scheduling]
+  last_reviewed: null
+  last_score: null

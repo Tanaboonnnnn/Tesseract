@@ -1,0 +1,32 @@
+- id: pods
+  title: Pods
+  phase: basics
+  status: understood
+  skills: [kubernetes-ops]
+  depends_on: []
+  last_reviewed: 2026-11-20
+  last_score: 82
+- id: deployments
+  title: Deployments
+  phase: workloads
+  status: learning
+  skills: [kubernetes-ops]
+  depends_on: [pods]
+  last_reviewed: 2026-11-01
+  last_score: 55
+- id: network-policies
+  title: Network Policies
+  phase: networking
+  status: not-started
+  skills: [kubernetes-ops, network-security]
+  depends_on: [pods]
+  last_reviewed: null
+  last_score: null
+- id: rbac
+  title: RBAC
+  phase: security
+  status: not-started
+  skills: [kubernetes-ops, identity-access-management]
+  depends_on: [pods]
+  last_reviewed: null
+  last_score: null

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#030817" />
+    <script>
+      // Apply the saved theme before first paint (no flash). Mirrors src/lib/theme.ts.
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          var d = t === "dark" || (t !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.toggle("dark", d);
+          document.querySelector('meta[name="theme-color"]').setAttribute("content", d ? "#030817" : "#edf3ff");
+          // layout + colours (mirrors src/lib/theme.ts, incl. migration from the old sb-style)
+          var old = localStorage.getItem("sb-style"), map = { aurora: "aurora", crimson: "crimson", paper: "sepia", minimal: "neutral" };
+          if (old) { if (map[old] && !localStorage.getItem("sb-palette")) localStorage.setItem("sb-palette", map[old]); localStorage.removeItem("sb-style"); }
+          var ui = localStorage.getItem("sb-ui"), pal = localStorage.getItem("sb-palette");
+          if (ui && ui !== "system") document.documentElement.setAttribute("data-ui", ui);
+          if (pal && pal !== "blue") document.documentElement.setAttribute("data-palette", pal);
+          var g = localStorage.getItem("sb-transparency"); // mirrors src/lib/glass.ts
+          if (g !== null && !isNaN(+g)) document.documentElement.style.setProperty("--panel-opacity", String(1 - Math.min(80, Math.max(0, +g)) / 100));
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="description" content="Projects, learning, skills and notes — shared with your AI." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Brain" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Panya</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

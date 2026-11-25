@@ -1,0 +1,28 @@
+- id: t-001
+  title: Set up repository
+  status: done
+  priority: medium
+  due: 2026-02-05
+  phase: plan
+  done_at: 2026-02-04
+- id: t-002
+  title: Fetch the forecast API
+  status: doing
+  priority: high
+  due: 2026-03-01
+  phase: build
+  done_at: null
+- id: t-003
+  title: Design the dashboard
+  status: todo
+  priority: high
+  due: 2026-03-10
+  phase: build
+  done_at: null
+- id: t-004
+  title: Test on a phone
+  status: review
+  priority: medium
+  due: 2026-03-15
+  phase: test
+  done_at: null

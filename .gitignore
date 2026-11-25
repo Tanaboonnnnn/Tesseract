@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.claude/
+
+# Your own data and scratch files stay local (create data/ with: cd app; npm run setup)
+data/
+work/
