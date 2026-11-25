@@ -7,3 +7,5 @@ export * from "./views.ts";
 export * from "./visuals.ts";
 
 export * from "./classroom.ts";
+
+export * from "./backup.ts";

@@ -203,6 +203,10 @@ links: [projects/weather-app, skills/web-apis]
 ```
 Body Markdown with `[[wikilinks]]`.
 
+### 4.10a Offline workspace snapshot
+
+Workspace snapshots are a versioned JSON archive of validated managed records, protected against accidental corruption by SHA-256. The allow-list includes the primary Markdown/YAML records and local schedule, not machine settings, integrations, inbox, legacy undo log or the isolated Classroom database. Import creates a new data directory, never overwrites one, and is not a live-sync mechanism. The archive is private and unencrypted. See [BACKUP.md](docs/BACKUP.md).
+
 ### 4.11 Activity log — `.activity/log.jsonl`
 Every write appends: `{ ts, agent, action, entity, before, after }`.
 - UI shows **last 20 changes**, each with **undo**.
@@ -465,7 +469,7 @@ Core alone writes the local `data/.classroom/classroom.sqlite`. Revisions are im
 
 ### Isolated MCP profile
 
-`npm run mcp -- --profile classroom --data <isolated-data-directory>` exposes only `classroom_format`, `submit_course_draft`, and `get_draft_receipt`. Validation is before writes, input is capped at 256 KiB, a retry of the same request returns the original receipt, and conflicting IDs/stale revisions fail explicitly. Submission never publishes. The existing remote mode remains available for legacy workspace features but has no write path into Classroom. No production tunnel is configured by this work. The classroom profile is for isolated test data; it is not routed by the normal app or legacy tunnel. User-facing classroom implementation and real classroom creation are later steps, separate from foundation verification.
+`npm run mcp -- --profile classroom --data <isolated-data-directory>` exposes only `classroom_format`, `submit_course_draft`, `get_draft_receipt`, and `get_draft_status`. Validation is before writes, input is capped at 256 KiB, a retry of the same request returns the original receipt, and conflicting IDs/stale revisions fail explicitly. Submission never publishes. A client that requests MCP progress sees `running` when the submission handler starts. The read-only status looks up the same request ID and returns a durable `staged` receipt or `unknown` (no durable receipt; not proof that a request never ran, and not permission to replay). Queries do not repeat the write. The existing remote mode remains available for legacy workspace features but has no write path into Classroom. No production tunnel is configured by this work. The classroom profile is for isolated test data; it is not routed by the normal app or legacy tunnel. User-facing classroom implementation and real classroom creation are later steps, separate from foundation verification.
 
 ### Performance verification
 

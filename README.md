@@ -81,3 +81,5 @@ data/               your data (Markdown + YAML), not in git
 The application still uses the original workspace pages. No classroom page, publishing endpoint, real course, or tunnel integration is enabled. The new data foundation and isolated MCP profile can be verified against temporary synthetic fixtures before any real course is created.
 
 A separate `--profile classroom` MCP test process can stage drafts without any legacy live-write tools. See [SPEC §11](SPEC.md#11-tesseract-foundation-and-classroom-draft-contract). Keep this test profile local until the classroom UI and live integration are separately approved.
+
+Workspace recovery: [Offline backups and restore preview](docs/BACKUP.md). Paired-device checks: [Device QA checklist](docs/DEVICE_QA.md).

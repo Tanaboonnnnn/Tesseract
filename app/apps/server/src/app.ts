@@ -124,6 +124,7 @@ export function createApp(store: Store, options: AppOptions): Hono {
       sameSecret(c.req.header("authorization")?.replace(/^Bearer\s+/i, ""), token));
 
   app.use("*", async (c, next) => {
+    if (c.req.path.startsWith("/api/")) c.header("Cache-Control", "no-store");
     const host = (c.req.header("host") ?? "").toLowerCase();
     if (!hosts.has(host)) return c.json({ error: "FORBIDDEN", message: "Host not allowed" }, 403);
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {

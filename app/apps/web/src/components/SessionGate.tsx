@@ -9,7 +9,14 @@ import { Button, ErrorNote, inputClass } from "./ui.tsx";
  * until the device is paired once with the access token printed by `npm run lan`.
  */
 export function SessionGate({ children }: { children: ReactNode }) {
-  const session = useQuery({ queryKey: ["session"], queryFn: api.session, retry: false, refetchOnWindowFocus: false });
+  const session = useQuery({
+    queryKey: ["session"], queryFn: api.session, retry: false, networkMode: "always",
+    refetchInterval: ({ state }) => {
+      const code = state.error instanceof ApiError ? state.error.status : null;
+      if (code === 401 || code === 403 || (state.data?.local && state.error === null)) return false;
+      return 12_000;
+    },
+  });
   const err = session.error instanceof ApiError ? session.error : null;
 
   if (session.isPending) return <div className="min-h-dvh" />;
@@ -21,7 +28,16 @@ export function SessionGate({ children }: { children: ReactNode }) {
       </Screen>
     );
   }
-  return <>{children}</>;
+
+  const notice = (
+    <div role="status" className="flex flex-wrap items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm">
+      <span><strong>Cannot reach the host.</strong> Keep your computer on and check the connection before saving changes.</span>
+      <Button type="button" disabled={session.isFetching} onClick={() => void session.refetch()}>Check again</Button>
+    </div>
+  );
+  if (session.isError && !session.data) return <Screen>{notice}</Screen>;
+  // Keep the open screen and its unsaved input mounted during a transient disconnect.
+  return <>{session.isError && notice}{children}</>;
 }
 
 function Screen({ children }: { children: ReactNode }) {

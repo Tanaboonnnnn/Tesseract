@@ -91,9 +91,11 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method,
+    cache: "no-store",
+    signal,
     headers: body !== undefined ? { "content-type": "application/json" } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
@@ -167,7 +169,11 @@ export const api = {
   googleSync: () => request<SyncResult>("POST", "/google/sync", {}),
   googleDisconnect: () => request<{ ok: true }>("POST", "/google/disconnect", {}),
 
-  session: () => request<{ ok: true; local: boolean }>("GET", "/session"),
+  session: async () => {
+    const result = await request<{ app: "tesseract"; ok: true; local: boolean }>("GET", "/session", undefined, AbortSignal.timeout(4_000));
+    if (result.app !== "tesseract" || result.ok !== true || typeof result.local !== "boolean") throw new Error("Unexpected host response");
+    return result;
+  },
   pair: (token: string) => request<{ ok: true }>("POST", "/pair", { token }),
 
   activity: () => request<ActivitySummary[]>("GET", "/activity"),

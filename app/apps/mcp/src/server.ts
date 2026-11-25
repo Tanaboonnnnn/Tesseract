@@ -170,7 +170,7 @@ const CLASSROOM_EXAMPLE = {
 function classroomServer(store: Store): McpServer {
   const c = new ClassroomStore(store.dataDir);
   const server = new McpServer({ name: "tesseract-classroom", version: "0.1.0" }, {
-    instructions: "Draft-only. Use classroom_format if you need the bundle shape. Submit once with a stable request_id; look up that ID before retrying a timed-out request. Only the owner can publish locally. Do not send secrets, raw HTML, copied articles, or private files.",
+    instructions: "Draft-only. Use classroom_format if you need the bundle shape. Submit once with a stable request_id. On timeout call get_draft_status first. Unknown means no durable receipt, not proof of no execution. Never automatically replay a write; if approved, reuse the same ID and payload. Only the owner can publish locally. Do not send secrets, raw HTML, copied articles, or private files.",
   });
   server.registerTool("classroom_format", { description: "Compact bundle example and constraints.", annotations: READ }, () => ok({
     example: CLASSROOM_EXAMPLE, limits: { max_bytes: 262144, max_lessons: 24 },
@@ -180,8 +180,20 @@ function classroomServer(store: Store): McpServer {
   }));
   server.registerTool("get_draft_receipt", { description: "Look up receipt by request ID without generating another draft.", inputSchema: { request_id: ClassroomSubmitSchema.shape.request_id }, annotations: READ },
     ({ request_id }) => run(() => c.getReceipt(request_id) ?? { ok: false, status: "not_found" }));
+  server.registerTool("get_draft_status", { description: "Read-only status by request ID. Unknown means there is no durable receipt yet. Does not replay.", inputSchema: { request_id: ClassroomSubmitSchema.shape.request_id }, annotations: READ },
+    ({ request_id }) => run(() => {
+      const receipt = c.getReceipt(request_id);
+      return receipt ? { request_id, status: "staged", receipt } : { request_id, status: "unknown" };
+    }));
   server.registerTool("submit_course_draft", { description: "Validate and stage one sourced course bundle. Same ID and payload return the same receipt. Never publishes.", inputSchema: ClassroomSubmitSchema.shape, annotations: WRITE },
-    (input) => run(() => c.submit(input)));
+    async (input, extra) => {
+      const progressToken = extra._meta?.progressToken;
+      if (progressToken !== undefined) {
+        await extra.sendNotification({ method: "notifications/progress", params: { progressToken, progress: 0, total: 1, message: "running" } });
+      }
+      if (extra.signal.aborted) return { isError: true, content: [{ type: "text", text: "Request cancelled before staging. Check status by request ID." }] };
+      return run(() => c.submit(input));
+    });
   return server;
 }
 

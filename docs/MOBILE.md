@@ -49,3 +49,5 @@ the token (stored as a secure cookie on that device). The token is saved in
 - Lost a phone or shared the token by mistake? Start once with `npm run lan -- --reset-token`. All devices must pair again.
 - The app shell (HTML/JS/icons) is visible without pairing, but it contains no data. All `/api` data needs pairing.
 - The phone caches only the app shell, never your data.
+
+If the host disappears while a paired screen is open, Tesseract displays a connection warning and keeps that screen mounted while you reconnect. Check the host before saving; this is not offline editing or automatic cross-device sync. For the release checks see [DEVICE_QA.md](DEVICE_QA.md).

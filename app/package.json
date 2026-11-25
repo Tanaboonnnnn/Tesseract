@@ -21,7 +21,8 @@
     "autostart:on": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop.ps1 autostart-on",
     "autostart:off": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop.ps1 autostart-off",
     "test": "node --test scripts/setup-data.test.ts && npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "backup": "node scripts/workspace-backup.ts"
   },
   "engines": {
     "node": ">=22"

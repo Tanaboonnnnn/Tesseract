@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * node src/main.ts [--data <dir>] [--port 4320] [--lan] [--allow-host a,b] [--reset-token] [--idle-exit <min>]
+ * node src/main.ts [--data <dir>] [--port 4320] [--lan] [--allow-host a,b] [--reset-token] [--idle-exit <min>] [--restore-preview]
  *
  * Default: listens on 127.0.0.1 only — nothing else on the network can reach it.
  * --lan:   also listens on this machine's network addresses (Wi-Fi, Tailscale) for your phone.
@@ -53,16 +53,21 @@ function lanAddresses(): string[] {
 }
 
 const port = Number(arg("--port") ?? process.env.PORT ?? 4320);
-const store = new Store({ agent: "web-ui", dataDir: arg("--data"), gitCommit: process.env.BRAIN_GIT_COMMIT === "1" });
+const preview = flag("--restore-preview");
+const dataDir = arg("--data");
+if (preview && (!dataDir || dataDir.startsWith("--") || ["--lan", "--desktop", "--allow-host", "--reset-token"].some(flag))) {
+  throw new Error("Restore preview requires explicit --data and loopback only");
+}
+const store = new Store({ agent: "web-ui", dataDir, gitCommit: !preview && process.env.BRAIN_GIT_COMMIT === "1" });
 
 // Google Calendar: syncs at start and every 15 min while running (once connected).
-const google = googleService(store);
-google.startAutoSync(15);
+const google = preview ? undefined : googleService(store);
+google?.startAutoSync(15);
 
 const extraHosts = (arg("--allow-host") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
 // Remote access (off by default): tunnel-client child process, stopped with the server.
-const remote = remoteControl();
-const windowCtl = windowControl();
+const remote = preview ? undefined : remoteControl();
+const windowCtl = preview ? undefined : windowControl();
 
 /** LAN mode (phone & tablet). Starts from --lan; the desktop switch changes it in-process. */
 const mode = { lan: flag("--lan"), addresses: [] as string[], token: undefined as string | undefined };
@@ -102,7 +107,7 @@ function buildApp() {
   });
 }
 let app = buildApp();
-process.on("exit", () => remote.dispose());
+process.on("exit", () => remote?.dispose());
 for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => process.exit(0));
 
 // --idle-exit <minutes>: quit after this long without requests (desktop launcher restarts it).
@@ -112,7 +117,7 @@ let lastRequest = Date.now();
 if (idleMinutes > 0) {
   setInterval(() => {
     // While remote access is on, ChatGPT needs this server even with the window closed.
-    if (Date.now() - lastRequest > idleMinutes * 60_000 && !remote.state().on) {
+    if (Date.now() - lastRequest > idleMinutes * 60_000 && !remote?.state().on) {
       console.log(`Idle for ${idleMinutes} min, exiting.`);
       process.exit(0);
     }

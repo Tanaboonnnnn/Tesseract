@@ -397,7 +397,7 @@ describe("stdio process", () => {
 
 it("classroom profile stages an inert draft and cannot invoke legacy live writers", async () => {
   const { client, call, store } = await connect("classroom-synthetic-test", { profile: "classroom" });
-  expect((await client.listTools()).tools.map((t) => t.name).sort()).toEqual(["classroom_format", "get_draft_receipt", "submit_course_draft"]);
+  expect((await client.listTools()).tools.map((t) => t.name).sort()).toEqual(["classroom_format", "get_draft_receipt", "get_draft_status", "submit_course_draft"]);
   const format = await call("classroom_format");
   const first = await call("submit_course_draft", { request_id: "synthetic-01", bundle: format.example });
   expect(first).toMatchObject({ ok: true, status: "staged" });
@@ -408,3 +408,40 @@ it("classroom profile stages an inert draft and cannot invoke legacy live writer
   }
   expect(store.listLearning().some((item) => item.id === format.example.course_id)).toBe(false);
 });
+
+it("reports draft execution via stdio and recovers the same receipt after reconnecting", async () => {
+  const dataDir = tempDataDir();
+  const args = [resolve(import.meta.dirname, "../src/main.ts"), "--profile", "classroom", "--data", dataDir];
+  const start = async () => {
+    const client = new Client({ name: "isolated-draft-stdio", version: "1" });
+    clients.push(client);
+    await client.connect(new StdioClientTransport({ command: process.execPath, args, stderr: "pipe" }));
+    return client;
+  };
+  const call = async (client: Client, name: string, args: Record<string, unknown> = {}, messages?: string[]) => {
+    const result = (await client.callTool({ name, arguments: args }, undefined, messages ? {
+      onprogress: ({ message }) => { if (message) messages.push(message); },
+    } : undefined)) as { content: { text: string }[]; isError?: boolean };
+    expect(result.isError).not.toBe(true);
+    return JSON.parse(result.content[0]!.text);
+  };
+  const first = await start();
+  const request_id = "synthetic-stdio-01";
+  expect(await call(first, "get_draft_status", { request_id })).toEqual({ request_id, status: "unknown" });
+  const { example } = await call(first, "classroom_format");
+  const messages: string[] = [];
+  const receipt = await call(first, "submit_course_draft", { request_id, bundle: example }, messages);
+  expect(messages).toEqual(["running"]);
+  expect(receipt).toMatchObject({ ok: true, status: "staged" });
+  await first.close();
+  const again = await start();
+  expect(await call(again, "get_draft_status", { request_id })).toEqual({ request_id, status: "staged", receipt });
+  expect(await call(again, "submit_course_draft", { request_id, bundle: example })).toEqual(receipt);
+  expect(await call(again, "submit_course_draft", { request_id, bundle: { ...example, title: "Different" } })).toMatchObject({
+    ok: false, issues: [{ code: "REQUEST_CONFLICT" }],
+  });
+  expect(await call(again, "submit_course_draft", { request_id: "synthetic-rejected", bundle: {} })).toMatchObject({ ok: false });
+  expect(await call(again, "get_draft_status", { request_id: "synthetic-rejected" })).toEqual({
+    request_id: "synthetic-rejected", status: "unknown",
+  });
+}, 20_000);
