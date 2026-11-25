@@ -12,6 +12,7 @@ import { texToMathML } from "../../lib/math.ts";
 import { Markdown } from "../Markdown.tsx";
 import { HtmlFrame } from "./HtmlFrame.tsx";
 import { Plot } from "./Plot.tsx";
+import { LessonMotion } from "./LessonMotion.tsx";
 import { PALETTE } from "./shared.ts";
 import { Sim } from "./Sims.tsx";
 import { Visual } from "./Visual.tsx";
@@ -30,6 +31,7 @@ const KIND_LABEL: Record<LessonBlock["kind"], string> = {
   text: "Idea",
   formula: "Formula",
   trace: "Step by step",
+  motion: "Animated walkthrough",
   plot: "Graph",
   sim: "Simulation",
   visual: "Diagram",
@@ -63,7 +65,7 @@ export function Lesson({ visual, learning }: { visual: Extract<VisualData, { typ
 }
 
 function blockTitle(b: LessonBlock): string {
-  if ((b.kind === "trace" || b.kind === "sim" || b.kind === "plot") && b.title) return b.title;
+  if ((b.kind === "trace" || b.kind === "motion" || b.kind === "sim" || b.kind === "plot") && b.title) return b.title;
   return KIND_LABEL[b.kind];
 }
 
@@ -79,6 +81,8 @@ function Block({ b, learning }: { b: LessonBlock; learning: string }) {
       return <FormulaBlock b={b} />;
     case "trace":
       return <TraceBlock b={b} />;
+    case "motion":
+      return <LessonMotion block={b} />;
     case "plot":
       return <Plot data={{ ...b, title: undefined }} />;
     case "sim":
@@ -190,14 +194,14 @@ function TraceBlock({ b }: { b: Extract<LessonBlock, { kind: "trace" }> }) {
         <p>{step.text}</p>
         {step.tex && <Tex tex={step.tex} className="text-base" />}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button className="grid size-8 place-items-center rounded-lg ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Previous step" disabled={i === 0} onClick={() => setI(i - 1)}>
           <ChevronLeft size={16} />
         </button>
         <button className="grid size-8 place-items-center rounded-lg ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Next step" disabled={i >= b.steps.length - 1} onClick={() => setI(i + 1)}>
           <ChevronRight size={16} />
         </button>
-        <div className="flex gap-1">
+        <div className="flex max-w-full flex-wrap gap-1">
           {b.steps.map((_, j) => (
             <button key={j} aria-label={`Step ${j + 1}`} onClick={() => setI(j)} className={cn("h-1.5 w-5 rounded-full", j <= i ? "bg-sky-400" : "bg-slate-400/25")} />
           ))}

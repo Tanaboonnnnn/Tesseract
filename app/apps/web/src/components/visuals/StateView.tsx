@@ -12,7 +12,7 @@ const ROW = 120;
 const PAD = 40;
 const TOP = 60; // room for self-loops
 
-export function StateView({ v, fx }: { v: V; fx: Fx }) {
+export function StateView({ v, fx, step }: { v: V; fx: Fx; step: number }) {
   const { states, transitions } = v.data;
 
   // Level = BFS distance from the initial state (or the first state). Unreached states go last.
@@ -55,6 +55,7 @@ export function StateView({ v, fx }: { v: V; fx: Fx }) {
             return (
               <g key={t.id} className={fx.cls(t.id)}>
                 <path d={d} fill="none" stroke={color} strokeWidth={1.8} />
+                {fx.lit(t.id) && <FlowDot key={step} path={d} />}
                 <Arrow at={{ x: a.x + 12, y: a.y - R + 3 }} from={{ x: a.x + 30, y: a.y - R - 30 }} color={color} />
                 <text x={a.x} y={a.y - R - 38} textAnchor="middle" className="fill-slate-600 text-[12px] font-semibold dark:fill-slate-300" {...halo}>
                   {t.label}
@@ -77,9 +78,11 @@ export function StateView({ v, fx }: { v: V; fx: Fx }) {
           const p0 = toward(a, c, R);
           const p2 = toward(b, c, R + 1);
           const mid = { x: 0.25 * p0.x + 0.5 * c.x + 0.25 * p2.x, y: 0.25 * p0.y + 0.5 * c.y + 0.25 * p2.y };
+          const d = `M ${p0.x} ${p0.y} Q ${c.x} ${c.y} ${p2.x} ${p2.y}`;
           return (
             <g key={t.id} className={fx.cls(t.id)}>
-              <path d={`M ${p0.x} ${p0.y} Q ${c.x} ${c.y} ${p2.x} ${p2.y}`} fill="none" stroke={color} strokeWidth={1.8} />
+              <path d={d} fill="none" stroke={color} strokeWidth={1.8} />
+              {fx.lit(t.id) && <FlowDot key={step} path={d} />}
               <Arrow at={p2} from={c} color={color} />
               {t.label && (
                 <text x={mid.x} y={mid.y - 6} textAnchor="middle" className="fill-slate-600 text-[12px] font-semibold dark:fill-slate-300" {...halo}>
@@ -119,6 +122,10 @@ export function StateView({ v, fx }: { v: V; fx: Fx }) {
       </svg>
     </Fit>
   );
+}
+
+function FlowDot({ path }: { path: string }) {
+  return <circle aria-hidden="true" className="vis-flow-dot" r={4} fill={ACCENT} style={{ offsetPath: `path("${path}")` }} />;
 }
 
 export function Arrow({ at, from, color }: { at: P; from: P; color: string }) {

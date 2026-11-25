@@ -348,6 +348,12 @@ updated: 2026-11-24
     node_modules at build). Size caps: lesson 250 KB, html 450 KB, others 64 KB.
   - AI guidance: lessons for formulas/calculations/algorithms; plot for any graph; diagrams for structure only; html last.
 
+- **Native lesson motion** — a lesson block with `kind: motion`, `mode: flow | reveal | compare`, optional title,
+  2–8 unique `items [{id, label, detail?}]`, and 2–12 `steps [{focus, text}]`. Every focus references an item and adjacent
+  steps use different focus. The renderer defines the effects; no scripts, markup rendering, or external assets in this block.
+  Motion never loops and respects the OS reduced-motion preference; text and Previous/Next/Reset remain usable.
+  AI clients use `visual_formats(type: "lesson")` for authoring guidance and the sample payload.
+
 ### 4.15 Learning map — derived, nothing stored (Phase 6d)
 Each roadmap/course is shown with the same diagram as §4.14, built from its topics (§4.5):
 - Columns = `phases` that have topics (roadmap order). Cards = topics. Links = `depends_on` (prerequisite → topic).
@@ -422,8 +428,10 @@ List/get tools return compact summaries by default; `detail: true` for full data
 - **Remote access (Phase 8a):** OpenAI Secure MCP Tunnel. The server runs `~/.tesseract/bin/tunnel-client` (outbound
   only, no public URL) which starts the MCP server with `--profile remote --agent remote-chatgpt`. Off by default; on for
   1 / 8 / 24 h from this PC only (`POST /api/remote/start|stop`, local-only); stops at expiry and with the server;
-  `--idle-exit` is suspended while on. Key in `~/.tesseract/openai-tunnel-key` (Tunnels: Read + Use), passed only in
-  the child's env, never logged or returned. Setup: docs/REMOTE_ACCESS.md.
+  `--idle-exit` is suspended while on. Settings → OpenAI Tunnel saves the ID and restricted runtime key from this
+  PC only. The runtime key uses Windows DPAPI or Linux Secret Service (no plaintext fallback for new setup);
+  manual configurations remain supported. The API never returns keys; new logs retain fixed diagnostics only.
+  Connected requires the official client's loopback readiness check. Setup: docs/REMOTE_ACCESS.md.
   Measured (private memory): ~120 MB before → ~60 MB API only, ~70–95 MB with the app open (Phase 6 features included). Tauri/Electron rejected: no memory gain (same WebView2 + Node) or more (Chromium).
 
 ## 8. Tech stack

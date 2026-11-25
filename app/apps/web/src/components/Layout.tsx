@@ -2,6 +2,7 @@
 import { Suspense } from "react";
 import { Outlet } from "react-router";
 import { Loading } from "./ui.tsx";
+import { InsightsNav } from "./InsightsNav.tsx";
 import { cn } from "../lib/format.ts";
 import { useLayout, type LayoutId } from "../lib/theme.ts";
 import { BottomNav, RailNav, SidebarNav, StatusBar, TabsNav, TopNav, WorkspaceNav, WorkspaceTrail, EditorialNav } from "./Nav.tsx";
@@ -18,6 +19,7 @@ const FRAME: Record<LayoutId, string> = {
   linear: "lg:pl-56",
   notion: "lg:pl-64",
   editorial: "",
+  insights: "lg:pl-60",
 };
 
 export function Layout() {
@@ -31,6 +33,7 @@ export function Layout() {
       {(layout === "linear" || layout === "notion") && <WorkspaceNav kind={layout} />}
       {layout === "notion" && <WorkspaceTrail />}
       {layout === "editorial" && <EditorialNav />}
+      {layout === "insights" && <InsightsNav />}
 
       <main className="sb-main mx-auto max-w-6xl px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
         <Suspense fallback={<Loading />}><Outlet /></Suspense>

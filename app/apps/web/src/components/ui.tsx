@@ -1,5 +1,5 @@
 import { CircleAlert, X } from "lucide-react";
-import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "../lib/format.ts";
 
 /** A "system window": glowing frame with corner brackets. */
@@ -103,6 +103,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 
 export function Dialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -116,6 +117,7 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
       className="panel-solid m-auto w-[min(440px,calc(100vw-2rem))] rounded-xl p-0 text-slate-800 backdrop:bg-slate-950/50 backdrop:backdrop-blur-[3px] dark:text-slate-200"
@@ -123,7 +125,7 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
       {open && (
         <div className="p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="hud-title text-base">{title}</h3>
+            <h3 id={titleId} className="hud-title text-base">{title}</h3>
             <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-[var(--lane)]" aria-label="Close">
               <X size={16} />
             </button>

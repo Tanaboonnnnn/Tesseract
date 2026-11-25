@@ -145,45 +145,66 @@ html[data-palette="amber"].dark {
   --chart-accent: #ffb000; --chart-grid: rgb(255 176 0 / 0.16); --chart-text: #d9b46a; --chart-glow: drop-shadow(0 0 5px rgb(255 176 0 / 0.55));
 }
 
-/* indigo: adapted semantic colours, independent of navigation. */
+/* Roles match each OpenDesign DESIGN.md in its reference mode (catalogue preview wins if it differs). Dark counterparts
+   for Notion and Warm Editorial preserve Tesseract's independent light/dark switch. */
 html[data-palette="indigo"] {
-  --preset-cta: #4e52b5; --preset-highlight: #8291ff; --color-sidebar: #101114; --glow-rgb: 130 145 255;
-  --bg: #f4f5fa; --panel-solid: #fdfdff; --panel-base: 253 253 255; --panel-opacity: 1;
-  --chart-accent: #4e52b5; --chart-text: #48516b;
+  --preset-cta: #5e6ad2; --preset-highlight: #7170ff; --preset-fg: #191a1b;
+  --color-sidebar: #0f1011; --glow-rgb: 113 112 255;
+  --bg: #f7f8f8; --panel-solid: #ffffff; --panel-base: 255 255 255; --panel-opacity: 1;
+  --preset-border: #d0d6e0; --preset-lane: #f3f4f5;
+  --chart-accent: #5e6ad2; --chart-text: #3e3e44;
 }
 html[data-palette="indigo"].dark {
-  --bg: #101114; --panel-solid: #1a1c23; --panel-base: 26 28 35;
-  --chart-accent: #8291ff; --chart-text: #c4c6db;
+  --bg: #08090a; --panel-solid: #191a1b; --panel-base: 25 26 27; --preset-fg: #f7f8f8;
+  --preset-border: rgb(255 255 255 / .08); --preset-lane: #28282c;
+  --chart-accent: #7170ff; --chart-text: #d0d6e0;
 }
-
-/* paper: adapted semantic colours, independent of navigation. */
 html[data-palette="paper"] {
-  --preset-cta: #1264a6; --preset-highlight: #83baf1; --color-sidebar: #232220; --glow-rgb: 131 186 241;
-  --bg: #f6f3ef; --panel-solid: #fdfbf8; --panel-base: 253 251 248; --panel-opacity: 1;
-  --chart-accent: #1264a6; --chart-text: #5d5146;
+  --preset-cta: #0075de; --preset-highlight: #0075de; --preset-fg: #000000f2;
+  --color-sidebar: #31302e; --glow-rgb: 0 117 222;
+  --bg: #ffffff; --panel-solid: #f6f5f4; --panel-base: 246 245 244; --panel-opacity: 1;
+  --preset-border: rgb(0 0 0 / .10); --preset-lane: #f6f5f4;
+  --chart-accent: #0075de; --chart-text: #615d59;
 }
 html[data-palette="paper"].dark {
-  --bg: #232220; --panel-solid: #2c2b28; --panel-base: 44 43 40;
-  --chart-accent: #83baf1; --chart-text: #cec4b7;
+  --bg: #242321; --panel-solid: #31302e; --panel-base: 49 48 46; --preset-fg: #f6f5f4;
+  --preset-highlight: #83baf1; --preset-border: rgb(246 245 244 / .14); --preset-lane: #3a3835;
+  --chart-accent: #83baf1; --chart-text: #d0cac4;
 }
-
-/* terracotta: adapted semantic colours, independent of navigation. */
 html[data-palette="terracotta"] {
-  --preset-cta: #a33f25; --preset-highlight: #f09e86; --color-sidebar: #241915; --glow-rgb: 240 158 134;
-  --bg: #faf7f2; --panel-solid: #fffaf4; --panel-base: 255 250 244; --panel-opacity: 1;
-  --chart-accent: #a33f25; --chart-text: #694735;
+  --preset-cta: #9b5b32; --preset-highlight: #9b5b32; --preset-fg: #201914;
+  --color-sidebar: #201914; --glow-rgb: 155 91 50;
+  --bg: #fbf6ee; --panel-solid: #fffdf8; --panel-base: 255 253 248; --panel-opacity: 1;
+  --preset-border: #ded2c3; --preset-lane: #f1e3cf;
+  --chart-accent: #9b5b32; --chart-text: #4c4037;
 }
 html[data-palette="terracotta"].dark {
-  --bg: #241915; --panel-solid: #32221d; --panel-base: 50 34 29;
+  --bg: #201914; --panel-solid: #322720; --panel-base: 50 39 32; --preset-fg: #fbf6ee;
+  --preset-highlight: #f09e86; --preset-border: rgb(251 246 238 / .14); --preset-lane: #413129;
   --chart-accent: #f09e86; --chart-text: #e5c4b6;
 }
 
-html:is([data-palette="indigo"], [data-palette="paper"], [data-palette="terracotta"]),
-html:is([data-palette="indigo"], [data-palette="paper"], [data-palette="terracotta"]).dark {
+/* Garden: Insights' neutral whites and restrained green accents. */
+html[data-palette="garden"] {
+  --preset-cta: #367e12; --preset-highlight: #367e12; --preset-fg: #1f261d;
+  --color-sidebar: #edf1e9; --glow-rgb: 65 145 28;
+  --bg: #f9faf8; --panel-solid: #ffffff; --panel-base: 255 255 255; --panel-opacity: 1;
+  --preset-border: #dfe5db; --preset-lane: #eef3e9;
+  --chart-accent: #367e12; --chart-text: #495744;
+}
+html[data-palette="garden"].dark {
+  --bg: #161b15; --panel-solid: #1e261c; --panel-base: 30 38 28; --preset-fg: #e9f0e4;
+  --preset-highlight: #a6d98e; --preset-border: #394737; --preset-lane: #2c3926;
+  --chart-accent: #a6d98e; --chart-text: #c3d5bf;
+}
+
+html:is([data-palette="indigo"], [data-palette="paper"], [data-palette="terracotta"], [data-palette="garden"]),
+html:is([data-palette="indigo"], [data-palette="paper"], [data-palette="terracotta"], [data-palette="garden"]).dark {
   --bg-glow: transparent; --grid: transparent; --corner: var(--line-strong);
-  --line: color-mix(in srgb, currentColor 13%, transparent);
+  color: var(--preset-fg);
+  --line: var(--preset-border);
   --line-strong: color-mix(in srgb, var(--preset-cta) 55%, transparent);
-  --lane: color-mix(in srgb, var(--preset-cta) 10%, transparent);
+  --lane: var(--preset-lane);
   --glow: none; --glow-hover: 0 0 0 1px var(--line-strong);
   --chart-grid: var(--line); --chart-glow: none;
   --color-accent-50: color-mix(in srgb, var(--preset-cta) 7%, white);

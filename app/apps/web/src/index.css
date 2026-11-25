@@ -320,3 +320,47 @@
 .vis-dim { opacity: 0.22; }
 .vis-hidden { opacity: 0; }
 .vis-lit { filter: drop-shadow(0 0 5px rgb(var(--glow-rgb) / 0.75)); }
+
+/* Motion reinforces the current learning step; it is never a background loop. */
+.vis-step-caption { animation: vis-caption-in 220ms ease-out both; }
+.vis-flow-dot { display: none; }
+@supports (offset-path: path("M 0 0 L 1 1")) {
+  .vis-flow-dot {
+    display: inline;
+    pointer-events: none;
+    animation: vis-follow-arrow 760ms cubic-bezier(.22,.65,.36,1) both;
+  }
+}
+@keyframes vis-caption-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes vis-follow-arrow {
+  0% { offset-distance: 0%; opacity: 0; }
+  18% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vis-el { transition: none; }
+  .vis-step-caption { animation: none; }
+  .vis-flow-dot { display: none; animation: none; }
+}
+
+/* Native lesson scenes: one short animation per interaction, with no steady-state loop. */
+.lesson-motion-flow { animation: lesson-focus-in 280ms ease-out both; }
+.lesson-motion-reveal { animation: lesson-reveal-in 340ms cubic-bezier(.2,.65,.3,1) both; }
+.lesson-motion-compare { animation: lesson-compare-in 280ms ease-out both; }
+.lesson-flow-signal {
+  position: absolute; inset: 0 auto auto 25px; width: 4px; height: 4px;
+  border-radius: 50%; background: var(--color-accent-500);
+  animation: lesson-signal 520ms ease-in-out both;
+}
+@keyframes lesson-focus-in { from { opacity: .6; } to { opacity: 1; } }
+@keyframes lesson-reveal-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes lesson-compare-in { from { opacity: .35; transform: translateX(5px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes lesson-signal { 0% { opacity: 0; transform: translateY(0); } 32% { opacity: 1; } 100% { opacity: 0; transform: translateY(16px); } }
+@media (prefers-reduced-motion: reduce) {
+  .lesson-motion-flow, .lesson-motion-reveal, .lesson-motion-compare { animation: none; }
+  .lesson-flow-signal { display: none; }
+}

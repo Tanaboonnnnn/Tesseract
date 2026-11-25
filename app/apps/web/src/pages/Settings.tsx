@@ -42,9 +42,9 @@ export function Settings() {
         <PhoneAccess />
       </Card>
       <Card className="mb-6">
-        <SectionTitle>Remote access (ChatGPT)</SectionTitle>
-        <RemoteAccess />
-        <p className="mt-2 text-xs text-slate-500">Lets ChatGPT on the web or your phone reach a read-mostly Tesseract through OpenAI's outbound-only tunnel. Setup: docs/REMOTE_ACCESS.md.</p>
+        <SectionTitle>OpenAI Tunnel</SectionTitle>
+        <RemoteAccess settings />
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">Lets ChatGPT on the web or your phone reach a read-mostly Tesseract through OpenAI's outbound-only tunnel. Setup: docs/REMOTE_ACCESS.md.</p>
       </Card>
     </>
   );
@@ -59,6 +59,7 @@ function LayoutPicker() {
   const suggested = PALETTES.find((p) => p.id === current.palette)!;
   return (
     <>
+      <p className="mb-3 text-xs text-slate-600 dark:text-slate-400">Switching layouts applies its matching colours. You can choose another palette below.</p>
       <div role="radiogroup" aria-label="Layout" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {LAYOUTS.map((l) => (
           <button
@@ -66,10 +67,7 @@ function LayoutPicker() {
             role="radio"
             aria-checked={l.id === layout}
             aria-label={l.name}
-            onClick={() => {
-              setLayout(l.id);
-              if ("inspired" in l && l.id !== layout) setPalette(l.palette);
-            }}
+            onClick={() => setLayout(l.id)}
             className={cn(
               "group rounded-xl p-2 text-left ring-1 transition",
               l.id === layout ? "bg-[var(--lane)] ring-2 ring-accent-500" : "ring-[var(--line)] hover:ring-accent-400/60",
@@ -101,6 +99,19 @@ function Mini({ id }: { id: LayoutId }) {
   const box = "h-20 w-full overflow-hidden rounded-md bg-[var(--bg)] ring-1 ring-[var(--line)]";
   const card = "rounded-[3px] bg-[var(--panel-solid)] ring-1 ring-[var(--line)]";
   const accent = { background: "var(--color-accent-500)" };
+  if (id === "insights") {
+    return (
+      <div aria-hidden="true" className="flex h-20 gap-1.5 rounded-md border border-[#dae1d6] bg-[#f9faf8] p-1.5">
+        <span className="w-2.5 rounded-sm bg-[#dfe9d9]" />
+        <span className="w-6 rounded-sm border border-[#e2e7df] bg-white" />
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="h-2 rounded-sm border border-[#e2e7df] bg-white" />
+          <span className="grid grid-cols-3 gap-1">{[1, 2, 3].map((n) => <i key={n} className="h-3 rounded-sm bg-[#e4f0db]" />)}</span>
+          <span className="grid flex-1 grid-cols-2 gap-1">{[1, 2].map((n) => <i key={n} className="rounded-sm border border-[#e2e7df] bg-white" />)}</span>
+        </span>
+      </div>
+    );
+  }
   if (id === "linear" || id === "notion" || id === "editorial") {
     const editorial = id === "editorial";
     const paper = id === "notion";

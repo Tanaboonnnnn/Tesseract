@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, ChevronLeft, ChevronRight, Link2, RefreshCw, Unlink } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
-import { Button, Card, Dialog, Empty, ErrorNote, Field, inputClass, Loading, PageHeader, SectionTitle } from "../components/ui.tsx";
+import { Button, Card, Dialog, ErrorNote, Field, inputClass, Loading, PageHeader, SectionTitle } from "../components/ui.tsx";
 import { api, type GoogleInfo, type ScheduleEvent, type ScheduleItem } from "../lib/api.ts";
 import { cn, todayIso } from "../lib/format.ts";
 import { useNow } from "../lib/now.ts";
@@ -97,38 +97,48 @@ export function Schedule() {
                 <ChevronRight size={16} />
               </Button>
             </div>
-            <Button onClick={() => setEditing("new")}>
+            <Button className="shadow-none hover:shadow-none" onClick={() => setEditing("new")}>
               <CalendarPlus size={16} /> Add
             </Button>
           </div>
         }
       />
 
-      <div className="seg mb-4 w-fit max-w-full overflow-x-auto" role="group" aria-label="Show">
-        {PICKS.map((p) => (
-          <button key={p.id} aria-pressed={isOn(p)} onClick={() => go(p.view, p.anchor)}>
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {isPending ? (
-        <Loading />
-      ) : error ? (
-        <ErrorNote error={error} />
-      ) : (
-        <div className={cn("grid gap-3", view === "week" && "sm:grid-cols-2 xl:grid-cols-7", view === "3days" && "md:grid-cols-3")}>
-          {days.map((d) => (
-            <DayColumn
-              key={d}
-              day={d}
-              today={today}
-              items={data.items.filter((i) => i.date === d)}
-              onEdit={async (id) => setEditing(await api.event(id))}
-            />
+      <section aria-label="Calendar agenda">
+        <div className="seg mb-3 w-fit max-w-full flex-wrap" role="group" aria-label="Show">
+          {PICKS.map((p) => (
+            <button key={p.id} aria-pressed={isOn(p)} onClick={() => go(p.view, p.anchor)}>
+              {p.label}
+            </button>
           ))}
         </div>
-      )}
+
+        {isPending ? (
+          <Loading />
+        ) : error ? (
+          <ErrorNote error={error} />
+        ) : (
+          <div
+            className={cn(
+              "grid overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-solid)]",
+              view === "week" && "xl:grid-cols-7 xl:divide-x xl:divide-y-0",
+              view === "3days" && "md:grid-cols-3 md:divide-x md:divide-y-0",
+              "divide-y divide-[var(--line)]",
+            )}
+          >
+            {days.map((d) => (
+              <DayColumn
+                key={d}
+                day={d}
+                today={today}
+                items={data.items.filter((i) => i.date === d)}
+                onEdit={async (id) => setEditing(await api.event(id))}
+              />
+            ))}
+          </div>
+        )}
+
+      </section>
 
       <GooglePanel />
 
@@ -145,22 +155,29 @@ export function Schedule() {
 function DayColumn({ day, today, items, onEdit }: { day: string; today: string; items: ScheduleItem[]; onEdit: (id: string) => void }) {
   const navigate = useNavigate();
   const isToday = day === today;
+  const dayLabel = relative(day, today);
   const open = (i: ScheduleItem) => {
     if (i.kind === "event") onEdit(i.key.slice("event:".length));
     else if (i.ref) navigate(`/${i.ref}`);
   };
   return (
-    <Card className={cn("min-h-28 p-3", isToday && "ring-1 ring-accent-400 dark:ring-sky-400/60")}>
-      <p className={cn("mb-2 flex items-baseline gap-1.5 font-display text-sm font-semibold tracking-wider uppercase", isToday ? "text-accent-600 dark:text-sky-300" : "text-slate-500")}>
-        {dayName(day)} <span className="text-xs font-normal tracking-normal normal-case">{dayNum(day)}</span>
-        {relative(day, today) && (
-          <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[10px] tracking-wider", isToday ? "bg-accent-500/15 text-accent-600 dark:text-sky-300" : "bg-slate-400/15 text-slate-500")}>
-            {relative(day, today)}
-          </span>
+    <section
+      aria-label={`${dayName(day, "long")}, ${dayNum(day)}`}
+      aria-current={isToday ? "date" : undefined}
+      className={cn("min-w-0 px-3 py-3 xl:min-h-28", isToday && "bg-[var(--lane)]")}
+    >
+      <header className="mb-3">
+        <h2 className={cn("text-sm leading-tight font-semibold", isToday && "text-accent-700 dark:text-accent-300")}>
+          {dayName(day)} <span className="whitespace-nowrap font-medium">{dayNum(day)}</span>
+        </h2>
+        {dayLabel && (
+          <p className={cn("mt-0.5 text-xs", isToday ? "font-semibold text-accent-700 dark:text-accent-300" : "text-slate-600 dark:text-slate-400")}>
+            {dayLabel}
+          </p>
         )}
-      </p>
+      </header>
       {items.length === 0 ? (
-        <p className="text-xs text-slate-400">—</p>
+        <p className="text-xs text-slate-600 dark:text-slate-400">No events</p>
       ) : (
         <ul className="space-y-1.5">
           {items.map((i) => (
@@ -183,7 +200,7 @@ function DayColumn({ day, today, items, onEdit }: { day: string; today: string; 
           ))}
         </ul>
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -291,6 +308,20 @@ function GooglePanel() {
   const settings = useMutation({ mutationFn: api.googleSettings, onSettled: refresh });
 
   if (!g?.available) return null;
+  if (!g.client && !g.connected) {
+    return (
+      <details className="mt-5 rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] text-sm">
+        <summary className="cursor-pointer rounded-lg px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-2">
+          <span className="ml-1 font-semibold">Google Calendar</span>
+          <span className="ml-2 text-xs text-slate-600 dark:text-slate-400">Not set up</span>
+        </summary>
+        <p className="border-t border-[var(--line)] px-4 py-3 text-slate-600 dark:text-slate-400">
+          Save your Google OAuth client file as <code className="break-all">~/.tesseract/google-client.json</code>.
+          Follow <code className="break-all">docs/GOOGLE_CALENDAR.md</code>, then reload this page.
+        </p>
+      </details>
+    );
+  }
   return (
     <Card className="mt-6">
       <SectionTitle>Google Calendar</SectionTitle>
@@ -340,17 +371,6 @@ function GoogleState({ g }: { g: GoogleInfo }) {
         {g.last_sync ? `Last sync ${ago(g.last_sync)}.` : "Not synced yet."}
         {g.last_error && <span className="block text-rose-600 dark:text-rose-300">{g.last_error}</span>}
       </p>
-    );
-  }
-  if (!g.client) {
-    return (
-      <div className="text-sm text-slate-500 dark:text-slate-400">
-        <Empty>Not set up.</Empty>
-        <p>
-          Save your Google OAuth client file as <code>~/.tesseract/google-client.json</code> (steps in{" "}
-          <code>docs/GOOGLE_CALENDAR.md</code>), then reload this page.
-        </p>
-      </div>
     );
   }
   return <p className="text-sm text-slate-500 dark:text-slate-400">Ready to connect. A Google sign-in page opens in your browser.</p>;

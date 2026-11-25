@@ -41,9 +41,9 @@ export const SERVER_INSTRUCTIONS = `Tesseract — the user's projects, learning,
 - Project maps: get_project_map / set_project_map draw a project's system (parts, lanes, links); link parts to tasks and keep set_map_focus on the part being worked on.
 - Visuals (call visual_formats first, then save_visual with the topic id): to TEACH a topic save a "lesson": blocks of
   text, formula (LaTeX, \term{id}{...} parts explained), trace (step-by-step with every variable's current value),
-  plot (real graphs, sliders), sim (the app runs kmeans / scheduling / gradient / value-iteration / q-learning from your
+  motion (native flow, reveal or compare), plot (real graphs, sliders), sim (the app runs kmeans / scheduling / gradient / value-iteration / q-learning from your
   inputs), check (self-test). Any graph → plot. Diagrams (state, gantt, grid, tree) only for structure. html is a
-  sandboxed last resort (no network, costs many tokens). Never type formulas as plain text in cells.
+  sandboxed last resort. Prefer native motion for sequencing and comparison. Start with one learning outcome and end with a self-check that explains why.
 - Learning maps are drawn from topics: phase = column, depends_on = links. Set them with add_topic / update_topic.
 - Schedule: get_schedule shows the week; add_event/update_event plan time blocks (synced to Google Calendar).
 - Be honest: grade strictly, never inflate scores or skill levels. Raising a level needs evidence.
@@ -423,7 +423,7 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
     "visual_formats",
     {
       description:
-        "Study visual types and, for one type, its fields + a full example. Best for teaching: lesson (text, formula, step-by-step trace, plot, simulation, self-check). Also plot, state, gantt, grid, tree, html. Call before save_visual.",
+        "Study visual types and, for one type, its fields + a full example. Best for teaching: lesson (text, formula, step-by-step trace, native motion, plot, simulation, self-check). Also plot, state, gantt, grid, tree, html. Call before save_visual.",
       inputSchema: { type: z.enum(VISUAL_TYPES).optional() },
       annotations: READ,
     },

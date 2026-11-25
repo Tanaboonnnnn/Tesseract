@@ -35,7 +35,7 @@ function useAccessPills() {
   };
 }
 
-function Pills({ vertical = false }: { vertical?: boolean }) {
+export function AccessPills({ vertical = false }: { vertical?: boolean }) {
   const p = useAccessPills();
   if (!p.remote && !p.phone) return null;
   return (
@@ -79,7 +79,7 @@ export function SidebarNav() {
         ))}
       </nav>
       <div className="mt-auto px-1">
-        <Pills vertical />
+        <AccessPills vertical />
       </div>
     </aside>
   );
@@ -104,7 +104,7 @@ export function TopNav({ terminal = false }: { terminal?: boolean }) {
             </NavLink>
           ))}
         </nav>
-        <Pills />
+        <AccessPills />
         <NavLink to="/settings" title="Settings" aria-label="Settings" className={({ isActive }) => cn("sb-toplink sb-gear", isActive && "is-active")}>
           {terminal ? "settings" : <Settings size={18} />}
         </NavLink>
@@ -126,7 +126,7 @@ export function RailNav() {
         </NavLink>
       ))}
       <div className="mt-auto flex flex-col items-center gap-2">
-        <Pills vertical />
+        <AccessPills vertical />
         <NavLink to="/settings" title="Settings" aria-label="Settings" className={({ isActive }) => cn("sb-rail-link", isActive && "is-active")}>
           <Settings size={20} />
         </NavLink>
@@ -156,7 +156,7 @@ export function TabsNav() {
         ))}
       </nav>
       <div className="mt-auto px-4">
-        <Pills vertical />
+        <AccessPills vertical />
       </div>
     </aside>
   );
@@ -239,7 +239,7 @@ export function WorkspaceNav({ kind }: { kind: "linear" | "notion" }) {
       </div>
       <div className="mt-5 space-y-2 border-t pt-2 [border-color:var(--line)]">
         <DesignLink item={MORE.at(-1)!} />
-        <Pills vertical />
+        <AccessPills vertical />
       </div>
     </nav>
   );
@@ -264,7 +264,7 @@ export function EditorialNav() {
         <nav aria-label="Warm Editorial navigation" className="mt-3 flex flex-wrap items-center justify-center gap-x-1 border-t py-2 [border-color:var(--line)]">
           {[...NAV, MORE.at(-1)!].map((item) => <DesignLink key={item.to} item={item} />)}
         </nav>
-        <div className="flex justify-center"><Pills /></div>
+        <div className="flex justify-center"><AccessPills /></div>
       </div>
     </header>
   );

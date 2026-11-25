@@ -70,7 +70,7 @@ export function Visual({ visual, keys = false, learning = "" }: { visual: Visual
   return (
     <div ref={box}>
       <div className="map-stage overflow-x-auto rounded-lg p-2">
-        {visual.type === "state" && <StateView v={visual} fx={fx} />}
+        {visual.type === "state" && <StateView v={visual} fx={fx} step={step} />}
         {visual.type === "gantt" && <GanttView v={visual} fx={fx} />}
         {visual.type === "chart" && <ChartView v={visual} fx={fx} />}
         {visual.type === "grid" && <GridView v={visual} fx={fx} />}
@@ -91,14 +91,16 @@ export function Visual({ visual, keys = false, learning = "" }: { visual: Visual
               <ChevronRight size={16} />
             </StepButton>
           </div>
-          <div className="flex gap-1" aria-hidden>
+          <div className="flex max-w-full flex-wrap gap-1" aria-hidden>
             {visual.steps.map((_, i) => (
               <button key={i} tabIndex={-1} onClick={() => go(i)} className={`h-1.5 w-5 rounded-full transition-colors ${i <= step ? "bg-sky-400" : "bg-slate-400/25"}`} />
             ))}
           </div>
           <span className="text-xs text-slate-500 tabular-nums">{step < 0 ? `${n} steps` : `Step ${step + 1}/${n}`}</span>
           <p className="min-h-5 w-full text-sm text-slate-700 dark:text-slate-200" aria-live="polite">
-            {caption ?? <span className="text-slate-400">Press ▶ or → to walk through it step by step.</span>}
+            <span key={step} className={caption ? "vis-step-caption inline-block" : "text-slate-400"}>
+              {caption ?? "Press ▶ or → to walk through it step by step."}
+            </span>
           </p>
         </div>
       )}

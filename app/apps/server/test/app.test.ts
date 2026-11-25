@@ -2,7 +2,7 @@ import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveDataDir, Store, VISUAL_EXAMPLES } from "@tesseract/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createApp, type AppOptions } from "../src/app.ts";
 
 const NOW = () => new Date(2026, 10, 23, 12, 0, 0);
@@ -137,12 +137,28 @@ describe("remote access API", () => {
   const fake = () => {
     let on = false;
     const st = () => ({ on, until: on ? "2026-11-25T20:00:00.000Z" : null, setup: { binary: true, key: true, tunnel: true }, error: null });
-    return { state: st, start: () => ((on = true), st()), stop: () => ((on = false), st()), dispose() {} };
+    return { state: st, configure: vi.fn(() => st()), start: () => ((on = true), st()), stop: () => ((on = false), st()), dispose() {} };
   };
 
   it("is off outside the desktop app", async () => {
     const { req } = setup();
     expect(await (await req("GET", "/api/remote")).json()).toEqual({ available: false });
+  });
+
+  it("does not accept tunnel credentials from paired devices or a different origin, or echo them", async () => {
+    const remote = fake();
+    const body = { tunnelId: "tunnel_" + "a".repeat(32), key: "sk-test-never-echo-this-key" };
+    const local = setup(undefined, {}, undefined, undefined, remote);
+    expect((await local.req("POST", "/api/remote/setup", body, { origin: "https://example.com" })).status).toBe(403);
+    const phone = setup(undefined, { address: "192.168.1.20", token: "t".repeat(32), hosts: ["192.168.1.5:4320"] }, undefined, undefined, remote);
+    expect((await phone.req("POST", "/api/remote/setup", body, { host: "192.168.1.5:4320", authorization: `Bearer ${"t".repeat(32)}` })).status).toBe(403);
+    expect(remote.configure).not.toHaveBeenCalled();
+    expect((await local.req("POST", "/api/remote/setup", { ...body, key: "a".repeat(3000) })).status).toBe(413);
+    expect(remote.configure).not.toHaveBeenCalled();
+    const res = await local.req("POST", "/api/remote/setup", body);
+    expect(res.status).toBe(200);
+    expect(await res.text()).not.toContain(body.key);
+    expect(remote.configure).toHaveBeenCalledWith(body);
   });
 
   it("starts and stops from this machine only, for 1, 8 or 24 hours", async () => {

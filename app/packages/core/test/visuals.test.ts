@@ -142,3 +142,30 @@ describe("lesson, plot and html visuals", () => {
     expect(err(save({ title: "too big", type: "chart", data: { kind: "line", series: [{ id: "s", label: "s", points: Array.from({ length: 500 }, (_, i) => [i, i]) }] }, steps: Array.from({ length: 40 }, () => ({ text: "x".repeat(300) })) }))).toMatch(/too big|NONE/);
   });
 });
+
+describe("native lesson motion", () => {
+  const block = () => ({
+    kind: "motion", mode: "flow", title: "Water cycle",
+    items: [{ id: "evaporate", label: "Evaporation", detail: "Water turns into vapour." }, { id: "condense", label: "Condensation" }],
+    steps: [{ focus: "evaporate", text: "Heat provides energy." }, { focus: "condense", text: "Cooling forms droplets." }],
+  });
+  function save(b: unknown) {
+    const store = makeStore();
+    return { store, saved: store.saveVisual("kubernetes", { title: "Cycle", type: "lesson", data: { blocks: [b] } }) };
+  }
+  it("round-trips all three modes and documents authoring in visual_formats", () => {
+    for (const mode of ["flow", "reveal", "compare"]) {
+      const b = { ...block(), mode };
+      const { store, saved } = save(b);
+      expect(store.getVisual("kubernetes", saved.id)).toMatchObject({ data: { blocks: [b] } });
+    }
+    expect(visualFormat("lesson")).toHaveProperty("authoring.motion_modes.compare");
+  });
+  it("rejects bad references, duplicate ids, unsupported types and custom scripts", () => {
+    expect(err(() => save({ ...block(), steps: [{ focus: "missing", text: "Example" }, block().steps[1]] }))).toMatch(/unknown motion item "missing"/);
+    expect(err(() => save({ ...block(), items: [block().items[0], block().items[0]] }))).toMatch(/duplicate motion item/);
+    expect(err(() => save({ ...block(), mode: "arbitrary" }))).toMatch(/VALIDATION/);
+    expect(err(() => save({ ...block(), script: "not allowed" }))).toMatch(/VALIDATION/);
+    expect(err(() => save({ ...block(), items: [{ ...block().items[0], style: "not allowed" }, block().items[1]] }))).toMatch(/VALIDATION/);
+  });
+});

@@ -36,7 +36,7 @@ export function useTheme(): [ThemePref, (p: ThemePref) => void] {
   return [pref, set];
 }
 
-/* ---------- Layout (UI theme) and colours: two independent choices ---------- */
+/* ---------- Layout selection applies a recommended palette; colour overrides remain independent ---------- */
 
 export const LAYOUTS = [
   { id: "system", name: "Solo Leveling System", hint: "Sidebar + glowing HUD windows with corner brackets", palette: "blue" },
@@ -44,9 +44,10 @@ export const LAYOUTS = [
   { id: "bento", name: "Bento", hint: "Icon rail, rounded tiles, big numbers, progress rings", palette: "aurora" },
   { id: "notebook", name: "Notebook", hint: "Paper index cards, ruled lines, bookmark tabs", palette: "sepia" },
   { id: "terminal", name: "Terminal", hint: "Monospace console, boxed panes, status bar", palette: "amber" },
-  { id: "linear", name: "Linear", hint: "Compact sidebar, grouped workspaces and a wider desk", palette: "indigo", inspired: true },
-  { id: "notion", name: "Notion", hint: "Workspace sidebar, breadcrumbs and a centred writing column", palette: "paper", inspired: true },
-  { id: "editorial", name: "Warm Editorial", hint: "Centred masthead, horizontal index and a reading-first column", palette: "terracotta", inspired: true },
+  { id: "linear", name: "Linear", hint: "Compact sidebar, grouped workspaces and a wider desk", palette: "indigo" },
+  { id: "notion", name: "Notion", hint: "Workspace sidebar, breadcrumbs and a centred writing column", palette: "paper" },
+  { id: "editorial", name: "Warm Editorial", hint: "Centred masthead, horizontal index and a reading-first column", palette: "terracotta" },
+  { id: "insights", name: "Insights", hint: "Dual sidebar and a workspace overview with live metrics", palette: "garden" },
 ] as const;
 export type LayoutId = (typeof LAYOUTS)[number]["id"];
 
@@ -57,9 +58,10 @@ export const PALETTES = [
   { id: "sepia", name: "Sepia", swatch: ["#f4ede0", "#8b5a2b", "#d6a35e"] },
   { id: "neutral", name: "Neutral", swatch: ["#f7f7f8", "#18181b", "#2563eb"] },
   { id: "amber", name: "Amber CRT", swatch: ["#0a0700", "#ffb000", "#ffd27a"] },
-  { id: "indigo", name: "Indigo", swatch: ["#101114", "#8291ff", "#4e52b5"] },
-  { id: "paper", name: "Paper", swatch: ["#f6f3ef", "#2c2b28", "#1264a6"] },
-  { id: "terracotta", name: "Terracotta", swatch: ["#faf7f2", "#241915", "#a33f25"] },
+  { id: "indigo", name: "Indigo", swatch: ["#08090a", "#7170ff", "#5e6ad2"] },
+  { id: "paper", name: "Paper", swatch: ["#ffffff", "#31302e", "#0075de"] },
+  { id: "terracotta", name: "Terracotta", swatch: ["#fbf6ee", "#f1e3cf", "#9b5b32"] },
+  { id: "garden", name: "Garden", swatch: ["#ffffff", "#eef3e9", "#367e12"] },
 ] as const;
 export type PaletteId = (typeof PALETTES)[number]["id"];
 
@@ -101,8 +103,14 @@ if (old) {
 export const layoutPref = pref<LayoutId>("sb-ui", LAYOUTS.map((l) => l.id), "system", attr("data-ui", "system"));
 export const palettePref = pref<PaletteId>("sb-palette", PALETTES.map((p) => p.id), "blue", attr("data-palette", "blue"));
 
+export function selectLayout(next: LayoutId): void {
+  if (layoutPref.get() === next) return;
+  palettePref.set(LAYOUTS.find((l) => l.id === next)!.palette);
+  layoutPref.set(next);
+}
+
 export function useLayout(): [LayoutId, (v: LayoutId) => void] {
-  return [useSyncExternalStore(layoutPref.subscribe, layoutPref.get), layoutPref.set];
+  return [useSyncExternalStore(layoutPref.subscribe, layoutPref.get), selectLayout];
 }
 export function usePalette(): [PaletteId, (v: PaletteId) => void] {
   return [useSyncExternalStore(palettePref.subscribe, palettePref.get), palettePref.set];

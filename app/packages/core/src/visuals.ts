@@ -207,6 +207,13 @@ export const LessonBlockSchema = z.discriminatedUnion("kind", [
       .min(1)
       .max(60),
   }),
+  z.strictObject({
+    kind: z.literal("motion"),
+    mode: z.enum(["flow", "reveal", "compare"]),
+    title: Title80.optional(),
+    items: z.array(z.strictObject({ id: Id, label: Label, detail: z.string().trim().min(1).max(180).optional() })).min(2).max(8),
+    steps: z.array(z.strictObject({ focus: Id, text: z.string().trim().min(1).max(300) })).min(2).max(12),
+  }),
   z.object({ kind: z.literal("plot"), ...PlotDataSchema.shape }),
   z.object({ kind: z.literal("sim"), title: Title80.optional(), sim: z.enum(["kmeans", "scheduling", "gradient", "value-iteration", "q-learning"]), input: z.record(z.string(), z.unknown()) }),
   z.object({ kind: z.literal("visual"), ref: Id }),
@@ -312,6 +319,17 @@ export const VisualSchema = z
           const names = new Set(b.vars.map((x) => x.name));
           b.steps.forEach((s, j) => {
             for (const k of [...Object.keys(s.state), ...s.highlight]) if (!names.has(k)) issue(`${at}step ${j + 1}: unknown variable "${k}" (declare it in vars)`);
+          });
+        }
+        if (b.kind === "motion") {
+          const itemIds = new Set<string>();
+          for (const item of b.items) {
+            if (itemIds.has(item.id)) issue(`${at}duplicate motion item "${item.id}"`);
+            itemIds.add(item.id);
+          }
+          b.steps.forEach((step, j) => {
+            if (!itemIds.has(step.focus)) issue(`${at}step ${j + 1}: unknown motion item "${step.focus}"`);
+            if (j > 0 && b.steps[j - 1]?.focus === step.focus) issue(`${at}step ${j + 1}: choose a different focus or merge this explanation into the previous step`);
           });
         }
         if (b.kind === "sim") {
@@ -513,8 +531,8 @@ export const VISUAL_EXAMPLES: Record<VisualType, { use_for: string; ids: string;
   },
   lesson: {
     use_for:
-      "BEST for teaching a topic: a page of blocks — text (Markdown), formula (LaTeX with \\term{id}{...} parts explained), trace (step-by-step with the current value of every variable), plot (as the plot type), sim (the app runs the real algorithm: kmeans, scheduling, gradient, value-iteration, q-learning), visual (embed another visual by id), check (self-test question with hidden answer), html (sandboxed, last resort). Prefer formula/trace/sim over diagrams for maths and algorithms.",
-    ids: "lessons have no top-level steps; trace blocks carry their own steps",
+      "BEST for teaching a topic: a page of blocks — text (Markdown), formula (LaTeX with \\term{id}{...} parts explained), trace (step-by-step with the current value of every variable), motion (guided flow, reveal or compare), plot (as the plot type), sim (the app runs the real algorithm: kmeans, scheduling, gradient, value-iteration, q-learning), visual (embed another visual by id), check (self-test question with hidden answer), html (sandboxed, last resort). Prefer formula/trace/sim over diagrams for maths and algorithms.",
+    ids: "lessons have no top-level steps; trace and motion blocks carry their own steps",
     example: {
       title: "K-means clustering",
       type: "lesson",
@@ -540,6 +558,21 @@ export const VISUAL_EXAMPLES: Record<VisualType, { use_for: string; ids: string;
               { text: "Update: c2 moves to the mean (3+9+11)/3.", tex: "c_2 = \\tfrac{3+9+11}{3} \\approx 7.67", state: { c1: 1, c2: 7.67, C1: "{1}", C2: "{3, 9, 11}", SSE: 34.67 }, highlight: ["c2"] },
               { text: "Assign again: 3 is now nearer c1.", state: { c1: 1, c2: 7.67, C1: "{1, 3}", C2: "{9, 11}", SSE: 16.89 }, highlight: ["C1", "C2"] },
               { text: "Update: c1 = 2, c2 = 10. Nothing changes after this: converged.", state: { c1: 2, c2: 10, C1: "{1, 3}", C2: "{9, 11}", SSE: 4 }, highlight: ["c1", "c2", "SSE"] },
+            ],
+          },
+          {
+            kind: "motion",
+            mode: "flow",
+            title: "One clustering iteration",
+            items: [
+              { id: "assign", label: "Assign", detail: "Choose the nearest centroid for each point." },
+              { id: "update", label: "Update", detail: "Recompute the mean of each cluster." },
+              { id: "check", label: "Check", detail: "Repeat if assignments still change." },
+            ],
+            steps: [
+              { focus: "assign", text: "Hold the centroids fixed while you assign points." },
+              { focus: "update", text: "Hold assignments fixed while you update the centroids." },
+              { focus: "check", text: "Stop when assignments are stable." },
             ],
           },
           { kind: "sim", title: "Try it: change K and step through", sim: "kmeans", input: { points: [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11], [8, 2], [10, 2], [9, 3]], k: 3 } },
@@ -591,6 +624,21 @@ export function visualFormat(type?: VisualType) {
         : `Optional walkthrough: steps: [{text, highlight: [element ids]}]. Element ids here: ${ids}. step_mode "build" reveals elements step by step.`,
     ...(type === "lesson"
       ? {
+          authoring: {
+            workflow: [
+              "Read the learning item and target topic. State one concrete outcome and ground facts in material the learner provided or a named source you can verify.",
+              "Use a short idea block, a worked example or one interactive block, then a self-check with the reason. Use precise text so motion is not needed to understand the step.",
+              "Prefer native blocks over HTML. Use trace for variable values, plot for real curves, and sim for algorithms the app can run.",
+              "Call save_visual with the correct topic only after reviewing facts and references. Read the saved visual back to check the result when appropriate.",
+            ],
+            motion_shape: '{kind:"motion", mode, title?, items:[{id,label,detail?}], steps:[{focus,text}]}',
+            limits: "2–8 unique items; 2–12 steps; focus uses an item id, and neighbouring steps need different focus. Text only: no HTML, CSS, scripts, URLs or custom animation commands.",
+            motion_modes: {
+              flow: "Show a process in the order of items; move focus through the stages.",
+              reveal: "Build the structure in step order; introduce each idea when it first matters.",
+              compare: "Show the previous and current items side by side. On each step explain what changed and why.",
+            },
+          },
           sims: {
             kmeans: "{points: [[x,y],...], k, init?: [[x,y],...], maxIter?}",
             scheduling: "{processes: [{id, arrival, burst, priority?}], algorithm: fcfs|sjf|srtf|rr|priority|priority-preemptive, quantum?}",

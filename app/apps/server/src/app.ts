@@ -14,6 +14,8 @@ import { join } from "node:path";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { HTTPException } from "hono/http-exception";
 import { getCookie, setCookie } from "hono/cookie";
 import {
   BrainError,
@@ -148,6 +150,7 @@ export function createApp(store: Store, options: AppOptions): Hono {
   });
 
   app.onError((err, c) => {
+    if (err instanceof HTTPException && err.status === 413) return c.json({ error: "TOO_LARGE", message: "Request body is too large." }, 413);
     if (err instanceof BrainError) return c.json({ error: err.code, message: err.message }, STATUS[err.code]);
     console.error(err);
     return c.json({ error: "INTERNAL", message: "Unexpected error" }, 500);
@@ -359,6 +362,20 @@ export function createApp(store: Store, options: AppOptions): Hono {
 
   // Remote access: starts/stops a process on this PC, so this machine only. State is safe to show anywhere.
   api.get("/remote", (c) => c.json(options.remote ? { available: true, ...options.remote.state() } : { available: false }));
+  api.post("/remote/setup", async (c, next) => {
+    if (!options.remote) throw new BrainError("RULE", "Remote access is only available on the main computer.");
+    const denied = localOnly(c);
+    if (denied) return denied;
+    const origin = c.req.header("origin");
+    const host = c.req.header("host");
+    if (origin && origin !== `http://${host}` && origin !== `https://${host}`) {
+      return c.json({ error: "FORBIDDEN", message: "Open Settings directly on this computer." }, 403);
+    }
+    return next();
+  }, bodyLimit({ maxSize: 2048 }), async (c) => {
+    const { tunnelId, key } = await json(c);
+    return c.json({ available: true, ...options.remote!.configure({ tunnelId, key }) });
+  });
   api.post("/remote/start", async (c) => {
     if (!options.remote) throw new BrainError("RULE", "Remote access is only available in the desktop app");
     const denied = localOnly(c);

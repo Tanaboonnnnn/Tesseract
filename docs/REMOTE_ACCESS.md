@@ -22,37 +22,17 @@ plan lets you add custom MCP servers / connectors, and access to platform.openai
 Everything below is per person: each user makes their own tunnel and key. Never share them.
 Menu names on OpenAI's sites change from time to time; look for the closest match.
 
-0. **Create the folder** where Tesseract keeps its local settings (outside the repo):
-   ```powershell
-   New-Item -ItemType Directory -Force "$env:USERPROFILE\.tesseract\bin" | Out-Null
-   ```
-1. **Create the tunnel.** platform.openai.com → Settings → Organization → **Tunnels** → Create tunnel:
-   Name `tesseract`, a short description, Organization *Personal*, and under **ChatGPT workspaces pick your own
-   workspace** (otherwise it won't show up in ChatGPT). Leave "Restrict client network access" off on a home
-   connection (your IP changes). Copy the **tunnel ID** (`tunnel_` + 32 letters/digits). It is an identifier,
-   not a password. Save it:
-   ```powershell
-   '{ "tunnel_id": "PASTE_TUNNEL_ID" }' | Set-Content "$env:USERPROFILE\.tesseract\tunnel.json"
-   ```
-2. **Create a restricted key.** platform.openai.com → API keys → create a **restricted** key with only
-   *Tunnels: Read + Use*. This one **is** secret. Copy it, then save it straight from the clipboard (it never
-   appears on screen; the clipboard is cleared afterwards):
-   ```powershell
-   Get-Clipboard | Set-Content -NoNewline "$env:USERPROFILE\.tesseract\openai-tunnel-key"; Set-Clipboard -Value " "
-   ```
-3. **Install tunnel-client** (OpenAI's official, open-source client). From
-   github.com/openai/tunnel-client/releases download the latest `tunnel-client-runtime-*-windows-amd64.zip` and
-   its `SHA256SUMS.txt`. Check the zip before unpacking; the two values must match:
-   ```powershell
-   (Get-FileHash "$env:USERPROFILE\Downloads\tunnel-client-runtime-<version>-windows-amd64.zip").Hash.ToLower()
-   Select-String "windows-amd64.zip" "$env:USERPROFILE\Downloads\SHA256SUMS.txt"
-   ```
-   Then put `tunnel-client-runtime.exe` from the zip in `%USERPROFILE%\.tesseract\bin\`.
-4. **Check and turn it on:** in Tesseract, Settings → **Remote access** shows a checklist (tunnel-client, key, tunnel
-   ID). When all three are ticked, choose *On for 1 h / 8 h / 24 h*.
+1. In [OpenAI Platform → Tunnels](https://platform.openai.com/settings/organization/tunnels), create a tunnel and associate it with the ChatGPT workspace you use. Copy the complete Tunnel ID.
+2. In OpenAI Platform, create a **restricted runtime key** with only **Tunnels: Read + Use**. Keep it private.
+3. From the [official tunnel-client releases](https://github.com/openai/tunnel-client/releases/latest), download the runtime archive for your OS/architecture and its `SHA256SUMS.txt`. Match the archive's SHA-256 before extracting; on Windows use `Get-FileHash <archive> -Algorithm SHA256`. Put the runtime and any bundled companion binary side by side in `~/.tesseract/bin` (Windows: `%USERPROFILE%\.tesseract\bin`).
+4. On the **main computer**, open **Settings → OpenAI Tunnel → Set up tunnel**. Paste the Tunnel ID and restricted key, then **Save setup**. Choose **Connect for 1 h / 8 h / 24 h**. Wait for **Connected** (the runtime's loopback readiness check) before trying it in ChatGPT. **Disconnect** stops it; it never starts automatically.
 5. **Add it in ChatGPT** (web, once): chatgpt.com → Settings → Apps & Connectors (or Plugins) → add a custom
    MCP server → Name *Tesseract*, Connection **Tunnel** → pick your tunnel → save. Start a new chat and ask
    "list your Tesseract tools" to check. It then works in the phone app too.
+
+## Where the key goes
+
+Windows protects new keys with DPAPI for the current Windows user. Linux needs an unlocked Secret Service and `secret-tool`; the app does not fall back to plaintext if storage fails. An existing manually configured key file remains supported and is not deleted when you save a new protected setup. Manual setups display **Running (unverified)**. A saved setup only reports the key's status, never the key or a prefilled copy, and cannot be modified from a paired phone or tablet.
 
 ## After updating Tesseract
 
@@ -63,7 +43,7 @@ changes tools, open the connector in ChatGPT and press **Refresh** (or remove an
 ## Turning it off / revoking
 
 - **Turn off** in the sidebar (or wait: it stops by itself at the chosen time, and when the server stops).
-- Revoke for good: delete the key in platform.openai.com (and the file `openai-tunnel-key`), or delete the tunnel.
+- Revoke for good: delete the key or tunnel in OpenAI Platform. A legacy `openai-tunnel-key` file can be removed manually after verifying the new setup; the app does not delete it.
 
 ## Notes
 
@@ -72,4 +52,4 @@ changes tools, open the connector in ChatGPT and press **Refresh** (or remove an
 - While on, the server keeps running even with the app window closed (ChatGPT needs it).
 - Answers ChatGPT reads are stored by OpenAI under your ChatGPT data settings.
 - Logs: `~/.tesseract/tunnel.log`. We never write the key, but if OpenAI rejects a key its error message
-  includes OpenAI's masked form (first 8 + last 4 characters). The log stays on this PC.
+  is converted into a fixed diagnostic message. New logs do not store raw runtime output. Older logs are not rewritten.

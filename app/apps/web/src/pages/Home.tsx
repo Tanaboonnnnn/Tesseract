@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, CalendarDays, CircleCheck, FolderKanban, ListChecks, RotateCcw, Target } from "lucide-react";
+import { ArrowUpRight, BookOpen, CalendarDays, CircleCheck, FolderKanban, ListChecks, RotateCcw, Target } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { LearningCard, ProjectCard } from "../components/cards.tsx";
@@ -42,8 +42,8 @@ export function Home() {
 
   return (
     <>
-      {layout !== "bento" && <Header />}
-      {isPending ? <Loading /> : error ? <ErrorNote error={error} /> : <Dashboard o={data} />}
+      {layout !== "bento" && layout !== "insights" && <Header />}
+      {isPending ? <Loading /> : error ? <ErrorNote error={error} /> : layout === "insights" ? <InsightsHome o={data} /> : <Dashboard o={data} />}
     </>
   );
 }
@@ -156,6 +156,83 @@ function Dashboard({ o }: { o: Overview }) {
       </div>
     </div>
   );
+}
+
+function InsightsHome({ o }: { o: Overview }) {
+  const active = o.projects.filter((p) => p.status === "active");
+  const goals = o.goals.filter((g) => g.status === "active");
+  const schedule = useQuery({ queryKey: ["schedule", o.today, o.today], queryFn: () => api.schedule(o.today, o.today) });
+  const stages = [
+    { key: "todo", label: "To do", color: "var(--insights-neutral)" },
+    { key: "doing", label: "In progress", color: "var(--insights-blue)" },
+    { key: "review", label: "Review", color: "var(--insights-amber)" },
+    { key: "done", label: "Done", color: "var(--color-accent-600)" },
+  ] as const;
+  const segments = stages.map((s) => ({ ...s, count: active.reduce((n, p) => n + p.tasks[s.key], 0) }));
+  const total = segments.reduce((n, s) => n + s.count, 0);
+  return (
+    <div className="space-y-5">
+      <PageHeader title="Workspace overview" subtitle="Projects, study and today's priorities in one place." action={
+        <Link to="/schedule" className="insights-cta inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"><CalendarDays size={16} /> Open schedule</Link>
+      } />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Workspace indicators">
+        <InsightMetric icon={<FolderKanban size={16} />} label="Projects" value={active.length} note="active projects" to="/projects" tone="green" />
+        <InsightMetric icon={<BookOpen size={16} />} label="Learning" value={o.learning.length} note="courses and roadmaps" to="/learning" tone="blue" />
+        <InsightMetric icon={<Target size={16} />} label="Goals" value={goals.length} note="active goals" to="#insights-goals" tone="amber" />
+        <InsightMetric icon={<CalendarDays size={16} />} label="Schedule" value={schedule.data?.items.length ?? "–"} note={schedule.isError ? "unavailable" : schedule.isPending ? "loading" : "items today"} to="/schedule" tone="violet" />
+      </div>
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <Card>
+          <SectionTitle action={<Link to="/projects" className="insights-text-action text-xs font-medium">View projects</Link>}>Project task mix</SectionTitle>
+          <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">Tasks in active projects, grouped by current status.</p>
+          {total ? <>
+            <p className="mb-4 text-3xl font-semibold tabular-nums">{total} <span className="text-sm font-normal">tasks</span></p>
+            <div className="mb-3 flex h-3 overflow-hidden rounded-full [background:var(--lane)]" aria-hidden="true">
+              {segments.filter((s) => s.count > 0).map((s) => <div key={s.key} style={{ width: (s.count / total * 100) + "%", background: s.color }} />)}
+            </div>
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-4" aria-label="Task counts by status">
+              {segments.map((s) => <li key={s.key} className="flex min-w-0 items-center gap-1.5"><span className="size-2 shrink-0 rounded-full" aria-hidden="true" style={{ background: s.color }} />{s.label} <strong className="tabular-nums">{s.count}</strong></li>)}
+            </ul>
+          </> : <Empty>No tasks in active projects.</Empty>}
+        </Card>
+        <Today o={o} />
+        <Card>
+          <SectionTitle action={<Link to="/learning" className="insights-text-action text-xs font-medium">View learning</Link>}>Learning progress</SectionTitle>
+          {o.learning.length ? <ul className="space-y-3">{o.learning.slice(0, 5).map((l) => <li key={l.id}>
+            <Link to={`/learning/${l.id}`} className="flex items-center justify-between gap-3 text-sm hover:underline">
+              <span className="min-w-0 break-words">{l.title}</span><strong className="text-xs tabular-nums">{l.progress}%</strong>
+            </Link>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full [background:var(--lane)]" aria-hidden="true"><div className="h-full rounded-full bg-accent-600" style={{width: l.progress + "%"}} /></div>
+          </li>)}</ul> : <Empty>No courses or roadmaps yet.</Empty>}
+        </Card>
+        <section id="insights-goals" className="scroll-mt-20">
+          {goals.length ? <Goals o={o} /> : <Card><SectionTitle>Goals</SectionTitle><Empty>No active goals.</Empty></Card>}
+        </section>
+        <div className="xl:col-span-2">
+          <Card>
+            <SectionTitle action={<Link to="/skills" className="insights-text-action text-xs font-medium">Open skills</Link>}>Skills</SectionTitle>
+            {o.skills.length ? <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {o.skills.slice(0, 8).map((skill) => <li key={skill.id} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-[var(--line)] px-3 py-2 text-sm">
+                <span className="min-w-0 break-words">{skill.title}</span>
+                <span className="shrink-0 text-xs font-medium text-slate-600 dark:text-slate-400">Level {skill.level}</span>
+              </li>)}
+            </ul> : <Empty>No skill domains yet.</Empty>}
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InsightMetric({ icon, label, value, note, to, tone }: { icon: ReactNode; label: string; value: number | string; note: string; to: string; tone: "green" | "blue" | "amber" | "violet" }) {
+  const contents = <>
+    <div className="flex min-w-0 items-center justify-between gap-1 text-xs font-semibold"><span className="truncate">{label}</span><span aria-hidden="true" className={`insights-badge is-${tone} grid size-7 shrink-0 place-items-center rounded-full`}>{icon}</span></div>
+    <p className="my-1.5 text-3xl font-semibold leading-none tracking-tight tabular-nums">{value}</p>
+    <p className="flex min-w-0 items-center gap-1 text-xs text-slate-600 dark:text-slate-400"><span>{note}</span><ArrowUpRight size={12} className="ml-auto shrink-0" aria-hidden="true" /></p>
+  </>;
+  return to.startsWith("#")
+    ? <a href={to} className="insights-metric min-w-0 rounded-xl border p-3 sm:p-4">{contents}</a>
+    : <Link to={to} className="insights-metric min-w-0 rounded-xl border p-3 sm:p-4">{contents}</Link>;
 }
 
 function Stat({ icon, label, value, hint }: { icon: ReactNode; label: string; value: number; hint: string }) {
