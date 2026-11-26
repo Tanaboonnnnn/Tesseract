@@ -12,7 +12,7 @@ const source={id:"ref",title:"Illustration reference",url:"https://example.com",
 const lessons=picks.map((visual,i)=>({
  id:"lesson-"+(i+1),title:visual.title,objective:"Explain the concept one step at a time.",layout:"inline",source_ids:["ref"],
  blocks:[
-  {type:"text",markdown:i<2?"Follow the highlighted route. The box represents one request, not a count of requests.":"Read the state of each component, then step through the change."},
+  {type:"text",markdown:i===0?"Predict which server handles each request. Press Play to follow the route, then watch what changes when a health check removes a server from rotation.":i===1?"Follow the highlighted route. The box represents one request, not a count of requests.":"Read the state of each component, then step through the change."},
   {type:"visual",visual:{...visual,id:"iso-demo-"+i},fallback:visual.steps.map(s=>s.text).join(" ")},
  ]
 }));

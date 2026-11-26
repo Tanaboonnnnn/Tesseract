@@ -279,6 +279,28 @@ const net=(end:"server"|"cache"):IsoInput=>({
     {text:end==="server"?"The balancer forwards the request to a server.":"The balancer sends the lookup to the cache.",highlight:["outbound"]},
   ],
 });
+// The short example stays in visual_formats; the classroom preview uses the full teaching sequence.
+function roundRobin():IsoInput{
+  const intro=net("server");
+  return {
+    ...intro,title:"Round robin and a failed server",
+    data:{...intro.data,objects:[
+      ...intro.data.objects.map(o=>o.id==="server"?{...o,label:"Server A"}:o),
+      {id:"server-b",component:"server",at:[8,5,0],label:"Server B"},
+    ],connections:[
+      ...(intro.data.connections??[]),
+      {id:"to-b",kind:"flow",from:{object:"balancer",anchor:"out"},to:{object:"server-b",anchor:"in"},via:[[7,2,.5],[7,6.5,.5]]},
+    ]},steps:[
+      {text:"Request 1 reaches the load balancer. Both servers are healthy.",highlight:["inbound"]},
+      {text:"Round robin starts with Server A.",highlight:["outbound"]},
+      {text:"Request 2 reaches the same load balancer.",highlight:["inbound"]},
+      {text:"The next turn goes to Server B.",highlight:["to-b"]},
+      {text:"A later health check marks Server B unhealthy.",highlight:["server-b"],states:{"server-b":"fault"}},
+      {text:"Request 3 arrives while Server B is out of rotation.",highlight:["inbound"]},
+      {text:"Server A receives request 3. Only healthy servers get traffic.",highlight:["outbound"]},
+    ],
+  };
+}
 const physics=(part:"switch"|"breaker"):IsoInput=>({
   type:"iso",title:part==="switch"?"A switch in a simple circuit":"A breaker interrupts a circuit",
   data:{pack:"physics",objects:[
@@ -313,8 +335,9 @@ export function isoFormat(pack?:string):Format{
   if(!pack)return {...root,next:"Request visual_formats with type iso and pack network or physics. Then send a checked scene to save_visual."};
   const manifest=getIsoPack(pack);
   if(!manifest)return {...root,issue:{rule:"known-pack",path:"pack",message:"Unknown ISO pack.",fix:"Request network or physics. Other packs are not installed."}};
-  const examples=pack==="network"?[net("server"),net("cache")]:[physics("switch"),physics("breaker")];
+  const examples=pack==="network"?[roundRobin(),net("cache")]:[physics("switch"),physics("breaker")];
+  const example=pack==="network"?net("server"):examples[0]!;
   return {...root,shape:{...SHAPE},rules:[...RULES],components:Object.entries(manifest.components).map(([component,p])=>({
     component,size:[...p.size],anchors:Object.fromEntries(Object.entries(p.anchors).map(([id,a])=>[id,a.role])),...(p.cutaway?{cutaway:true}:{}),
-  })),connections:[...manifest.connections],example:examples[0]!,examples};
+  })),connections:[...manifest.connections],example,examples};
 }

@@ -20,6 +20,7 @@ const IsoView=lazy(()=>import("./IsoView.tsx"));
 
 export function Visual({ visual, keys = false, learning = "", language }: { visual: VisualData; keys?: boolean; learning?: string; language?:string }) {
   const n = visual.steps.length;
+  const isIso = visual.type === "iso";
   // -1 = overview (everything visible); build mode starts at step 0 so the picture builds up.
   const first = visual.step_mode === "build" && n ? 0 : -1;
   const [step, setStep] = useState(first);
@@ -30,19 +31,27 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
     return input;
   },[visual]);
   const box = useRef<HTMLDivElement>(null);
-  useEffect(() => setStep(first), [visual.id, visual.updated, first]);
+  useEffect(() => {
+    setStep(first);
+    if (isIso) setPlaying(false);
+  }, [visual.id, visual.updated, first, isIso]);
 
   const go = (s: number) => setStep(Math.max(first, Math.min(n - 1, s)));
 
   useEffect(() => {
     if (!playing) return;
-    if (step >= n - 1) {
+    const atEnd = step >= n - 1;
+    if (atEnd && !isIso) {
       setPlaying(false);
       return;
     }
-    const t = setTimeout(() => setStep((s) => s + 1), 2600);
+    // Let ISO's last beat finish before changing the control to Replay.
+    const t = setTimeout(() => {
+      if (atEnd) setPlaying(false);
+      else setStep((s) => s + 1);
+    }, 2600);
     return () => clearTimeout(t);
-  }, [playing, step, n]);
+  }, [playing, step, n, isIso]);
 
   useEffect(() => {
     const el = box.current;
@@ -98,7 +107,13 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
             <StepButton label="Previous step" onClick={() => go(step - 1)} disabled={step <= first}>
               <ChevronLeft size={16} />
             </StepButton>
-            <StepButton label={playing ? "Pause" : "Play steps"} onClick={() => (step >= n - 1 ? (go(first), setPlaying(true)) : setPlaying(!playing))}>
+            <StepButton label={playing ? "Pause" : "Play steps"} onClick={() => {
+              if (playing) setPlaying(false);
+              else {
+                if (step >= n - 1 || (isIso && step < 0)) go(isIso ? 0 : first);
+                setPlaying(true);
+              }
+            }}>
               {playing ? <Pause size={15} /> : step >= n - 1 ? <RotateCcw size={15} /> : <Play size={15} />}
             </StepButton>
             <StepButton label="Next step" onClick={() => go(step + 1)} disabled={step >= n - 1}>

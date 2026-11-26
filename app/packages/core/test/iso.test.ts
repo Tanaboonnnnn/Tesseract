@@ -84,3 +84,19 @@ describe("iso authoring contract", () => {
     }
   });
 });
+
+test("the full load balancer walkthrough routes through two healthy backends, then skips the failed one",()=>{
+  const example=isoFormat("network").examples![0]!;
+  const result=validateIso(example);
+  expect(result.ok).toBe(true);
+  if(!result.ok)return;
+  const frames=resolveIsoFrames(result.value);
+  expect(frames.map(f=>f.highlight[0])).toEqual([
+    "inbound","outbound","inbound","to-b","server-b","inbound","outbound",
+  ]);
+  expect(frames[3]?.states["server-b"]).toBe("idle");
+  expect(frames[4]?.states["server-b"]).toBe("fault");
+  expect(frames.at(-1)?.states["server-b"]).toBe("fault");
+  expect(example.data.connections?.find(c=>c.id==="outbound")?.to.object).toBe("server");
+  expect(example.data.connections?.find(c=>c.id==="to-b")?.to.object).toBe("server-b");
+});
