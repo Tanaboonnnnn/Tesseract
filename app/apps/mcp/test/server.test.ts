@@ -532,6 +532,10 @@ it("exposes compact ISO authoring without adding a remote tool or Classroom v1 t
   expect(menu.components).toBeUndefined();
   const f=await call("visual_formats",{type:"iso",pack:"network"});
   expect(f).toMatchObject({availability:"ready",example:{type:"iso",data:{pack:"network"}}});
+  for (const spec of [f,await call("visual_formats",{type:"iso",pack:"physics"}),(await call("classroom_format",{iso_pack:"network"})).iso]) {
+    expect(spec.rules).toContainEqual(expect.stringMatching(/projected overlap.*at least one clear view/i));
+    expect(spec.rules).toContainEqual(expect.stringMatching(/one meaningful event per step/i));
+  }
   expect(f.examples).toBeUndefined();
   expect(f.components.map((c:{component:string})=>c.component)).not.toContain("lamp");
   expect(f.components.find((c:{component:string})=>c.component==="client").anchors).toEqual({out:"out"});

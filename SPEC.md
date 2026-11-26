@@ -484,6 +484,8 @@ Classrooms are separate from the existing Markdown/YAML workspace tools. A cours
 Core alone writes the local `data/.classroom/classroom.sqlite`. Revisions are immutable; published pointer changes, the history and an audit journal are transactional. Attempts reference the exact revision/question and do not inherit scores from another version. This independent SQLite store does not alter legacy files or the legacy activity log. Neither SQLite nor personal workspace data goes in Git. In this foundation, publish/restore/revision-bound attempts are exercised in private core tests only. There is no new HTTP or user-facing Classroom route. Later, paired devices must use the shared host HTTP server, never direct DB file sharing; draft administration must stay on host loopback.
 
 ### Classroom v2: ISO visuals
+The app chooses a readable starting corner from four deterministic isometric views; a learner can rotate without changing lesson state. Callout placement and the compact-screen key are rendered by the app, not specified by authors. Both on-demand ISO authoring paths explain projected spacing and meaningful event steps; readability still needs review.
+
 V2 adds the built-in `iso` visual under the existing typed visual block. V1 does not accept ISO; existing valid v1 revisions are read without modification. New readers check stored revisions and reject unknown versions before read or publish/restore. V2 does not migrate the SQLite tables, revision IDs, published history, or attempts. Use the current app on the host; do not point an old binary at a workspace once it has v2 data. Keep a complete pre-upgrade workspace copy, including `.classroom`, for binary downgrade. The legacy YAML backup coverage and limits are unchanged.
 
 ### Isolated MCP profile

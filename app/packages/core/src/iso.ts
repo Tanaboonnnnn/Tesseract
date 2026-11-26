@@ -328,6 +328,8 @@ const RULES=[
   "Use unique IDs and named anchors. Network flow goes out to in; physics uses wire.",
   "Use 2–8 steps of up to 120 characters, up to eight labels of 24 characters, and at most three effective changes per step.",
   "State persists between steps. Omit cutaway to keep it, or use null to close it. Use one active accent target and introduce at most one fault.",
+  "Avoid projected overlap: spread key parts across both grid axes, leave room for short labels, and route around unrelated solids. Give the renderer at least one clear view; split a crowded scene.",
+  "Show one meaningful event per step: cause, handoff, or outcome. Use plain-language captions that still explain the change without animation; do not add empty beats to stretch playback.",
 ];
 type Format={type:"iso";availability:"ready";packs:string[];shape?:typeof SHAPE;rules?:string[];components?:unknown[];connections?:readonly string[];example?:IsoInput;examples?:IsoInput[];issue?:IsoIssue;next?:string};
 export function isoFormat(pack?:string):Format{

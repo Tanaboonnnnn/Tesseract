@@ -3,9 +3,15 @@
 Use Learning → Review for a saved visual. A lesson can embed a visual in its own Learning item using the existing visual block. An ISO part is catalog data, never HTML or SVG from the author.
 
 1. Use `visual_formats({type:"iso"})`, then ask for a pack (`network` or `physics`).
-2. Adapt the selected example. Keep one idea per scene, captions that work without movement, named anchors and half-grid positions. Failed saves return a rule, path, message and suggested repair.
+2. Adapt the selected example. Keep one idea per scene, captions that work without movement, named anchors and half-grid positions. Avoid projected overlap: separate key parts across both axes, leave room for labels, and route around unrelated solids. Split crowded scenes instead of adding tiny labels. Use one meaningful event per step and explain the outcome in the caption; do not pad playback with empty beats. Failed saves return a rule, path, message and suggested repair.
 3. Send the scene with the target Learning ID to `save_visual`. Existing IDs cannot switch to/from ISO; pick a new ID. Writes go through Core with audit and undo.
 4. For a Classroom draft, request `classroom_format({iso_pack:"network"})`, use `schema_version: 2`, and include a plain-text fallback. Submit a draft; only the local owner publishes with existing controls. Keep existing v1 bundles as v1. A manual downgrade uses a full workspace copy taken before using v2; older app binaries are not v2 clients.
+
+## Definition of done for a lesson visual
+- Make one teaching point with a cause, change and outcome. Require a caption that works with motion disabled; the picture backs up the lesson rather than replacing it.
+- Start from the app's recommended view. Check that a learner can identify each relevant part and follow the route without rotating first. Verify the other three views and the reset action do not change the lesson step.
+- Verify desktop and compact layouts, both palettes, keyboard navigation and the Pause/Replay path. On compact screens numbered pins are paired with an ordinary-text key containing the same labels and statuses.
+- Keep the motion scoped to the active event and leave the final result visible. Split scenes that remain hard to read. Keep the authoring rules in both on-demand MCP paths, not per-tool descriptions. Passing the schema is not a visual quality or factual accuracy guarantee.
 
 ## Adding a pack
 - Define a subject in `app/packages/core/src/iso-catalog.ts`: grid footprint, named anchor offsets and roles, wire/flow support, explicit cutaway support only if it exists.
@@ -14,7 +20,7 @@ Use Learning → Review for a saved visual. A lesson can embed a visual in its o
 - Future slots are intentionally unregistered. Chemistry, biology and economics are not built.
 
 ## Deliberate limitations
-No factual or electrical simulation is implied. The validator checks shape, references, counts, grid and component connectivity direction, not whether a real network design or electrical circuit behaves that way. An occluded object in projection is not a collision in world coordinates. Label placement chooses deterministic conservative boxes; check unusual scripts or tight layouts at the intended viewport. Orthographic is fixed, not an orbit camera. The pre-existing interactive `scene` visual is a separate format and no content is migrated from it.
+No factual or electrical simulation is implied. The validator checks shape, references, counts, grid and component connectivity direction, not whether a real network design or electrical circuit behaves that way. An occluded object in projection is not a collision in world coordinates. The renderer selects the clearest of four orthographic corners based on overlap, important routes, and callouts. Labels are placed by the app, never by the author. Learners can rotate in quarter turns or reset without changing the step, board size, or palette. It is not free orbit. Some dense layouts, intentional stacks and unusual scripts still require visual review at the intended viewport. The pre-existing interactive `scene` visual is a separate format and no content is migrated from it.
 
 ## Design constants
 Projection uses exact 30° axes and 40 CSS units per world unit. Scene markup uses a 1.5 unit ink edge, 1 unit details, 3 unit wire, 6/8 static dash spacing, 13 unit base label, compact status labels, 10% minimum stage margin, and a consistent 12% soft contact shadow offset (6,5). Theme values are the proposed DESIGN palette in `iso-tokens.css`; light defaults to the System Design paper variant. Shadow blur is a static treatment. The single burst on entering a step is 950 ms for a token and 200 ms for a newly introduced fault; motion uses transform only and a stationary terminal token is shown without motion. No glow, gradients or external assets. Device motion-off and reduced-motion both cancel movement. Existing player owns navigation and autoplay.
