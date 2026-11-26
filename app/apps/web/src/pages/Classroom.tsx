@@ -79,8 +79,37 @@ export function CourseActions() {
 
 export function CourseDraftList() {
   const session = useQuery({ queryKey: ["session"], queryFn: api.session });
-  const drafts = useQuery({ queryKey: ["classroom-drafts"], queryFn: api.courseDrafts, enabled: session.data?.local === true, refetchInterval: 15000 });
-  if (!session.data?.local) return null;
+  const local = session.data?.local === true;
+  const qc = useQueryClient();
+  const [status, setStatus] = useState("");
+  const drafts = useQuery({ queryKey: ["classroom-drafts"], queryFn: api.courseDrafts, enabled: local, refetchInterval: 15000 });
+  const trash = useQuery({ queryKey: ["classroom-trash"], queryFn: api.classroomTrash, enabled: local, refetchInterval: 15000 });
+  const change = useMutation({
+    mutationFn: ({kind, id, trashed}: {kind:"course"|"draft"; id:string; trashed:boolean}) =>
+      api.setClassroomTrashed(kind, id, trashed),
+    onSuccess: async ({trashed}, {kind}) => {
+      await Promise.all(["classroom-trash", "classroom-drafts", "classroom-published", "classroom-draft",
+        "classroom-course", "classroom-progress", "lesson-options", "related-learning-tasks"].map(key =>
+        qc.invalidateQueries({queryKey:[key]})));
+      setStatus(trashed ? (kind === "course" ? "Course moved to Trash." : "Draft moved to Trash.")
+        : (kind === "course" ? "Course restored." : "Draft restored."));
+    },
+  });
+  if (!local) return null;
+  const moveToTrash = (kind:"course"|"draft", id:string, title:string) => {
+    const explanation = kind === "course"
+      ? "All versions and answers are kept and can be restored from Trash."
+      : "The current published course is unchanged. You can restore this draft from Trash.";
+    if (!window.confirm(`Move ${kind} “${title}” to Trash?
+
+${explanation}`)) return;
+    setStatus("");
+    change.mutate({kind,id,trashed:true});
+  };
+  const trashDraft = (r:CourseRevision) => <button type="button"
+    className="rounded px-2 py-1 text-sm text-rose-700 hover:underline dark:text-rose-300 disabled:opacity-50"
+    disabled={change.isPending} aria-label={"Trash draft " + r.title}
+    onClick={()=>moveToTrash("draft",r.revision_id,r.title)}>Trash draft</button>;
   const groups = new Map<string, CourseRevision[]>();
   for (const rev of drafts.data ?? []) groups.set(rev.course_id, [...(groups.get(rev.course_id) ?? []), rev]);
   return <section className="mt-8 space-y-3 border-t border-slate-500/20 pt-5">
@@ -88,31 +117,50 @@ export function CourseDraftList() {
       <h2 className="font-semibold">Manage course versions</h2>
       <p className="text-sm muted">A review replaces the current version of the same course. Older versions and their answers stay in history.</p>
     </div>
-    <ErrorNote error={drafts.error}/>
+    <ErrorNote error={drafts.error ?? trash.error ?? change.error}/>
+    <p className={status ? "text-sm" : "sr-only"} role="status">{status}</p>
     {!groups.size && <p className="text-sm muted">Imported packages and drafts from ChatGPT appear here.</p>}
     {[...groups].map(([course, rows]) => {
       const current = rows.find(r => r.published);
       const pending = rows.find(r => r.latest && !r.published && !r.previously_published);
       const history = rows.filter(r => r.revision_id !== current?.revision_id && r.revision_id !== pending?.revision_id);
+      const title = current?.title ?? rows[0]!.title;
       return <Card key={course} className="space-y-3 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0"><p className="font-semibold">{current?.title ?? rows[0]!.title}</p>
+          <div className="min-w-0"><p className="font-semibold">{title}</p>
             <p className="text-sm muted">{current ? "One published version" : "Not published yet"}{pending ? " · Draft ready to review" : ""}</p>
           </div>
-          <div className="flex flex-wrap gap-3 text-sm">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             {current && <Link className="underline" to={"/learning/classroom/" + course}>Open current</Link>}
             {pending && <Link className="font-semibold underline" to={"/learning/drafts/" + pending.revision_id}>Review draft</Link>}
+            {pending && trashDraft(pending)}
           </div>
         </div>
         {history.length > 0 && <details className="text-sm">
           <summary>Version history ({history.length})</summary>
-          <ul className="mt-2 space-y-2">{history.map(r => <li key={r.revision_id}>
+          <ul className="mt-2 space-y-2">{history.map(r => <li key={r.revision_id} className="flex flex-wrap items-center gap-2">
             <Link className="underline" to={"/learning/drafts/" + r.revision_id}>{new Date(r.created_at).toLocaleString()}</Link>
-            <span className="ml-2 muted">{r.previously_published ? "Previously published" : "Older draft"}</span>
+            <span className="muted">{r.previously_published ? "Previously published" : "Older draft"}</span>
+            {!r.previously_published && trashDraft(r)}
           </li>)}</ul>
         </details>}
+        <div className="border-t border-slate-500/15 pt-2">
+          <button type="button" className="rounded px-2 py-1 text-sm text-rose-700 hover:underline dark:text-rose-300 disabled:opacity-50"
+            disabled={change.isPending} aria-label={"Trash course " + title}
+            onClick={()=>moveToTrash("course",course,title)}>Trash course</button>
+        </div>
       </Card>;
     })}
+    {!!trash.data?.length && <details className="rounded-lg border border-slate-500/20 p-4 text-sm">
+      <summary className="cursor-pointer font-semibold">Trash ({trash.data.length})</summary>
+      <ul className="mt-2 divide-y divide-slate-500/15">{trash.data.map(item=><li key={item.kind+":"+item.id} className="flex items-center justify-between gap-3 py-2">
+        <div className="min-w-0"><p className="break-words font-medium">{item.title}</p>
+          <p className="muted">{item.kind === "course" ? "Course" : "Draft"} · {new Date(item.trashed_at).toLocaleString()}</p>
+        </div>
+        <Button type="button" variant="ghost" aria-label={`Restore ${item.kind} ${item.title}`} disabled={change.isPending}
+          onClick={()=>{setStatus("");change.mutate({kind:item.kind,id:item.id,trashed:false});}}>Restore</Button>
+      </li>)}</ul>
+    </details>}
   </section>;
 }
 

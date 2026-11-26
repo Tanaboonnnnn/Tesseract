@@ -33,5 +33,9 @@ AI-native, local-first personal workspace: Projects, Learning, Skills, Goals, No
 7. UI text: English only, minimal, clean.
 8. Honest metrics: never inflate progress or skill levels (SPEC.md §4.9).
 
+## Release notes
+
+Every GitHub Release (stable and prerelease) must include the Windows install and restart block from [docs/RELEASING.md](docs/RELEASING.md).
+
 ## Current phase
 **v1 complete** (Phases 0–5). Next: use it for 1–2 weeks, then pick from SPEC §2 "Later". Don't build "Later" features unasked.

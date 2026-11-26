@@ -343,7 +343,7 @@ export function createApp(store: Store, options: AppOptions): Hono {
     const title = typeof body.title === "string" ? body.title.trim() : "";
     if (!title || title.length > 100) throw new BrainError("VALIDATION", "Enter a course title (up to 100 characters)");
     const id = courseId(title) || "course-" + Date.now().toString(36);
-    if (classroom.listDrafts().some(r => r.course_id === id)) throw new BrainError("CONFLICT", "That course ID already has a draft or a published revision");
+    if (classroom.hasCourse(id)) throw new BrainError("CONFLICT", "That course ID already has a draft or a published revision");
     return c.json(store.createLearning({ id, type: "course", title, phases: ["study"] }), 201);
   });
 
@@ -361,6 +361,17 @@ export function createApp(store: Store, options: AppOptions): Hono {
     if (!detail) throw new BrainError("NOT_FOUND", "Draft not found");
     const state = classroom.listDrafts().find(r => r.revision_id === detail.revision_id);
     return c.json({ ...detail, ...state });
+  });
+  api.get("/classroom/trash", (c) => localOnly(c) ?? c.json(classroom.listTrash()));
+  api.post("/classroom/trash/:kind/:id", bodyLimit({ maxSize: 2048 }), async (c) => {
+    const denied = localOnly(c);
+    if (denied) return denied;
+    const kind = c.req.param("kind");
+    const id = c.req.param("id");
+    const body = await json(c);
+    if ((kind !== "course" && kind !== "draft") || !id || typeof body.trashed !== "boolean")
+      throw new BrainError("VALIDATION", "Specify a course or draft and whether to move it to Trash");
+    return c.json(kind === "course" ? classroom.setCourseTrashed(id, body.trashed) : classroom.setDraftTrashed(id, body.trashed));
   });
   api.post("/classroom/import", bodyLimit({ maxSize: Math.ceil(COURSE_BYTES_LIMIT * 4 / 3) + 2048 }), async (c) => {
     const denied = localOnly(c);

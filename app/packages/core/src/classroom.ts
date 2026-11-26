@@ -170,6 +170,21 @@ const canonical = (value: unknown): string => JSON.stringify(value, (_key, v: un
 const fail = (code: string, path: string, message: string): Receipt => ({ ok: false, issues: [{ code, path, message }] });
 const now = () => new Date().toISOString();
 
+// Aliases below are private SQL constants, never user input. Journal row ID is
+// the ordering key even when two actions share the same clock timestamp.
+const courseTrashEvent = (course: string) => `(
+  SELECT j.rowid FROM revisions m JOIN journal j ON j.revision_id = m.revision_id
+  WHERE m.course_id = ${course} AND j.action IN ('course-trash', 'course-recover')
+  ORDER BY j.rowid DESC LIMIT 1)`;
+const draftTrashEvent = (revision: string) => `(
+  SELECT j.rowid FROM journal j WHERE j.revision_id = ${revision} AND j.action IN ('draft-trash', 'draft-recover')
+  ORDER BY j.rowid DESC LIMIT 1)`;
+const liveCourse = (course: string) => `NOT EXISTS(
+  SELECT 1 FROM journal c WHERE c.rowid = ${courseTrashEvent(course)} AND c.action = 'course-trash')`;
+const liveDraft = (revision: string) => `NOT EXISTS(
+  SELECT 1 FROM journal d WHERE d.rowid = ${draftTrashEvent(revision)} AND d.action = 'draft-trash')`;
+export type ClassroomTrashItem = { kind: "course" | "draft"; id: string; title: string; trashed_at: string };
+
 export class ClassroomStore {
   private readonly path: string;
   constructor(dataDir: string) { this.path = join(dataDir, ".classroom", "classroom.sqlite"); }
@@ -196,6 +211,7 @@ export class ClassroomStore {
             answer TEXT NOT NULL, score INTEGER, created_at TEXT NOT NULL);
           CREATE INDEX IF NOT EXISTS attempts_revision ON attempts(revision_id, created_at);
           CREATE TABLE IF NOT EXISTS journal (at TEXT NOT NULL, action TEXT NOT NULL, revision_id TEXT NOT NULL);
+          CREATE INDEX IF NOT EXISTS journal_revision_action ON journal(revision_id, action);
         `);
       }
       const result = fn(db);
@@ -234,7 +250,9 @@ export class ClassroomStore {
       if (prior) return prior.payload_hash === digest
         ? { ok: true, status: "staged", course_id: String(prior.course_id), revision_id: String(prior.revision_id) }
         : fail("REQUEST_CONFLICT", "request_id", "This ID already belongs to a different submission");
-      const newest = db.prepare("SELECT revision_id FROM revisions WHERE course_id = ? ORDER BY sequence DESC LIMIT 1").get(course_id);
+      if (!db.prepare(`SELECT 1 WHERE ${liveCourse("?")}`).get(course_id))
+        return fail("COURSE_TRASHED", "bundle.course_id", "Restore this course from Trash or choose a new course ID");
+      const newest = db.prepare(`SELECT revision_id FROM revisions r WHERE r.course_id = ? AND ${liveDraft("r.revision_id")} ORDER BY sequence DESC LIMIT 1`).get(course_id);
       if ((newest?.revision_id ?? undefined) !== base_revision) return fail("STALE_REVISION", "base_revision", "Supply the latest draft revision for this course");
       const revision_id = randomUUID(), created = now();
       db.prepare("INSERT INTO revisions (revision_id, course_id, title, created_at, body, request_id, payload_hash) VALUES (?,?,?,?,?,?,?)")
@@ -256,19 +274,69 @@ export class ClassroomStore {
       SELECT r.revision_id, r.course_id, r.title, r.created_at,
              (p.revision_id IS NOT NULL) AS published,
              EXISTS(SELECT 1 FROM history h WHERE h.revision_id = r.revision_id) AS previously_published,
-             (r.sequence = (SELECT MAX(newer.sequence) FROM revisions newer WHERE newer.course_id = r.course_id)) AS latest
+             (r.sequence = (SELECT MAX(newer.sequence) FROM revisions newer WHERE newer.course_id = r.course_id AND ${liveDraft("newer.revision_id")})) AS latest
       FROM revisions r LEFT JOIN published p ON p.revision_id = r.revision_id
-      ${onlyPublished ? "WHERE p.revision_id IS NOT NULL" : ""} ORDER BY r.sequence DESC
+      WHERE ${liveCourse("r.course_id")} AND ${liveDraft("r.revision_id")} ${onlyPublished ? "AND p.revision_id IS NOT NULL" : ""} ORDER BY r.sequence DESC
     `).all().map((r) => ({ ...r, published: Boolean(r.published), previously_published: Boolean(r.previously_published), latest: Boolean(r.latest) }) as RevisionSummary));
   }
   listDrafts() { return this.summaries(false); }
   listPublished() { return this.summaries(true); }
+  hasCourse(courseId: string) {
+    return this.use(false, false, db => !!db.prepare("SELECT 1 FROM revisions WHERE course_id = ? LIMIT 1").get(courseId));
+  }
+
+  listTrash(): ClassroomTrashItem[] {
+    return this.use<ClassroomTrashItem[]>(false, [], db => db.prepare(`
+      SELECT 'course' AS kind, r.course_id AS id, r.title, j.at AS trashed_at, j.rowid AS event_order
+      FROM journal j JOIN revisions r ON r.revision_id = j.revision_id
+      WHERE j.action = 'course-trash' AND j.rowid = ${courseTrashEvent("r.course_id")}
+      UNION ALL
+      SELECT 'draft' AS kind, r.revision_id AS id, r.title, j.at AS trashed_at, j.rowid AS event_order
+      FROM journal j JOIN revisions r ON r.revision_id = j.revision_id
+      WHERE j.action = 'draft-trash' AND j.rowid = ${draftTrashEvent("r.revision_id")} AND ${liveCourse("r.course_id")}
+      ORDER BY event_order DESC
+    `).all().map(({kind,id,title,trashed_at}) => ({
+      kind: kind === "course" ? "course" : "draft", id:String(id), title:String(title), trashed_at:String(trashed_at),
+    })));
+  }
+
+  setCourseTrashed(courseId: string, trashed: boolean) {
+    if (!existsSync(this.path)) throw new BrainError("NOT_FOUND", "Course not found");
+    return this.use(true, { trashed }, db => {
+      const row = db.prepare(`
+        SELECT r.revision_id FROM revisions r LEFT JOIN published p ON p.revision_id = r.revision_id
+        WHERE r.course_id = ? ORDER BY (p.revision_id IS NOT NULL) DESC, r.sequence DESC LIMIT 1
+      `).get(courseId);
+      if (!row) throw new BrainError("NOT_FOUND", "Course not found");
+      const isLive = !!db.prepare(`SELECT 1 WHERE ${liveCourse("?")}`).get(courseId);
+      if (isLive === trashed)
+        db.prepare("INSERT INTO journal VALUES (?,?,?)").run(now(), trashed ? "course-trash" : "course-recover", String(row.revision_id));
+      return { trashed };
+    });
+  }
+
+  setDraftTrashed(revisionId: string, trashed: boolean) {
+    if (!existsSync(this.path)) throw new BrainError("NOT_FOUND", "Draft not found");
+    return this.use(true, { trashed }, db => {
+      const row = db.prepare(`
+        SELECT ${liveCourse("r.course_id")} AS course_live, ${liveDraft("r.revision_id")} AS draft_live,
+               EXISTS(SELECT 1 FROM history h WHERE h.revision_id = r.revision_id) AS was_published
+        FROM revisions r WHERE r.revision_id = ?
+      `).get(revisionId);
+      if (!row) throw new BrainError("NOT_FOUND", "Draft not found");
+      if (!row.course_live) throw new BrainError("CONFLICT", "Restore the course from Trash first");
+      if (row.was_published) throw new BrainError("CONFLICT", "A published revision is part of course history");
+      if (Boolean(row.draft_live) === trashed)
+        db.prepare("INSERT INTO journal VALUES (?,?,?)").run(now(), trashed ? "draft-trash" : "draft-recover", revisionId);
+      return { trashed };
+    });
+  }
   /** Narrow concurrency metadata; requires an existing publication and never loads draft content. */
   revisionAnchor(courseId: string) {
     return this.use<{ course_id: string; published_revision_id: string; base_revision: string; pending_draft: boolean } | null>(false, null, db => {
-      const owner = db.prepare("SELECT revision_id FROM published WHERE course_id = ?").get(courseId);
+      const owner = db.prepare(`SELECT p.revision_id FROM published p WHERE p.course_id = ? AND ${liveCourse("p.course_id")}`).get(courseId);
       if (!owner) return null;
-      const latest = db.prepare("SELECT r.revision_id, EXISTS(SELECT 1 FROM history h WHERE h.revision_id = r.revision_id) AS was_published FROM revisions r WHERE r.course_id = ? ORDER BY r.sequence DESC LIMIT 1").get(courseId);
+      const latest = db.prepare(`SELECT r.revision_id, EXISTS(SELECT 1 FROM history h WHERE h.revision_id = r.revision_id) AS was_published FROM revisions r WHERE r.course_id = ? AND ${liveDraft("r.revision_id")} ORDER BY r.sequence DESC LIMIT 1`).get(courseId);
       const published = String(owner.revision_id);
       const base = String(latest?.revision_id ?? published);
       return { course_id: courseId, published_revision_id: published, base_revision: base, pending_draft: base !== published && !latest?.was_published };
@@ -278,7 +346,7 @@ export class ClassroomStore {
   /** Only events about published content; omit private drafts, attempts and raw stored contents. */
   publishedActivity(courseId: string, limit: number) {
     return this.use<{at:string; action:string; revision_id:string}[]>(false, [], db => db.prepare(
-      "SELECT j.at, j.action, j.revision_id FROM journal j JOIN revisions r ON r.revision_id=j.revision_id WHERE r.course_id=? AND j.action IN ('publish','restore') ORDER BY j.rowid DESC LIMIT ?"
+      `SELECT j.at, j.action, j.revision_id FROM journal j JOIN revisions r ON r.revision_id=j.revision_id WHERE r.course_id=? AND ${liveCourse("r.course_id")} AND j.action IN ('publish','restore') ORDER BY j.rowid DESC LIMIT ?`
     ).all(courseId,limit).map(r => ({at:String(r.at),action:String(r.action),revision_id:String(r.revision_id)})));
   }
 
@@ -288,23 +356,26 @@ export class ClassroomStore {
   }
   getRevision(revisionId: string) {
     return this.use<ReturnType<ClassroomStore["unpack"]>>(false, null, (db) =>
-      this.unpack(db.prepare("SELECT * FROM revisions WHERE revision_id = ?").get(revisionId) as unknown as RevisionRow | undefined));
+      this.unpack(db.prepare(`SELECT r.* FROM revisions r WHERE r.revision_id = ? AND ${liveCourse("r.course_id")} AND ${liveDraft("r.revision_id")}`).get(revisionId) as unknown as RevisionRow | undefined));
   }
   getPublished(courseId: string) {
     return this.use<ReturnType<ClassroomStore["unpack"]>>(false, null, (db) =>
-      this.unpack(db.prepare("SELECT r.* FROM published p JOIN revisions r ON r.revision_id = p.revision_id WHERE p.course_id = ?").get(courseId) as unknown as RevisionRow | undefined));
+      this.unpack(db.prepare(`SELECT r.* FROM published p JOIN revisions r ON r.revision_id = p.revision_id WHERE p.course_id = ? AND ${liveCourse("p.course_id")}`).get(courseId) as unknown as RevisionRow | undefined));
   }
 
   private makeCurrent(revisionId: string, restore: boolean) {
     if (!existsSync(this.path)) throw new BrainError("NOT_FOUND", "Unknown revision");
     return this.use(true, { revision_id: revisionId }, (db) => {
-      const row = db.prepare("SELECT course_id, sequence, body FROM revisions WHERE revision_id = ?").get(revisionId);
+      const row = db.prepare(`SELECT r.course_id, r.sequence, r.body,
+        (${liveCourse("r.course_id")} AND ${liveDraft("r.revision_id")}) AS is_live
+        FROM revisions r WHERE r.revision_id = ?`).get(revisionId);
       if (!row) throw new BrainError("NOT_FOUND", "Unknown revision");
+      if (!row.is_live) throw new BrainError("CONFLICT", "Restore this course or draft from Trash before publishing");
       storedBundle(String(row.body));
       if (restore) {
         if (!db.prepare("SELECT 1 FROM history WHERE revision_id = ?").get(revisionId)) throw new BrainError("RULE", "Only a previously published revision can be restored");
       } else {
-        const latest = db.prepare("SELECT sequence FROM revisions WHERE course_id = ? ORDER BY sequence DESC LIMIT 1").get(String(row.course_id));
+        const latest = db.prepare(`SELECT r.sequence FROM revisions r WHERE r.course_id = ? AND ${liveDraft("r.revision_id")} ORDER BY sequence DESC LIMIT 1`).get(String(row.course_id));
         if (latest?.sequence !== row.sequence) throw new BrainError("CONFLICT", "Review the latest draft before publishing");
       }
       db.prepare("INSERT OR IGNORE INTO history VALUES (?)").run(revisionId);
@@ -334,7 +405,7 @@ export class ClassroomStore {
       score = Number(picked.length === q.correct.length && q.correct.every((x) => picked.includes(x)));
     }
     return this.use(true, { score }, (db) => {
-      if (!db.prepare("SELECT 1 FROM history WHERE revision_id = ?").get(input.revision_id))
+      if (!db.prepare(`SELECT 1 FROM history h JOIN revisions r ON r.revision_id = h.revision_id WHERE h.revision_id = ? AND ${liveCourse("r.course_id")}`).get(input.revision_id))
         throw new BrainError("RULE", "Only published revisions accept attempts");
       const existing = db.prepare("SELECT revision_id, lesson_id, question_id, answer FROM attempts WHERE attempt_id = ?").get(input.attempt_id);
       if (existing && (existing.revision_id !== input.revision_id || existing.lesson_id !== input.lesson_id ||
@@ -344,7 +415,7 @@ export class ClassroomStore {
     });
   }
   listAttempts(revisionId: string) {
-    return this.use<AttemptRow[]>(false, [], (db) => db.prepare("SELECT attempt_id, revision_id, lesson_id, question_id, answer, score, created_at FROM attempts WHERE revision_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 100").all(revisionId) as unknown as AttemptRow[]);
+    return this.use<AttemptRow[]>(false, [], (db) => db.prepare(`SELECT a.attempt_id, a.revision_id, a.lesson_id, a.question_id, a.answer, a.score, a.created_at FROM attempts a JOIN revisions r ON r.revision_id = a.revision_id WHERE a.revision_id = ? AND ${liveCourse("r.course_id")} ORDER BY a.created_at DESC, a.rowid DESC LIMIT 100`).all(revisionId) as unknown as AttemptRow[]);
   }
 
   /** Read compatible answers without copying or regrading historical attempts. */
@@ -352,7 +423,7 @@ export class ClassroomStore {
     return this.use<AttemptRow[]>(false, [], (db) => {
       const revision = db.prepare(`
         SELECT r.course_id, r.sequence, r.body FROM revisions r
-        JOIN history h ON h.revision_id = r.revision_id WHERE r.revision_id = ?
+        JOIN history h ON h.revision_id = r.revision_id WHERE r.revision_id = ? AND ${liveCourse("r.course_id")}
       `).get(revisionId) as Pick<RevisionRow, "course_id" | "sequence" | "body"> | undefined;
       if (!revision) return [];
       const questions = storedBundle(revision.body).lessons.flatMap(lesson =>

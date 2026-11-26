@@ -1,4 +1,4 @@
-import type { ClassroomBundle } from "@tesseract/core";
+import type { ClassroomBundle, ClassroomTrashItem } from "@tesseract/core";
 /** Typed client for apps/server. Types come straight from core (type-only, nothing bundled). */
 import type {
   ActivitySummary,
@@ -135,6 +135,9 @@ export const api = {
   publishedCourses: () => request<CourseRevision[]>("GET", "/classroom/published"),
   publishedCourse: (id: string) => request<CourseDetail>("GET", "/classroom/published/" + id),
   courseDrafts: () => request<CourseRevision[]>("GET", "/classroom/drafts"),
+  classroomTrash: () => request<ClassroomTrashItem[]>("GET", "/classroom/trash"),
+  setClassroomTrashed: (kind: ClassroomTrashItem["kind"], id: string, trashed: boolean) =>
+    request<{ trashed: boolean }>("POST", "/classroom/trash/" + kind + "/" + encodeURIComponent(id), { trashed }),
   courseDraft: (id: string) => request<CourseDetail>("GET", "/classroom/drafts/" + id),
   previewCourseFile: (format: "json" | "zip", contents: string) =>
     request<{ bundle: ClassroomBundle }>("POST", "/classroom/import", { format, contents }),

@@ -504,6 +504,39 @@ describe("classroom onboarding", () => {
     expect((await req("POST","/api/classroom/drafts/"+first+"/restore",{})).status).toBe(200);
     expect((await (await req("GET",path)).json())[0].score).toBe(1);
   });
+  it("lets only the host use Classroom trash and restores previous answers", async () => {
+    const {req}=setup();
+    const first=(await (await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"trash-http-first"})).json()).revision_id;
+    const draft=(await (await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"trash-http-draft",base_revision:first})).json()).revision_id;
+    const base="/api/classroom";
+    const draftTrash=base+"/trash/draft/"+draft;
+    expect((await req("POST",draftTrash,{trashed:true})).status).toBe(200);
+    expect((await req("GET",base+"/drafts/"+draft)).status).toBe(404);
+    expect((await req("POST",base+"/drafts/"+first+"/publish",{})).status).toBe(200);
+    const course=base+"/published/course-fixture";
+    expect((await req("POST",course+"/attempts",{revision_id:first,attempt_id:"trash-http-answer",lesson_id:"lesson",question_id:"q",answer:[0]})).status).toBe(201);
+    const courseTrash=base+"/trash/course/course-fixture";
+    expect((await req("POST",courseTrash,{trashed:true},{origin:"https://example.org"})).status).toBe(403);
+    expect((await req("POST",courseTrash,{trashed:"true"})).status).toBe(400);
+    expect((await req("POST",courseTrash,{trashed:true})).status).toBe(200);
+    expect((await req("GET",course)).status).toBe(404);
+    expect((await req("GET",course+"/attempts")).status).toBe(404);
+    expect((await req("POST","/api/learning",{title:"Course Fixture"})).status).toBe(409);
+    const trash=await (await req("GET",base+"/trash")).json();
+    expect(trash).toMatchObject([{kind:"course",id:"course-fixture"}]);
+    expect((await req("POST",courseTrash,{trashed:false})).status).toBe(200);
+    expect(await (await req("GET",course+"/attempts")).json()).toMatchObject([{attempt_id:"trash-http-answer",score:1}]);
+    expect((await req("GET",base+"/drafts/"+draft)).status).toBe(404);
+    expect((await req("POST",draftTrash,{trashed:false})).status).toBe(200);
+    expect((await req("GET",base+"/drafts/"+draft)).status).toBe(200);
+
+    const {req: paired}=setup(undefined,{address:"192.168.1.9",token:"paired-fixture"});
+    const auth={authorization:"Bearer paired-fixture"};
+    expect((await paired("GET",base+"/trash",undefined,auth)).status).toBe(403);
+    expect((await paired("POST",courseTrash,{trashed:false},auth)).status).toBe(403);
+    expect((await paired("POST",draftTrash,{trashed:true},auth)).status).toBe(403);
+  });
+
   it("does not let a paired device import, inspect drafts, or publish", async()=>{
     const {req}=setup(undefined,{address:"192.168.1.9",token:"paired-fixture"});
     const auth={authorization:"Bearer paired-fixture"};

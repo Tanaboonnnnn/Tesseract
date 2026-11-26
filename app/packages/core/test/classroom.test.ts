@@ -164,3 +164,53 @@ it("resumes only identical questions across published revisions, independently o
   store.publish(other.revision_id);
   expect(store.listProgress(other.revision_id)).toEqual([]);
 }, 20_000);
+
+it("trashes only unpublished drafts and keeps staging, review and exact retries consistent", () => {
+  const original = store.submit({request_id:"trash-first",bundle:bundle()});
+  if (!original.ok) throw Error("fixture");
+  store.publish(original.revision_id);
+  const request = {request_id:"trash-draft",base_revision:original.revision_id,bundle:bundle("Wrong draft")};
+  const bad = store.submit(request);
+  if (!bad.ok) throw Error("fixture");
+  expect(() => store.setDraftTrashed(original.revision_id,true)).toThrow(/published/i);
+  store.setDraftTrashed(bad.revision_id,true);
+  expect(store.listDrafts().map(x=>x.revision_id)).toEqual([original.revision_id]);
+  expect(store.getRevision(bad.revision_id)).toBeNull();
+  expect(store.revisionAnchor("synthetic-only")).toMatchObject({base_revision:original.revision_id,pending_draft:false});
+  expect(store.submit(request)).toEqual(bad);
+  expect(() => store.publish(bad.revision_id)).toThrow(/trash/i);
+  expect(store.submit({request_id:"trash-stale",base_revision:bad.revision_id,bundle:bundle()})).toMatchObject({ok:false,issues:[{code:"STALE_REVISION"}]});
+  expect(new ClassroomStore(dir).listTrash()).toMatchObject([{kind:"draft",id:bad.revision_id,title:"Wrong draft"}]);
+  store.setDraftTrashed(bad.revision_id,false);
+  expect(store.getRevision(bad.revision_id)?.title).toBe("Wrong draft");
+  expect(store.getPublished("synthetic-only")?.revision_id).toBe(original.revision_id);
+  expect(store.listTrash()).toEqual([]);
+});
+
+it("trashes a whole course without writing over attempts, drafts or receipt history", () => {
+  const original = store.submit({request_id:"course-trash-first",bundle:bundle()});
+  if (!original.ok) throw Error("fixture");
+  store.publish(original.revision_id);
+  store.recordAttempt({attempt_id:"saved-trash-answer",revision_id:original.revision_id,lesson_id:"lesson-one",question_id:"question-one",answer:"Keep this answer"});
+  const pending = store.submit({request_id:"course-trash-draft",base_revision:original.revision_id,bundle:bundle("Pending")});
+  const other = store.submit({request_id:"course-trash-other",bundle:{...bundle(),course_id:"different"}});
+  if (!pending.ok || !other.ok) throw Error("fixture");
+  store.publish(other.revision_id);
+  store.setCourseTrashed("synthetic-only",true);
+  const reopened = new ClassroomStore(dir);
+  expect(reopened.hasCourse("synthetic-only")).toBe(true);
+  expect(reopened.listPublished().map(x=>x.course_id)).toEqual(["different"]);
+  expect(reopened.getPublished("synthetic-only")).toBeNull();
+  expect(reopened.getRevision(pending.revision_id)).toBeNull();
+  expect(reopened.listProgress(original.revision_id)).toEqual([]);
+  expect(reopened.revisionAnchor("synthetic-only")).toBeNull();
+  expect(reopened.listTrash()).toMatchObject([{kind:"course",id:"synthetic-only",title:"Synthetic fixture"}]);
+  expect(reopened.getReceipt("course-trash-draft")).toEqual(pending);
+  expect(reopened.submit({request_id:"course-trash-new",base_revision:pending.revision_id,bundle:bundle()})).toMatchObject({ok:false,issues:[{code:"COURSE_TRASHED"}]});
+  expect(() => reopened.publish(pending.revision_id)).toThrow(/trash/i);
+  reopened.setCourseTrashed("synthetic-only",false);
+  expect(reopened.getPublished("synthetic-only")?.revision_id).toBe(original.revision_id);
+  expect(reopened.getRevision(pending.revision_id)?.title).toBe("Pending");
+  expect(reopened.listProgress(original.revision_id)).toMatchObject([{answer:"Keep this answer",attempt_id:"saved-trash-answer"}]);
+  expect(reopened.listTrash()).toEqual([]);
+});
