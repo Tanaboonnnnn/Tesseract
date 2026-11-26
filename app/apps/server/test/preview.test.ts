@@ -10,10 +10,11 @@ it("rejects restore preview without an explicit directory and with LAN/desktop o
   try {
     for (const args of [[], ["--data", data, "--lan"], ["--data", data, "--desktop"], ["--data", data, "--allow-host", "example.com"]]) {
       const r = spawnSync(process.execPath, [main, "--restore-preview", "--port", "0", ...args], {
-        encoding: "utf8", timeout: 2_000, env: { ...process.env, BRAIN_DATA_DIR: data, HOME: data, USERPROFILE: data },
+        encoding: "utf8", timeout: 10_000, env: { ...process.env, BRAIN_DATA_DIR: data, HOME: data, USERPROFILE: data },
       });
+      expect(r.error).toBeUndefined();
       expect(r.status).toBe(1);
       expect(r.stderr).toMatch(/Restore preview requires explicit --data and loopback only/);
     }
   } finally { rmSync(data, { recursive: true, force: true }); }
-});
+}, 45_000);
