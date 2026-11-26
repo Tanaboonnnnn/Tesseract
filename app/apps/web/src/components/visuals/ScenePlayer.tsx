@@ -1,8 +1,23 @@
+import "./scene-layout.css";
 import { FormulaBlock } from "./Lesson.tsx";
-import { useEffect, useId, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { Scene } from "@tesseract/core";
 import { sampleScene } from "@tesseract/core/pure";
 
+const SceneMesh = lazy(()=>import("./SceneMesh.tsx"));
+type MeshProps = React.ComponentProps<typeof SceneMesh>;
+function OptionalMesh({fallback, ...props}: Omit<MeshProps,"onUnavailable"> & {fallback:ReactNode}) {
+  const [view,setView]=useState<"flat"|"mesh"|"unavailable">("flat");
+  const unavailable=useCallback(()=>setView("unavailable"),[]);
+  return <>
+    {view==="mesh" ? <Suspense fallback={fallback}><SceneMesh {...props} onUnavailable={unavailable}/></Suspense> : fallback}
+    <div className="mb-2 flex flex-wrap items-center gap-2">
+      {view==="unavailable" ? <p className="text-xs">3D is unavailable. The 2D view uses the same timeline and labels.</p> :
+      <button type="button" className="rounded-md border border-[var(--line)] px-2 py-1 text-sm" onClick={()=>setView(view==="mesh"?"flat":"mesh")}>{view==="mesh"?"Use 2D view":"Open 3D view"}</button>}
+    </div>
+  </>;
+}
 const AUTO_KEY = "tesseract:scene-autoplay";
 const candidates = new Map<string, { ratio:number; manual:number; setActive:(active:boolean)=>void }>();
 function choosePlayer() {
@@ -78,24 +93,27 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
   const { entities, beat } = sampleScene(scene,time,inputs);
   const playing = canAnimate && (scene.loop || time<scene.duration_ms);
   const shown = new Set(entities.filter(e=>e.opacity>0).map(e=>e.id));
-  const link = scene.bindings?.find(b=>b.id===(pinned ?? focus ?? hover) && b.target_ids.some(e=>shown.has(e)));
+  const link = scene.bindings?.find(b=>b.id===(hover ?? focus ?? pinned) && b.target_ids.some(e=>shown.has(e)));
   const selected = new Set(link?.target_ids ?? []);
+  const formulaShowsExplanation = scene.panels.some(p=>p.kind==="inspect" && p.id===link?.panel && p.tex);
+  const layout = scene.panels.length===2 && scene.panels.filter(p=>p.kind==="inspect").length===1 ? "compact-inspect" : "grid";
   const seek=(ms:number)=>{setMode("pause"); clock.current=ms; setTime(ms);};
   const play=()=>{priority.current=++playSequence; if (clock.current>=scene.duration_ms) { clock.current=0; setTime(0); } setMode("play");};
   const step=scene.beats.indexOf(beat);
   const button="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--lane)] disabled:opacity-40";
   const toggle = (key:string)=>setPinned(old=>old===key ? null : key);
 
-  return <section ref={root} aria-label={title} className="my-3 min-w-0 space-y-3 rounded-xl border border-[var(--line)] p-3 sm:p-4" onKeyDown={e=>{if(e.key==="Escape"){setPinned(null);setHover(null);setFocus(null);}}}>
-    <div className="grid min-w-0 gap-3 lg:grid-cols-2">
-      {scene.panels.map(panel=><section key={panel.id} className="min-w-0 rounded-lg bg-[var(--lane)] p-3">
+  return <section ref={root} aria-label={title} className="tess-scene-layout my-3 min-w-0 space-y-3 rounded-xl border border-[var(--line)] p-3 sm:p-4" onKeyDown={e=>{if(e.key==="Escape"){setPinned(null);setHover(null);setFocus(null);}}}>
+    <div className="tess-scene-panels min-w-0 gap-3" data-layout={layout}>
+      {scene.panels.map(panel=><section key={panel.id} data-panel-kind={panel.kind} className="min-w-0 rounded-lg bg-[var(--lane)] p-3">
         <h4 className="break-words text-sm font-semibold">{panel.label}</h4>
         {panel.kind==="inspect" && panel.tex ? <div className="mt-2">
         <FormulaBlock b={{kind:"formula",tex:panel.tex,where:[],terms:(scene.bindings??[]).filter(b=>b.panel===panel.id).map(b=>({id:b.id,label:b.term,note:b.explanation}))}}
           connected={{active:link?.id??null,pinned,onHover:setHover,onFocus:setFocus,onSelect:toggle,enabled:key=>(scene.bindings??[]).some(b=>b.id===key && b.target_ids.some(t=>shown.has(t)))}} />
-        </div> : panel.kind==="inspect" ? <div className="mt-2 flex flex-wrap gap-2">{scene.bindings?.filter(b=>b.panel===panel.id).map(b=><button key={b.id} type="button" className={button+" break-words "+(link?.id===b.id?"font-bold underline":"")} aria-pressed={pinned===b.id} disabled={!b.target_ids.some(t=>shown.has(t))} onPointerEnter={()=>setHover(b.id)} onPointerLeave={()=>setHover(null)} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{b.term}</button>)}</div> :
+        </div> : panel.kind==="inspect" ? <div className="mt-2 flex flex-wrap gap-2">{scene.bindings?.filter(b=>b.panel===panel.id).map(b=><button key={b.id} type="button" className={button+" break-words "+(link?.id===b.id?"font-bold underline":"")} aria-pressed={pinned===b.id} disabled={!b.target_ids.some(t=>shown.has(t))} onPointerEnter={e=>{if(e.pointerType!=="touch")setHover(b.id);}} onPointerLeave={()=>setHover(null)} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{b.term}</button>)}</div> :
           <>
-          <svg className="mt-1 h-auto w-full" viewBox="0 0 420 214" aria-label={panel.label}>
+          {(() => {
+            const drawing = <svg className="mt-1 h-auto w-full" viewBox="0 0 420 214" aria-label={panel.label}>
             {panel.kind==="plot" && <g fill="none" stroke="currentColor" opacity=".45"><path d="M25 18 V180 H395" /><path d="M25 140 H395 M25 100 H395 M25 60 H395" opacity=".3" /></g>}
             {panel.kind==="plot" && <><text x="25" y="14" fontSize="11" fill="currentColor">{panel.y_label}</text><text x="395" y="207" fontSize="11" textAnchor="end" fill="currentColor">{panel.x_label}</text></>}
             {entities.filter(e=>e.panel===panel.id && e.opacity>0).map(e=>{
@@ -106,7 +124,7 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
               const x=sx(e.x), y=sy(e.y), w=e.width ?? 14, h=e.height ?? 24;
               const iso = panel.kind==="diagram" && panel.projection==="isometric";
               return <g key={e.id} opacity={e.opacity/100} strokeWidth={highlighted?3:1.5} stroke={color} fill="none"
-                onPointerEnter={matching?()=>setHover(matching.id):undefined} onPointerLeave={matching?()=>setHover(null):undefined}
+                onPointerEnter={matching?event=>{if(event.pointerType!=="touch")setHover(matching.id);}:undefined} onPointerLeave={matching?()=>setHover(null):undefined}
                 onClick={matching?()=>toggle(matching.id):undefined} className={matching?"cursor-pointer":undefined}>
                 <title>{e.label}</title>
                 {e.kind==="path" ? <><polyline points={e.points!.map(([px,py])=>sx(px+e.x)+","+sy(py+e.y)).join(" ")} strokeLinecap="round" strokeLinejoin="round" /><polyline points={e.points!.map(([px,py])=>sx(px+e.x)+","+sy(py+e.y)).join(" ")} stroke="transparent" strokeWidth="14" /></> :
@@ -115,7 +133,11 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
                 {e.kind!=="path" && <text stroke="none" fill="currentColor" fontSize="12" fontWeight={highlighted?700:400} x={x} y={y+(e.kind==="box"?h/2+16:e.kind==="circle"?w/2+16:e.kind==="point"?20:0)} textAnchor="middle">{e.label}</text>}
               </g>;
             })}
-          </svg>
+          </svg>;
+            return panel.kind==="mesh" ? <OptionalMesh label={panel.label} fallback={drawing}
+              entities={entities.filter(e=>e.panel===panel.id)} highlighted={new Set([...selected,...(beat.focus??[])])}
+              onSelect={entity=>{const binding=(scene.bindings??[]).find(b=>b.target_ids.includes(entity));if(binding)toggle(binding.id);}}/> : drawing;
+          })()}
           {!!scene.bindings?.some(b=>b.target_ids.some(key=>entities.some(e=>e.id===key && e.panel===panel.id && shown.has(key)))) && <div className="flex flex-wrap gap-2">
             {entities.filter(e=>e.panel===panel.id && shown.has(e.id)).flatMap(e=>(scene.bindings??[]).filter(b=>b.target_ids.includes(e.id)).map(b=>
               <button key={e.id+":"+b.id} type="button" className={button+(link?.id===b.id?" font-bold underline":"")} aria-pressed={pinned===b.id} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{e.label}</button>))}
@@ -124,7 +146,7 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
         }
       </section>)}
     </div>
-    {link && <p className="break-words text-sm"><strong>{link.term}:</strong> {link.explanation}</p>}
+    {link && !formulaShowsExplanation && <p className="break-words text-sm"><strong>{link.term}:</strong> {link.explanation}</p>}
     <div className="rounded-lg border border-[var(--line)] p-3"><p className="font-semibold">{beat.label}</p><p className="break-words text-sm">{beat.text}</p></div>
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" className={button} disabled={step<=0} onClick={()=>seek(scene.beats[step-1]!.at_ms)}>Previous</button>

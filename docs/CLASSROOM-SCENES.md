@@ -9,4 +9,12 @@ A scene is an English UI with author-supplied labels and lesson copy in any lang
 5. Stage the validated block via the existing draft flow and current revision anchor. Preview before the owner publishes. Use direct references and text fallbacks. There is no execution or publish tool in the new flow. Never retry an uncertain write without checking the original request ID.
 6. Autoplay is local to each learner browser. Only one visible scene plays, it stops off-screen, and reduced motion disables automatic playback. App styles supply the colors and controls; no custom CSS, HTML, remote media, or script is accepted in the scene.
 
+An optional mesh panel supports depth-buffered 3D spheres and boxes with camera controls. Opening a 3D view is explicit; a 2D drawing and named selectable objects remain available without WebGL. It does not load external models.
+
 Development fixtures in `app/fixtures/motion` use synthetic teaching data, not live classroom content.
+
+## Inline lessons and pacing
+
+Place a text block, then a scene, then the next text block in the course's existing block array. If the lesson has a scene, Learn keeps this ordering and does not pull all visuals into a gallery. For an inline lesson without a scene, choose `layout: "inline"` on the lesson. Use the old formula block directly for a formula-only lesson and typed plots or static charts only when they teach something. Older lessons that do not request inline layout and have no scene keep their existing layout. Include a sentence introducing what to look at and a follow-up explaining what the learner saw.
+
+Use the default linear timeline for data. A track may opt into `step` for a real state change or `ease-in-out` for a purely illustrative motion. Do not change measured data to make it look smoother. Off-screen and reduced-motion behavior still applies.

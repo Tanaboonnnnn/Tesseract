@@ -1,0 +1,383 @@
+{
+  "schema_version": 1,
+  "style": "minimal-technical",
+  "duration_ms": 8000,
+  "loop": true,
+  "panels": [
+    {
+      "id": "network",
+      "kind": "diagram",
+      "label": "Round Robin · request routing",
+      "projection": "isometric"
+    }
+  ],
+  "entities": [
+    {
+      "id": "client",
+      "panel": "network",
+      "kind": "box",
+      "x": 9,
+      "y": 53,
+      "width": 40,
+      "height": 28,
+      "label": "Client"
+    },
+    {
+      "id": "balancer",
+      "panel": "network",
+      "kind": "box",
+      "x": 43,
+      "y": 53,
+      "width": 40,
+      "height": 28,
+      "label": "Balancer",
+      "tone": "secondary"
+    },
+    {
+      "id": "server-a",
+      "panel": "network",
+      "kind": "box",
+      "x": 88,
+      "y": 20,
+      "width": 43,
+      "height": 27,
+      "label": "Server A"
+    },
+    {
+      "id": "server-b",
+      "panel": "network",
+      "kind": "box",
+      "x": 88,
+      "y": 53,
+      "width": 43,
+      "height": 27,
+      "label": "Server B"
+    },
+    {
+      "id": "server-c",
+      "panel": "network",
+      "kind": "box",
+      "x": 88,
+      "y": 86,
+      "width": 43,
+      "height": 27,
+      "label": "Server C"
+    },
+    {
+      "id": "input",
+      "panel": "network",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "label": "Incoming requests",
+      "points": [
+        [
+          9,
+          53
+        ],
+        [
+          43,
+          53
+        ]
+      ]
+    },
+    {
+      "id": "route-a",
+      "panel": "network",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "label": "Path to server A",
+      "points": [
+        [
+          43,
+          53
+        ],
+        [
+          58,
+          53
+        ],
+        [
+          74,
+          20
+        ],
+        [
+          88,
+          20
+        ]
+      ]
+    },
+    {
+      "id": "route-b",
+      "panel": "network",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "label": "Path to server B",
+      "points": [
+        [
+          43,
+          53
+        ],
+        [
+          58,
+          53
+        ],
+        [
+          74,
+          53
+        ],
+        [
+          88,
+          53
+        ]
+      ]
+    },
+    {
+      "id": "route-c",
+      "panel": "network",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "label": "Path to server C",
+      "points": [
+        [
+          43,
+          53
+        ],
+        [
+          58,
+          53
+        ],
+        [
+          74,
+          86
+        ],
+        [
+          88,
+          86
+        ]
+      ]
+    },
+    {
+      "id": "request",
+      "panel": "network",
+      "kind": "point",
+      "x": 9,
+      "y": 53,
+      "tone": "primary",
+      "label": "Request"
+    }
+  ],
+  "beats": [
+    {
+      "id": "first",
+      "at_ms": 0,
+      "label": "Request 1 → A",
+      "text": "The balancer sends the first request to Server A.",
+      "focus": [
+        "server-a",
+        "route-a"
+      ]
+    },
+    {
+      "id": "second",
+      "at_ms": 2500,
+      "label": "Request 2 → B",
+      "text": "The next request goes to Server B, even though the client is the same.",
+      "focus": [
+        "server-b",
+        "route-b"
+      ]
+    },
+    {
+      "id": "third",
+      "at_ms": 5000,
+      "label": "Request 3 → C",
+      "text": "The third request goes to Server C. With the same three healthy servers, the sequence then returns to A.",
+      "focus": [
+        "server-c",
+        "route-c"
+      ]
+    }
+  ],
+  "tracks": [
+    {
+      "entity": "request",
+      "property": "x",
+      "easing": "ease-in-out",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 9
+        },
+        {
+          "at_ms": 700,
+          "value": 43
+        },
+        {
+          "at_ms": 1100,
+          "value": 58
+        },
+        {
+          "at_ms": 1750,
+          "value": 74
+        },
+        {
+          "at_ms": 2170,
+          "value": 88
+        },
+        {
+          "at_ms": 2500,
+          "value": 9
+        },
+        {
+          "at_ms": 3200,
+          "value": 43
+        },
+        {
+          "at_ms": 3600,
+          "value": 58
+        },
+        {
+          "at_ms": 4250,
+          "value": 74
+        },
+        {
+          "at_ms": 4670,
+          "value": 88
+        },
+        {
+          "at_ms": 5000,
+          "value": 9
+        },
+        {
+          "at_ms": 5700,
+          "value": 43
+        },
+        {
+          "at_ms": 6100,
+          "value": 58
+        },
+        {
+          "at_ms": 6750,
+          "value": 74
+        },
+        {
+          "at_ms": 7170,
+          "value": 88
+        }
+      ]
+    },
+    {
+      "entity": "request",
+      "property": "y",
+      "easing": "ease-in-out",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 53
+        },
+        {
+          "at_ms": 700,
+          "value": 53
+        },
+        {
+          "at_ms": 1100,
+          "value": 53
+        },
+        {
+          "at_ms": 1750,
+          "value": 20
+        },
+        {
+          "at_ms": 2170,
+          "value": 20
+        },
+        {
+          "at_ms": 2500,
+          "value": 53
+        },
+        {
+          "at_ms": 3200,
+          "value": 53
+        },
+        {
+          "at_ms": 3600,
+          "value": 53
+        },
+        {
+          "at_ms": 4250,
+          "value": 53
+        },
+        {
+          "at_ms": 4670,
+          "value": 53
+        },
+        {
+          "at_ms": 5000,
+          "value": 53
+        },
+        {
+          "at_ms": 5700,
+          "value": 53
+        },
+        {
+          "at_ms": 6100,
+          "value": 53
+        },
+        {
+          "at_ms": 6750,
+          "value": 86
+        },
+        {
+          "at_ms": 7170,
+          "value": 86
+        }
+      ]
+    },
+    {
+      "entity": "request",
+      "property": "opacity",
+      "easing": "step",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 100
+        },
+        {
+          "at_ms": 2170,
+          "value": 100
+        },
+        {
+          "at_ms": 2200,
+          "value": 0
+        },
+        {
+          "at_ms": 2500,
+          "value": 100
+        },
+        {
+          "at_ms": 4670,
+          "value": 100
+        },
+        {
+          "at_ms": 4700,
+          "value": 0
+        },
+        {
+          "at_ms": 5000,
+          "value": 100
+        },
+        {
+          "at_ms": 7170,
+          "value": 100
+        },
+        {
+          "at_ms": 7200,
+          "value": 0
+        }
+      ]
+    }
+  ]
+}

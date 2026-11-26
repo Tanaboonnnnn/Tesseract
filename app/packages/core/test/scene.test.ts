@@ -51,3 +51,24 @@ test("inspect formulas bind only terms declared in that panel", () => {
   assert.equal(SceneSchema.safeParse(withFormula(String.raw`x = \term{other}{r}`)).success,false);
   assert.equal(SceneSchema.safeParse(withFormula(String.raw`\href{https://example.com}{x}`)).success,false);
 });
+
+test("3D primitives share the same clock and bindings as other panels", () => {
+  const b=raw();
+  const depth = {...b, panels:b.panels.map(p=>p.id==="fig"?{id:p.id,kind:"mesh",label:p.label}:p),
+    entities:b.entities.map(e=>e.id==="dot"?{...e,kind:"circle",width:30,z:20}:e),
+    tracks:[...b.tracks,{entity:"dot",property:"z",frames:[{at_ms:0,value:20},{at_ms:1000,value:60}]}]};
+  assert.equal(sampleScene(SceneSchema.parse(depth),500).entities[0]?.z,40);
+  const unsafe={...depth,entities:depth.entities.map(e=>e.id==="dot"?{...e,asset:"https://example.com/geometry"}:e)};
+  assert.equal(SceneSchema.safeParse(unsafe).success,false);
+  const wrong={...depth,tracks:depth.tracks.map(t=>t.property==="z"?{...t,entity:"tick"}:t)};
+  assert.equal(SceneSchema.safeParse(wrong).success,false);
+});
+
+test("opt-in visual easing and step changes are deterministic; linear remains the default", () => {
+  const b=raw();
+  const s=SceneSchema.parse({...b,tracks:b.tracks.map((track,i)=>({...track,easing:i===0?"ease-in-out":"step"}))});
+  assert.equal(sampleScene(s,250).entities[0]?.x,16.25);
+  assert.equal(sampleScene(s,250).entities[1]?.x,10);
+  assert.equal(sampleScene(s,1000).entities[1]?.x,40);
+  assert.equal(sampleScene(SceneSchema.parse(b),250).entities[0]?.x,20);
+});

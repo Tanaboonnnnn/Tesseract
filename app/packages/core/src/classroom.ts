@@ -47,7 +47,7 @@ export const ClassroomBundleSchema = z.strictObject({
   schema_version: z.literal(1), course_id: id, title: text(120), language: z.enum(["th", "en"]),
   sources: z.array(source).min(1).max(48),
   lessons: z.array(z.strictObject({
-    id, title: text(120), objective: text(1000), source_ids: z.array(id).min(1).max(16),
+    id, title: text(120), objective: text(1000), layout: z.literal("inline").optional(), source_ids: z.array(id).min(1).max(16),
     blocks: z.array(block).min(1).max(24), questions: z.array(question).max(30).default([]), labs: z.array(lab).max(8).default([]),
   })).min(1).max(24),
 }).superRefine((bundle, ctx) => {

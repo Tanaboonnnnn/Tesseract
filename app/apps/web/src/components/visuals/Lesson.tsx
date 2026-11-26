@@ -131,6 +131,15 @@ export function FormulaBlock({ b, connected }: { b: Extract<LessonBlock, { kind:
     })
     .join("");
   const term = b.terms[active];
+  const pinnedIndex = connected ? b.terms.findIndex(t=>t.id===connected.pinned) : selected;
+  const previous = connected ? b.terms.findLastIndex((t,i)=>i<pinnedIndex && connected.enabled(t.id)) : selected-1;
+  const next = connected ? b.terms.findIndex((t,i)=>i>pinnedIndex && connected.enabled(t.id)) : selected+1;
+  const navigate=(i:number)=>{
+    if (!connected) {setActive(i);return;}
+    const id=b.terms[i]?.id;
+    if (id) connected.onSelect(id);
+    else if(connected.pinned) connected.onSelect(connected.pinned);
+  };
   return (
     <div className="sb-formula space-y-3" data-formula-scope={scope}>
       <style>{css}</style>
@@ -146,10 +155,10 @@ export function FormulaBlock({ b, connected }: { b: Extract<LessonBlock, { kind:
       {b.terms.length > 0 && (
         <>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button className="grid size-7 place-items-center rounded-md ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Previous term" disabled={selected <= -1} onClick={() => setActive(selected - 1)}>
+            <button className="grid size-7 place-items-center rounded-md ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Previous term" disabled={pinnedIndex < 0} onClick={() => navigate(previous)}>
               <ChevronLeft size={14} />
             </button>
-            <button className="grid size-7 place-items-center rounded-md ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Next term" disabled={selected >= b.terms.length - 1} onClick={() => setActive(selected + 1)}>
+            <button className="grid size-7 place-items-center rounded-md ring-1 ring-[var(--line)] disabled:opacity-35" aria-label="Next term" disabled={next < 0 || next >= b.terms.length} onClick={() => navigate(next)}>
               <ChevronRight size={14} />
             </button>
             {b.terms.map((t, i) => (

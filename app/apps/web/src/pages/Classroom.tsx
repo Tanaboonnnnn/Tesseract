@@ -177,6 +177,19 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
       </nav>
       {tab === "learn" && <div className="space-y-4">
         <p>{lesson.objective}</p>
+      {(lesson.layout==="inline" || lesson.blocks.some(b=>b.type==="visual" && b.visual.type==="scene")) ? (
+        <article aria-label="Lesson content" className="space-y-4">
+          {lesson.blocks.map((b,i) => b.type==="text" ? (
+            <div key={i} className="max-w-[72ch]"><Markdown text={b.markdown}/></div>
+          ) : (
+            <section key={i} aria-label={b.visual.title} className="min-w-0 space-y-2">
+              <h3 className="text-sm font-semibold">{b.visual.title}</h3>
+              <Suspense fallback={<Loading/>}><Visual visual={b.visual}/></Suspense>
+              <details className="text-sm muted"><summary>Read the steps</summary><p>{b.fallback}</p></details>
+            </section>
+          ))}
+        </article>
+      ) : <>
       {lesson.blocks.some(b=>b.type==="visual") && <section aria-label="Interactive visuals" className="space-y-3">
         <h3 className="font-semibold">Interactive visuals</h3>
         {lesson.blocks.flatMap((b,i)=> b.type==="visual" ? [<Card key={i} className="space-y-2 p-3 sm:p-4">
@@ -189,6 +202,7 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
         <summary className="font-semibold">Lesson notes</summary>
         {lesson.blocks.map((b,i) => b.type==="text" ? <Markdown key={i} text={b.markdown}/> : null)}
       </details>
+      </>}
       </div>}
       {tab === "lab" && <div className="space-y-4">
         {!lesson.labs.length && <Card className="p-4"><p>No lab is assigned to this day.</p><p className="muted text-sm">Choose another day or check your understanding here.</p></Card>}

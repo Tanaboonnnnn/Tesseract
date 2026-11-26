@@ -201,7 +201,8 @@ function registerDraftTools(server: McpServer, store: Store) {
   server.registerTool("classroom_format", { description: "Course bundle example, constraints and optional validator-derived input JSON Schema.", inputSchema: { include_schema: z.boolean().optional(), include_scene_schema: z.boolean().optional() }, annotations: READ }, ({ include_schema, include_scene_schema }) => ok({
     ...(include_schema ? { schema: z.toJSONSchema(ClassroomBundleSchema, { io: "input", unrepresentable: "any" }) } : {}),
     ...(include_scene_schema ? {scene_schema: z.toJSONSchema(SceneSchema, { io:"input" }), scene_example: SCENE_EXAMPLES.scene.example} : {}),
-    scene: "Optional scene visual, v1. Use one focus per beat and a text fallback. Combine diagram, plot and inspect panels without subject-specific templates. Request include_scene_schema for the full contract; validate_course_visual checks only scene data, without storing it.",
+    scene: "Optional scene visual, v1. Use one focus per beat and a text fallback. Combine diagram, plot, inspect and optional mesh panels without subject-specific templates. Request include_scene_schema for the full contract; validate_course_visual checks only scene data, without storing it.",
+    lesson_layout: "Optional layout: inline preserves the block order in Learn with or without a scene. Existing lessons that omit it keep their layout unless they contain a scene.",
     example: CLASSROOM_EXAMPLE, limits: { max_bytes: 262144, max_lessons: 24 },
     blocks: { text: "{type, markdown}", visual: "{type, visual: typed Panya/Tesseract renderer data, fallback}" },
     questions: { single: "{id,type,prompt,choices,correct:[one zero-based index],explanation}", explain: "{id,type,prompt,rubric,model_answer}", multi: "{id,type,prompt,choices,correct,explanation}" },
@@ -233,7 +234,7 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
   if (options.profile === "classroom") return classroomServer(store);
   const remote = options.profile === "remote";
   const server = new McpServer({ name: "tesseract", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS + (remote ? REMOTE_NOTE : "") });
-  if (remote) registerDraftTools(server, store);
+  if (remote || options.profile === "local") registerDraftTools(server, store);
   const classrooms = new ClassroomStore(store.dataDir);
   const courseKey = (value: string) => value.startsWith("courses/") ? value.slice(8) : value;
   const catalog = () => publishedClassrooms(store.dataDir);

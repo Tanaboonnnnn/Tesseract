@@ -173,6 +173,7 @@ export function Guide() {
         <Card className="p-4"><h2 className="font-semibold">Learning</h2><p>Create a course or preview a JSON/ZIP package on the main computer. Review and publish drafts in your workspace.</p></Card>
         <Card className="p-4"><h2 className="font-semibold">ChatGPT, local AI &amp; phone</h2><p>Tunnel can discover published courses and send drafts for your review. It cannot publish or see answer keys or your attempts. QR pairing opens the app; it does not connect AI.</p></Card>
       </section>
+      <p className="mb-3 text-sm muted">Interactive Classroom scenes can pair a visual with a plot or an inspect card. Select a linked formula term or a labeled object to highlight the other. Visible scenes play one at a time; use its Autoplay checkbox to turn automatic playback off for this browser. 3D scenes also have a 2D view.</p>
       <p className="mb-5 text-sm muted">Workspace export v1 does not include classroom versions or answers. To back those up, stop the app and MCP and copy the whole workspace data folder, including .classroom.</p>
 
       {/* 1 */}

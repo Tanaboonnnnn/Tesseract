@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "style": "minimal-technical",
+  "duration_ms": 8000,
+  "panels": [
+    {
+      "id": "solid",
+      "kind": "mesh",
+      "label": "A sphere and an outside marker"
+    },
+    {
+      "id": "math",
+      "kind": "inspect",
+      "label": "Compare the measurements",
+      "tex": "\\term{distance}{d} > \\term{radius}{r}"
+    }
+  ],
+  "entities": [
+    {
+      "id": "sphere",
+      "panel": "solid",
+      "kind": "circle",
+      "label": "Sphere",
+      "x": 43,
+      "y": 50,
+      "z": 50,
+      "width": 41,
+      "tone": "primary"
+    },
+    {
+      "id": "marker",
+      "panel": "solid",
+      "kind": "point",
+      "label": "Outside marker",
+      "x": 75,
+      "y": 40,
+      "z": 52,
+      "width": 10,
+      "tone": "secondary"
+    }
+  ],
+  "beats": [
+    {
+      "id": "find",
+      "at_ms": 0,
+      "label": "Find the center",
+      "text": "Radius is the distance from the center to the surface, in any direction.",
+      "focus": [
+        "sphere"
+      ]
+    },
+    {
+      "id": "orbit",
+      "at_ms": 3200,
+      "label": "Change the viewpoint",
+      "text": "Rotate the diagram. Changing the viewpoint does not move the sphere or the marker in space.",
+      "focus": [
+        "marker"
+      ]
+    }
+  ],
+  "bindings": [
+    {
+      "id": "radius",
+      "panel": "math",
+      "term": "r",
+      "target_ids": [
+        "sphere"
+      ],
+      "explanation": "Distance from the sphere’s center to its surface."
+    },
+    {
+      "id": "distance",
+      "panel": "math",
+      "term": "d",
+      "target_ids": [
+        "marker"
+      ],
+      "explanation": "Distance from the sphere’s center to the outside marker."
+    }
+  ]
+}

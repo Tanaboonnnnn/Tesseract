@@ -329,7 +329,7 @@ updated: 2026-11-24
   (K-map loops). Cell ids are `r<row>c<col>`.
 - **tree** — `orientation down|right`, `root {id, label, note?, gate? and|or, children}` (≤ 80 nodes, depth ≤ 7).
 - Validation: unique element ids, every reference resolves (states, lanes, group cells, step ids, topic), size ≤ 64 KB.
-- **scene**: optional course-safe v1 declarative timelines, multiple typed panels, bounded tracks and cross-panel bindings; no executable code or external URLs. Older visuals remain valid.
+- **scene**: optional course-safe v1 declarative timelines, multiple typed panels, bounded tracks and cross-panel bindings; optional primitive 3D and 2D fallback; no executable code or external URLs. Older visuals remain valid.
 - Token-aware MCP: the tool list carries no per-type schema; `visual_formats(type)` returns fields + an example on demand.
 - Rendering: hand-written SVG, same look as the maps; steps only toggle opacity/glow (CSS transitions), nothing runs at rest.
 - **Round 2 (Phase 7b):** three more types.
@@ -474,7 +474,7 @@ This fork keeps existing Projects, Goals, Learning, Skills, Notes, Quizzes, Acti
 
 ### Classroom data (v1)
 
-Classrooms are separate from the existing Markdown/YAML workspace tools. A course bundle uses schema_version 1, stable course/lesson/question IDs, source links and rights status, Markdown or typed visuals, optional manual labs, and multiple-choice or explanation questions. Raw HTML, executable lesson content, imported scripts, cross-workspace embeds and remote asset loading are not part of this contract. The app does not run lab commands, verify factual claims, or auto-score an explanation.
+Classrooms are separate from the existing Markdown/YAML workspace tools. A course bundle uses schema_version 1, optional lesson layout `inline` to preserve block order in Learn, stable course/lesson/question IDs, source links and rights status, Markdown or typed visuals, optional manual labs, and multiple-choice or explanation questions. Raw HTML, executable lesson content, imported scripts, cross-workspace embeds and remote asset loading are not part of this contract. The app does not run lab commands, verify factual claims, or auto-score an explanation.
 
 Core alone writes the local `data/.classroom/classroom.sqlite`. Revisions are immutable; published pointer changes, the history and an audit journal are transactional. Attempts reference the exact revision/question and do not inherit scores from another version. This independent SQLite store does not alter legacy files or the legacy activity log. Neither SQLite nor personal workspace data goes in Git. In this foundation, publish/restore/revision-bound attempts are exercised in private core tests only. There is no new HTTP or user-facing Classroom route. Later, paired devices must use the shared host HTTP server, never direct DB file sharing; draft administration must stay on host loopback.
 

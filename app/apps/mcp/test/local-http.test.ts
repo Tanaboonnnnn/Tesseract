@@ -56,6 +56,16 @@ describe("local Streamable HTTP MCP", () => {
     expect(list.tools.map((tool) => tool.name)).toContain("list_published_courses");
     const result = await client.callTool({ name: "list_published_courses", arguments: {} });
     expect(result.isError).not.toBe(true);
+    const call = async (name:string, args:Record<string,unknown>)=>{
+      const result = await client.callTool({name,arguments:args});
+      expect(result.isError).not.toBe(true);
+      return JSON.parse((result.content as {text:string}[])[0]!.text);
+    };
+    const format = await call("classroom_format",{include_scene_schema:true});
+    expect(await call("validate_course_visual",{scene:format.scene_example.data})).toMatchObject({ok:true});
+    expect(await call("get_draft_status",{request_id:"check-no-scene-write"})).toMatchObject({status:"unknown"});
+    expect(list.tools.map(t=>t.name)).not.toContain("publish_course");
+
   });
 
   it("rejects wrong route, missing/invalid credentials, browser origins, and bad hosts", async () => {

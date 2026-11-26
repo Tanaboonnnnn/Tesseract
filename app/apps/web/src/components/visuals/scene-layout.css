@@ -1,0 +1,13 @@
+.tess-scene-layout { container-type: inline-size; }
+.tess-scene-panels { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@container (min-width: 52rem) {
+  .tess-scene-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 36rem) {
+  .tess-scene-panels[data-layout="compact-inspect"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(32%, 17rem));
+  }
+  .tess-scene-panels[data-layout="compact-inspect"] > [data-panel-kind="inspect"] {
+    order: 1;
+  }
+}

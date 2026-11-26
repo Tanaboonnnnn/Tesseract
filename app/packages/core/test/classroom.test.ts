@@ -58,3 +58,13 @@ it("publishes and rolls back a revision, preserving attempts on the original", (
   store.restore(first.revision_id);
   expect(store.getPublished("synthetic-only")?.bundle).toMatchObject(bundle());
 });
+
+it("accepts explicit inline layout without changing courses that omit it", () => {
+  const original=bundle();
+  const edited={...original,course_id:"inline-example",lessons:original.lessons.map(l=>({...l,layout:"inline"}))};
+  const added=store.submit({request_id:"inline-layout",bundle:edited});
+  if(!added.ok) throw new Error(JSON.stringify(added));
+  store.publish(added.revision_id);
+  expect(store.getPublished("inline-example")?.bundle.lessons[0]?.layout).toBe("inline");
+  expect(store.submit({request_id:"classic-layout",bundle:original})).toMatchObject({ok:true});
+});

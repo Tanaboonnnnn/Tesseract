@@ -5,17 +5,18 @@ const label = z.string().trim().min(1).max(100);
 const description = z.string().trim().min(1).max(600);
 const coordinate = z.number().finite().min(0).max(100);
 const time = z.number().int().min(0).max(180_000);
-const property = z.enum(["x", "y", "opacity"]);
+const property = z.enum(["x", "y", "z", "opacity"]);
 const panel = z.discriminatedUnion("kind", [
   z.strictObject({ id, kind: z.literal("diagram"), label, projection: z.enum(["flat","isometric"]).optional() }),
   z.strictObject({ id, kind: z.literal("plot"), label, x_label: label, y_label: label }),
+  z.strictObject({ id, kind: z.literal("mesh"), label }),
   z.strictObject({ id, kind: z.literal("inspect"), label, tex:z.string().min(1).max(400).optional() }),
 ]);
 const entity = z.strictObject({
   id, panel: id, label,
   kind: z.enum(["point","circle","box","path","text"]),
   x: coordinate, y: coordinate,
-  width: coordinate.optional(), height: coordinate.optional(),
+  width: coordinate.optional(), height: coordinate.optional(), z: coordinate.optional(), depth: coordinate.optional(),
   points: z.array(z.tuple([coordinate,coordinate])).min(2).max(100).optional(),
   tone: z.enum(["neutral","primary","secondary","caution"]).optional(),
   opacity: coordinate.optional(),
@@ -27,7 +28,7 @@ export const SceneSchema = z.strictObject({
   entities: z.array(entity).min(1).max(100),
   beats: z.array(z.strictObject({ id, at_ms: time, label, text: description, focus: z.array(id).max(12).optional() })).min(1).max(30),
   tracks: z.array(z.strictObject({
-    entity: id, property,
+    entity: id, property, easing: z.enum(["linear","ease-in-out","step"]).optional(),
     frames: z.array(z.strictObject({ at_ms: time, value: coordinate })).min(1).max(100),
   })).max(100).optional(),
   controls: z.array(z.strictObject({
@@ -47,10 +48,12 @@ export const SceneSchema = z.strictObject({
     }
   }
   const panels = new Map(s.panels.map(p => [p.id,p.kind]));
-  const entities = new Set(s.entities.map(e => e.id));
+  const entities = new Map(s.entities.map(e => [e.id, e]));
   s.entities.forEach((e,i) => {
     const target = panels.get(e.panel);
-    if (!target || target === "inspect") issue(["entities",i,"panel"], "Choose a diagram or plot panel");
+    if (!target || target === "inspect") issue(["entities",i,"panel"], "Choose a diagram, plot or mesh panel");
+    if (target === "mesh" && !["point","box","circle"].includes(e.kind)) issue(["entities",i,"kind"], "Mesh panels use spheres and boxes");
+    if (target !== "mesh" && (e.z !== undefined || e.depth !== undefined)) issue(["entities",i,"z"], "Depth is available only in mesh panels");
     if (e.kind === "path" && !e.points) issue(["entities",i,"points"], "A path needs points");
   });
   const checkOrder = (current: number, previous: number|undefined, path: (string|number)[]) => {
@@ -63,7 +66,9 @@ export const SceneSchema = z.strictObject({
   });
   const destinations = new Set<string>();
   const checkTarget = (target:string, prop:string, path:(string|number)[]) => {
-    if (!entities.has(target)) issue(path, "Unknown target");
+    const entity = entities.get(target);
+    if (!entity) issue(path, "Unknown target");
+    else if (prop === "z" && panels.get(entity.panel) !== "mesh") issue(path, "The z property is available only in mesh panels");
     const key = target + ":" + prop;
     if (destinations.has(key)) issue(path, "Only one track or control may drive a property");
     destinations.add(key);
