@@ -393,6 +393,13 @@ export function createApp(store: Store, options: AppOptions): Hono {
     if (!detail) throw new BrainError("NOT_FOUND", "Course not found");
     return c.json(classroom.listAttempts(detail.revision_id));
   });
+  api.get("/classroom/published/:id/progress", (c) => {
+    const detail = classroom.getPublished(c.req.param("id"));
+    if (!detail) throw new BrainError("NOT_FOUND", "Course not found");
+    if (c.req.query("revision") !== detail.revision_id)
+      throw new BrainError("CONFLICT", "This revision is no longer current; refresh the lesson");
+    return c.json(classroom.listProgress(detail.revision_id));
+  });
   api.post("/classroom/published/:id/attempts", bodyLimit({ maxSize: 16384 }), async (c) => {
     const body = await json(c);
     const published = classroom.getPublished(c.req.param("id"));

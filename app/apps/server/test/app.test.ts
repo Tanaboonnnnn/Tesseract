@@ -494,6 +494,13 @@ describe("classroom onboarding", () => {
       expect.objectContaining({revision_id:first,published:false,previously_published:true,latest:false})
     ]);
     expect(await (await req("GET",path)).json()).toEqual([]);
+    const progress = "/api/classroom/published/course-fixture/progress?revision=";
+    expect((await req("GET",progress+first)).status).toBe(409);
+    const resumed = await req("GET",progress+second);
+    expect(resumed.status).toBe(200);
+    expect(await resumed.json()).toMatchObject([
+      { attempt_id: "test-answer", revision_id: first, lesson_id: "lesson", question_id: "q", answer: "[0]", score: 1 },
+    ]);
     expect((await req("POST","/api/classroom/drafts/"+first+"/restore",{})).status).toBe(200);
     expect((await (await req("GET",path)).json())[0].score).toBe(1);
   });

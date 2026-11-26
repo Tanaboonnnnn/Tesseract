@@ -111,6 +111,7 @@ export type CourseDetail = Omit<CourseRevision, "published" | "previously_publis
 export type LessonOption = { ref: string; course: string; title: string; url: string };
 export type RelatedTask = { ref: string; project: string; projectTitle: string; title: string; status: string };
 export type CourseAttempt = { attempt_id: string; lesson_id: string; question_id: string; score: number | null };
+export type CourseProgress = CourseAttempt & { revision_id: string; answer: string };
 
 export const api = {
   overview: () => request<Overview>("GET", "/overview"),
@@ -143,6 +144,8 @@ export const api = {
   lessonOptions: () => request<LessonOption[]>("GET", "/learning-topic-options"),
   relatedTasks: (id: string) => request<RelatedTask[]>("GET", "/learning-related-tasks/" + id),
   courseAttempts: (id: string) => request<CourseAttempt[]>("GET", "/classroom/published/" + id + "/attempts"),
+  courseProgress: (id: string, revision: string) => request<CourseProgress[]>(
+    "GET", "/classroom/published/" + encodeURIComponent(id) + "/progress?revision=" + encodeURIComponent(revision)),
   submitCourseAnswer: (id: string, input: { revision_id: string; attempt_id: string; lesson_id: string; question_id: string; answer: string | number[] }) =>
     request<{ score: null | number }>("POST", "/classroom/published/" + id + "/attempts", input),
   learning: () => request<LearningSummary[]>("GET", "/learning"),

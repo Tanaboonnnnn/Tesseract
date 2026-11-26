@@ -98,3 +98,53 @@ it("keeps v1 unchanged across an ISO v2 publish/restore and rejects unsupported 
   expect(()=>store.restore(b.revision_id)).toThrow(/unsupported/i);
   expect(store.getPublished(v2.course_id)).toEqual(original);
 });
+
+it("resumes only identical questions across published revisions, independently of the recent history limit", () => {
+  const original = bundle();
+  const initial = { ...original, lessons: original.lessons.map(lesson => ({
+    ...lesson, questions: [...lesson.questions, {
+      id: "choice-one", type: "single", prompt: "Which route?", choices: ["First route", "Second route"],
+      correct: [0], explanation: "The first route is correct.",
+    }],
+  })) };
+  const a = store.submit({ request_id: "resume-v1", bundle: initial });
+  if (!a.ok) throw new Error(JSON.stringify(a.issues));
+  store.publish(a.revision_id);
+  const record = (revision_id: string, attempt_id: string, question_id: string, answer: string | number[]) =>
+    store.recordAttempt({ attempt_id, revision_id, lesson_id: "lesson-one", question_id, answer });
+  record(a.revision_id, "resume-first", "question-one", "Saved explanation");
+  for (let i = 0; i < 101; i++) record(a.revision_id, "resume-choice-" + i, "choice-one", [0]);
+  expect(store.listAttempts(a.revision_id).some(x => x.attempt_id === "resume-first")).toBe(false);
+  expect(store.listProgress(a.revision_id)).toEqual(expect.arrayContaining([
+    expect.objectContaining({ attempt_id: "resume-first", answer: "Saved explanation", score: null }),
+    expect.objectContaining({ attempt_id: "resume-choice-100", answer: "[0]", score: 1 }),
+  ]));
+  const revised = structuredClone(initial);
+  Object.assign(revised.lessons[0]!.questions[1]!, { choices: ["Second route", "First route"], correct: [1] });
+  const b = store.submit({ request_id: "resume-v2", base_revision: a.revision_id, bundle: revised });
+  if (!b.ok) throw new Error(JSON.stringify(b.issues));
+  const prose = structuredClone(revised);
+  prose.lessons[0]!.blocks[0]!.markdown = "A prose-only update.";
+  const c = store.submit({ request_id: "resume-v3", base_revision: b.revision_id, bundle: prose });
+  if (!c.ok) throw new Error(JSON.stringify(c.issues));
+  expect(() => store.publish(b.revision_id)).toThrow(/latest draft/i);
+  expect(store.getPublished(initial.course_id)?.revision_id).toBe(a.revision_id);
+  store.publish(c.revision_id);
+  expect(store.listPublished()).toHaveLength(1);
+  expect(store.listProgress(c.revision_id)).toMatchObject([{ attempt_id: "resume-first", revision_id: a.revision_id }]);
+  record(c.revision_id, "resume-new", "choice-one", [1]);
+  const d = store.submit({ request_id: "resume-v4", base_revision: c.revision_id, bundle: revised });
+  if (!d.ok) throw new Error(JSON.stringify(d.issues));
+  store.publish(d.revision_id);
+  expect(new ClassroomStore(dir).listProgress(d.revision_id)).toMatchObject([
+    { attempt_id: "resume-first", revision_id: a.revision_id, answer: "Saved explanation" },
+    { attempt_id: "resume-new", revision_id: c.revision_id, answer: "[1]", score: 1 },
+  ]);
+  expect(store.listAttempts(d.revision_id)).toEqual([]);
+  store.restore(a.revision_id);
+  expect(store.listProgress(a.revision_id).some(x => x.attempt_id === "resume-new")).toBe(false);
+  const other = store.submit({ request_id: "resume-other", bundle: { ...initial, course_id: "independent-course" } });
+  if (!other.ok) throw new Error(JSON.stringify(other.issues));
+  store.publish(other.revision_id);
+  expect(store.listProgress(other.revision_id)).toEqual([]);
+}, 20_000);

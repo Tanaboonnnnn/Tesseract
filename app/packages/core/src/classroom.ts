@@ -275,4 +275,34 @@ export class ClassroomStore {
   listAttempts(revisionId: string) {
     return this.use<AttemptRow[]>(false, [], (db) => db.prepare("SELECT attempt_id, revision_id, lesson_id, question_id, answer, score, created_at FROM attempts WHERE revision_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 100").all(revisionId) as unknown as AttemptRow[]);
   }
+
+  /** Read compatible answers without copying or regrading historical attempts. */
+  listProgress(revisionId: string) {
+    return this.use<AttemptRow[]>(false, [], (db) => {
+      const revision = db.prepare(`
+        SELECT r.course_id, r.sequence, r.body FROM revisions r
+        JOIN history h ON h.revision_id = r.revision_id WHERE r.revision_id = ?
+      `).get(revisionId) as Pick<RevisionRow, "course_id" | "sequence" | "body"> | undefined;
+      if (!revision) return [];
+      const questions = storedBundle(revision.body).lessons.flatMap(lesson =>
+        lesson.questions.map(question => [lesson.id, question.id, hash(canonical(question))]));
+      if (!questions.length) return [];
+      return db.prepare(`
+        SELECT a.attempt_id, a.revision_id, a.lesson_id, a.question_id, a.answer, a.score, a.created_at
+        FROM json_each(?) AS question
+        JOIN attempts a ON a.rowid = (
+          SELECT candidate.rowid FROM revisions r
+          JOIN history h ON h.revision_id = r.revision_id
+          JOIN attempts candidate ON candidate.revision_id = r.revision_id
+          WHERE r.course_id = ? AND r.sequence <= ?
+            AND candidate.lesson_id = json_extract(question.value, '$[0]')
+            AND candidate.question_id = json_extract(question.value, '$[1]')
+            AND candidate.question_hash = json_extract(question.value, '$[2]')
+          ORDER BY r.sequence DESC, candidate.created_at DESC, candidate.rowid DESC
+          LIMIT 1
+        )
+        ORDER BY CAST(question.key AS INTEGER)
+      `).all(JSON.stringify(questions), revision.course_id, revision.sequence) as unknown as AttemptRow[];
+    });
+  }
 }

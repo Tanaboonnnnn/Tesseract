@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { api, type CourseDetail, type CourseRevision } from "../lib/api.ts";
+import { api, type CourseDetail, type CourseProgress, type CourseRevision } from "../lib/api.ts";
 import { Button, Card, ErrorNote, Loading, PageHeader, inputClass } from "../components/ui.tsx";
 import { lessonLabels, isThaiLesson } from "../lib/lesson-language.ts";
 import { Markdown } from "../components/Markdown.tsx";
@@ -123,7 +123,12 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
   const { hash, search } = useLocation();
   const requested = new URLSearchParams(search).get("tab");
   const tab = requested === "lab" || requested === "check" ? requested : "learn";
-  const attempts = useQuery({queryKey:["classroom-attempts",id],queryFn:()=>api.courseAttempts(id),enabled:!draft});
+  const revision = query.data?.revision_id ?? "";
+  const progress = useQuery({
+    queryKey:["classroom-progress",id,revision],
+    queryFn:()=>api.courseProgress(id,revision),
+    enabled:!draft && tab==="check" && !!revision,
+  });
   const qc=useQueryClient();
   const nav=useNavigate();
   const action=useMutation({
@@ -137,6 +142,7 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
   const thai=isThaiLesson(d.bundle.language);
   const selected = Math.max(0, d.bundle.lessons.findIndex(l => l.id === hash.slice(1)));
   const lesson = d.bundle.lessons[selected]!;
+  const saved = new Map(progress.data?.filter(a=>a.lesson_id===lesson.id).map(a=>[a.question_id,a]));
   const path = draft ? "/learning/drafts/" + id : "/learning/classroom/" + id;
   const lessonLink = (topic: string, panel = tab) => path + (panel === "learn" ? "" : "?tab=" + panel) + "#" + topic;
   const sections = [{id:"learn", label:label.learn}, {id:"lab",label:label.lab}, {id:"check",label:label.check}] as const;
@@ -149,7 +155,7 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
     <PageHeader title={d.title}/>
     {draft && <Card className="p-4 space-y-2">
       <p className="font-semibold">{d.published ? "Current version" : d.previously_published ? "Version history preview" : "Draft preview"}</p>
-      <p className="text-sm muted">Updating changes which version opens in Learning. It does not create a second course or delete earlier answers.</p>
+      <p className="text-sm muted">Updating replaces the current version, not the course. Unchanged questions keep their answers.</p>
       <div className="flex flex-wrap gap-2">
         {d.latest && !d.previously_published && <Button disabled={action.isPending} onClick={()=>{if(confirm("Make this reviewed draft the current course version?")) action.mutate("publish");}}>Update current course</Button>}
         {d.previously_published && !d.published && <Button disabled={action.isPending} onClick={()=>{if(confirm("Restore this previously published revision?")) action.mutate("restore");}}>Restore this version</Button>}
@@ -231,11 +237,12 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
       </div>}
       {tab === "check" && <div className="space-y-4">
         <h3 className="font-semibold">{label.knowledge}</h3>
-        {!draft && <p className="text-sm muted">{attempts.data?.filter(a=>a.lesson_id===lesson.id).length ?? 0} {label.saved}</p>}
+        {!draft && lesson.questions.length>0 && (progress.error ? <ErrorNote error={progress.error}/> :
+          progress.isPending ? <Loading/> : <p className="text-sm muted">{saved.size} {label.saved}</p>)}
         {lesson.questions.length===0 && <p>{label.noQuestions}</p>}
         {lesson.questions.map(q=>draft ? <details key={q.id} className="rounded-lg border border-slate-500/25 p-4"><summary>{q.prompt}</summary>{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> :
           <><ul className="list-disc ml-5">{q.choices.map((choice,i)=><li key={i}>{choice}{q.correct.includes(i) ? " (correct)" : ""}</li>)}</ul><p>{q.explanation}</p></>}</details> :
-          <Answer key={d.revision_id+":"+lesson.id+":"+q.id} course={d} lesson={lesson.id} q={q}/>)}
+          progress.isSuccess ? <Answer key={d.revision_id+":"+lesson.id+":"+q.id} course={d} lesson={lesson.id} q={q} saved={saved.get(q.id)}/> : null)}
       </div>}
       {tab !== "check" && sources.length>0 && <details className="text-sm muted">
         <summary>{label.sources}</summary>
@@ -246,22 +253,23 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
   </div>;
 }
 
-function Answer({course,lesson,q}:{course:CourseDetail;lesson:string;q:Bundle["lessons"][number]["questions"][number]}) {
+function Answer({course,lesson,q,saved}:{course:CourseDetail;lesson:string;q:Bundle["lessons"][number]["questions"][number];saved?:CourseProgress|undefined}) {
   const label=lessonLabels(course.bundle.language);
   const [written,write]=useState("");
   const [choices,choose]=useState<number[]>([]);
-  const [submitted,setSubmitted]=useState(false);
   const [attempt]=useState(()=>crypto.randomUUID());
   const qc=useQueryClient();
   const save=useMutation({mutationFn:()=>api.submitCourseAnswer(course.course_id,{
     revision_id:course.revision_id, attempt_id:attempt, lesson_id:lesson, question_id:q.id, answer:q.type==="explain"?written:choices
-  }),onSuccess:()=>{setSubmitted(true);void qc.invalidateQueries({queryKey:["classroom-attempts",course.course_id]});}});
+  }),onSuccess:()=>{void qc.invalidateQueries({queryKey:["classroom-progress",course.course_id,course.revision_id]});}});
+  const submitted=!!saved||save.isSuccess;
+  const selectedChoices: number[]=saved&&q.type!=="explain"?JSON.parse(saved.answer):choices;
   return <Card className="p-3 space-y-2">
     <p className="font-semibold">{q.prompt}</p>
-    {q.type==="explain" ? <textarea aria-label={label.entry} className={inputClass} maxLength={4000} disabled={submitted||save.isPending} value={written} onChange={e=>write(e.target.value)}/> :
-      q.choices.map((s,i)=><label className="block" key={i}><input type={q.type==="single"?"radio":"checkbox"} name={attempt} disabled={submitted||save.isPending} checked={choices.includes(i)} onChange={()=>choose(xs=>q.type==="single"?[i]:xs.includes(i)?xs.filter(x=>x!==i):[...xs,i])}/> {s}</label>)}
+    {q.type==="explain" ? <textarea aria-label={label.entry} className={inputClass} maxLength={4000} disabled={submitted||save.isPending} value={saved?.answer??written} onChange={e=>write(e.target.value)}/> :
+      q.choices.map((s,i)=><label className="block" key={i}><input type={q.type==="single"?"radio":"checkbox"} name={attempt} disabled={submitted||save.isPending} checked={selectedChoices.includes(i)} onChange={()=>choose(xs=>q.type==="single"?[i]:xs.includes(i)?xs.filter(x=>x!==i):[...xs,i])}/> {s}</label>)}
     <ErrorNote error={save.error}/>
     {!submitted && <Button disabled={save.isPending || (q.type==="explain"?!written.trim():!choices.length)} onClick={()=>save.mutate()}>{label.submit}</Button>}
-    {submitted && <div aria-live="polite">{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> : <p>{save.data?.score===1?label.correct:label.incorrect}{q.explanation}</p>}</div>}
+    {submitted && <div aria-live="polite">{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> : <p>{(saved?.score??save.data?.score)===1?label.correct:label.incorrect}{q.explanation}</p>}</div>}
   </Card>;
 }
