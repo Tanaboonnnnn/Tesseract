@@ -20,9 +20,11 @@ const entity = z.strictObject({
   points: z.array(z.tuple([coordinate,coordinate])).min(2).max(100).optional(),
   tone: z.enum(["neutral","primary","secondary","caution"]).optional(),
   opacity: coordinate.optional(),
+  appearance: z.enum(["equipment-rack","display"]).optional(),
 });
 export const SceneSchema = z.strictObject({
   schema_version: z.literal(1), style: z.literal("minimal-technical"),
+  legend: z.array(z.strictObject({label,tone:z.enum(["neutral","primary","secondary","caution"])})).max(6).optional(),
   duration_ms: time.min(1), loop: z.boolean().optional(),
   panels: z.array(panel).min(1).max(6),
   entities: z.array(entity).min(1).max(100),
@@ -52,8 +54,9 @@ export const SceneSchema = z.strictObject({
   s.entities.forEach((e,i) => {
     const target = panels.get(e.panel);
     if (!target || target === "inspect") issue(["entities",i,"panel"], "Choose a diagram, plot or mesh panel");
-    if (target === "mesh" && !["point","box","circle"].includes(e.kind)) issue(["entities",i,"kind"], "Mesh panels use spheres and boxes");
+    if (target === "mesh" && !["point","box","circle","path"].includes(e.kind)) issue(["entities",i,"kind"], "Mesh panels use points, spheres, boxes and paths");
     if (target !== "mesh" && (e.z !== undefined || e.depth !== undefined)) issue(["entities",i,"z"], "Depth is available only in mesh panels");
+    if(e.appearance && e.kind!=="box") issue(["entities",i,"appearance"], "Equipment appearance is only for boxes");
     if (e.kind === "path" && !e.points) issue(["entities",i,"points"], "A path needs points");
   });
   const checkOrder = (current: number, previous: number|undefined, path: (string|number)[]) => {

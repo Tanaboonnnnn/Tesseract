@@ -18,3 +18,11 @@ Development fixtures in `app/fixtures/motion` use synthetic teaching data, not l
 Place a text block, then a scene, then the next text block in the course's existing block array. If the lesson has a scene, Learn keeps this ordering and does not pull all visuals into a gallery. For an inline lesson without a scene, choose `layout: "inline"` on the lesson. Use the old formula block directly for a formula-only lesson and typed plots or static charts only when they teach something. Older lessons that do not request inline layout and have no scene keep their existing layout. Include a sentence introducing what to look at and a follow-up explaining what the learner saw.
 
 Use the default linear timeline for data. A track may opt into `step` for a real state change or `ease-in-out` for a purely illustrative motion. Do not change measured data to make it look smoother. Off-screen and reduced-motion behavior still applies.
+
+### A shared visual standard, not a fixed shape
+
+Keep the learner in the lesson: establish the idea and a prediction in prose, put the explanatory image next to that idea, and follow it with an interpretation or self-check. The scene is not a replacement for the text. Use the course's language for labels, legend, step captions, and fallback copy.
+
+Prefer a quiet stage, readable labels close to their subject, semantically distinct colors, one focal change per step, and compact playback. A network can use equipment, a physics lesson can use actual spatial primitives, and a graph can remain flat. Choose 3D when the viewpoint teaches something or a rotatable model is useful. Do not reuse a network rack's shape in unrelated subjects.
+
+A mesh panel may use `path` with the same bounded XY points as a diagram; use its `z` to place that path on a plane. Both renderers share the same entities, timeline, seek position, and captions. Optional scene `legend` entries are plain label/tone pairs. Optional box `appearance` values `equipment-rack` and `display` draw simple equipment details without external assets. These additions do not change old scenes. The Load Balancing fixture is the reference for coordinating paths and counter-flow, not a subject-specific runtime.

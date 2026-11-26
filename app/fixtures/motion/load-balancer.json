@@ -6,9 +6,8 @@
   "panels": [
     {
       "id": "network",
-      "kind": "diagram",
-      "label": "กระจายคำขอแบบวนคิว",
-      "projection": "isometric"
+      "kind": "mesh",
+      "label": "กระจายคำขอแบบวนคิว"
     }
   ],
   "entities": [
@@ -18,9 +17,12 @@
       "kind": "box",
       "x": 9,
       "y": 53,
-      "width": 40,
-      "height": 28,
-      "label": "ผู้ใช้"
+      "width": 24,
+      "height": 12,
+      "label": "ผู้ใช้",
+      "z": 50,
+      "depth": 12,
+      "appearance": "display"
     },
     {
       "id": "balancer",
@@ -28,10 +30,13 @@
       "kind": "box",
       "x": 43,
       "y": 53,
-      "width": 40,
-      "height": 28,
+      "width": 24,
+      "height": 12,
       "label": "ตัวกระจายงาน",
-      "tone": "secondary"
+      "tone": "secondary",
+      "z": 50,
+      "depth": 12,
+      "appearance": "equipment-rack"
     },
     {
       "id": "server-a",
@@ -39,9 +44,12 @@
       "kind": "box",
       "x": 88,
       "y": 20,
-      "width": 43,
-      "height": 27,
-      "label": "เครื่อง A"
+      "width": 24,
+      "height": 12,
+      "label": "เครื่อง A",
+      "z": 50,
+      "depth": 12,
+      "appearance": "equipment-rack"
     },
     {
       "id": "server-b",
@@ -49,9 +57,12 @@
       "kind": "box",
       "x": 88,
       "y": 53,
-      "width": 43,
-      "height": 27,
-      "label": "เครื่อง B"
+      "width": 24,
+      "height": 12,
+      "label": "เครื่อง B",
+      "z": 50,
+      "depth": 12,
+      "appearance": "equipment-rack"
     },
     {
       "id": "server-c",
@@ -59,9 +70,12 @@
       "kind": "box",
       "x": 88,
       "y": 86,
-      "width": 43,
-      "height": 27,
-      "label": "เครื่อง C"
+      "width": 24,
+      "height": 12,
+      "label": "เครื่อง C",
+      "z": 50,
+      "depth": 12,
+      "appearance": "equipment-rack"
     },
     {
       "id": "input",
@@ -79,7 +93,8 @@
           43,
           53
         ]
-      ]
+      ],
+      "z": 50
     },
     {
       "id": "route-a",
@@ -145,7 +160,8 @@
           88,
           20
         ]
-      ]
+      ],
+      "z": 50
     },
     {
       "id": "route-b",
@@ -163,7 +179,8 @@
           88,
           53
         ]
-      ]
+      ],
+      "z": 50
     },
     {
       "id": "route-c",
@@ -229,7 +246,8 @@
           88,
           86
         ]
-      ]
+      ],
+      "z": 50
     },
     {
       "id": "request",
@@ -238,7 +256,9 @@
       "x": 9,
       "y": 53,
       "tone": "primary",
-      "label": "คำขอ"
+      "label": "คำขอ",
+      "z": 50,
+      "width": 3.2
     },
     {
       "id": "response",
@@ -247,7 +267,9 @@
       "x": 88,
       "y": 20,
       "tone": "secondary",
-      "label": "คำตอบ"
+      "label": "คำตอบ",
+      "z": 50,
+      "width": 3.2
     }
   ],
   "beats": [
@@ -920,6 +942,16 @@
           "value": 0
         }
       ]
+    }
+  ],
+  "legend": [
+    {
+      "label": "คำขอออกไป",
+      "tone": "primary"
+    },
+    {
+      "label": "คำตอบวิ่งกลับ",
+      "tone": "secondary"
     }
   ]
 }

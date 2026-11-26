@@ -117,3 +117,13 @@ test("responses return along the same route while a later request can depart", (
   assert.equal(at(3790,"response").x,9);
   assert.equal(at(3800,"response").opacity,0);
 });
+
+test("editorial 3D paths and equipment use one bounded scene, and only boxes get equipment details", () => {
+  const scene=loadFixture("load-balancer");
+  assert.equal(scene.panels[0]?.kind,"mesh");
+  assert.equal(scene.entities.find(e=>e.id==="route-a")?.kind,"path");
+  assert.equal(scene.entities.find(e=>e.id==="client")?.appearance,"display");
+  assert.equal(scene.legend?.length,2);
+  const invalid={...scene,entities:scene.entities.map(e=>e.id==="request"?{...e,appearance:"display"}:e)};
+  assert.equal(SceneSchema.safeParse(invalid).success,false);
+});

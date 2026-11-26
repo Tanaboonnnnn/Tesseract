@@ -7,7 +7,7 @@ type Vec=[number,number,number];
 type Camera={yaw:number;pitch:number;zoom:number};
 type Target={id:string;position:Vec;radius:number;color:Vec};
 const initial={yaw:0.6,pitch:0.3,zoom:1};
-const colors:Record<NonNullable<Entity["tone"]>,Vec>={neutral:[.46,.56,.66],primary:[.23,.57,.85],secondary:[.2,.68,.57],caution:[.85,.53,.22]};
+const colors:Record<NonNullable<Entity["tone"]>,Vec>={neutral:[.56,.67,.75],primary:[.43,.85,.98],secondary:[.45,.92,.68],caution:[.97,.69,.39]};
 const dot=(a:Vec,b:Vec)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 function basis({yaw:y,pitch:p}:Camera):[Vec,Vec,Vec] {
   return [[Math.cos(y),0,-Math.sin(y)],[-Math.sin(y)*Math.sin(p),Math.cos(p),-Math.cos(y)*Math.sin(p)],[Math.sin(y)*Math.cos(p),Math.sin(p),Math.cos(y)*Math.cos(p)]];
@@ -65,9 +65,10 @@ function createRenderer(canvas:HTMLCanvasElement) {
     const handle=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,handle);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
     return {handle,count:data.length/6};
   });
+  const pathBuffer=gl.createBuffer();
   gl.enable(gl.DEPTH_TEST);
   return {
-    draw(targets:Target[], entities:Entity[], camera:Camera) {
+    draw(targets:Target[], entities:Entity[], camera:Camera,highlighted:ReadonlySet<string>) {
       if(gl.isContextLost()) throw Error("WebGL context lost");
       const css=canvas.getBoundingClientRect();
       const ratio=Math.min(1.5,window.devicePixelRatio||1);
@@ -79,6 +80,16 @@ function createRenderer(canvas:HTMLCanvasElement) {
       gl.useProgram(program);
       gl.uniform3fv(uniforms.right!,right);gl.uniform3fv(uniforms.up!,up);gl.uniform3fv(uniforms.view!,view);
       gl.uniform2fv(uniforms.fit!,fit);
+      for(const e of entities) {
+        if(e.kind!=="path" || e.opacity<=0) continue;
+        const color=highlighted.has(e.id)?colors.primary:colors[e.tone??"neutral"];
+        const vertices=new Float32Array((e.points??[]).flatMap(([x,y])=>[(x+e.x-50)/50,(50-y-e.y)/50,(e.z-50)/50,-.35,.7,.65]));
+        gl.uniform3fv(uniforms.center!,[0,0,0]);gl.uniform3fv(uniforms.scale!,[1,1,1]);gl.uniform3fv(uniforms.tint!,color);
+        gl.bindBuffer(gl.ARRAY_BUFFER,pathBuffer);gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,24,0);
+        gl.enableVertexAttribArray(n);gl.vertexAttribPointer(n,3,gl.FLOAT,false,24,12);
+        gl.drawArrays(gl.LINE_STRIP,0,vertices.length/6);
+      }
       for(const t of targets){
         const e=entities.find(x=>x.id===t.id)!;
         const buffer=buffers[e.kind==="box"?0:1]!;
@@ -89,9 +100,29 @@ function createRenderer(canvas:HTMLCanvasElement) {
         gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,24,0);
         gl.enableVertexAttribArray(n);gl.vertexAttribPointer(n,3,gl.FLOAT,false,24,12);
         gl.drawArrays(gl.TRIANGLES,0,buffer.count);
+        if(e.kind==="box" && e.appearance) {
+          const [x,y,z]=t.position;
+          const face=z+(e.depth??e.width??16)/100;
+          const h=(e.height??e.width??16)/100;
+          const detail=(cx:number,cy:number,cz:number,sx:number,sy:number,color:Vec)=>{
+            gl.uniform3fv(uniforms.center!,[cx,cy,cz]);
+            gl.uniform3fv(uniforms.scale!,[sx,sy,.004]);
+            gl.uniform3fv(uniforms.tint!,color);
+            gl.drawArrays(gl.TRIANGLES,0,buffer.count);
+          };
+          if(e.appearance==="display") {
+            detail(x,y+h*.1,face,size*.78,h*.62,[.09,.18,.24]);
+            detail(x,y+h*.42,face+.008,size*.55,h*.1,colors.primary);
+          } else {
+            for(const dy of [-h*.49,0,h*.49]){
+              detail(x,y+dy,face,size*.79,h*.17,[.13,.24,.31]);
+              detail(x+size*.55,y+dy,face+.008,size*.08,h*.07,colors.secondary);
+            }
+          }
+        }
       }
     },
-    dispose(){for(const b of buffers)gl.deleteBuffer(b.handle);gl.deleteProgram(program);},
+    dispose(){for(const b of buffers)gl.deleteBuffer(b.handle);gl.deleteBuffer(pathBuffer);gl.deleteProgram(program);},
   };
 }
 
@@ -102,7 +133,7 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
   const [camera,setCamera]=useState(initial);
   const [geometrySize,setGeometrySize]=useState(0);
   const drag=useRef<{x:number;y:number;yaw:number;pitch:number;pointer:number;moved:boolean}|null>(null);
-  const targets=entities.filter(e=>e.opacity>0).map(e=>({
+  const targets=entities.filter(e=>e.kind!=="path" && e.opacity>0).map(e=>({
     id:e.id,position:[(e.x-50)/50,(50-e.y)/50,(e.z-50)/50] as Vec,
     radius:(e.width??(e.kind==="point"?8:22))/100,
     color:highlighted.has(e.id)?[.98,.66,.24] as Vec:colors[e.tone??"neutral"],
@@ -116,13 +147,16 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
     return ()=>{resize.disconnect();el.removeEventListener("webglcontextlost",lost);renderer.current?.dispose();renderer.current=null;};
   },[onUnavailable]);
   useEffect(()=>{
-    try{renderer.current?.draw(targets,entities,camera);}catch{onUnavailable();}
-  },[targets,entities,camera,geometrySize,onUnavailable]);
+    try{renderer.current?.draw(targets,entities,camera,highlighted);}catch{onUnavailable();}
+  },[targets,entities,camera,geometrySize,onUnavailable,highlighted]);
   const orbit=(yaw:number,pitch=0)=>setCamera(c=>({...c,yaw:c.yaw+yaw,pitch:Math.max(-1.3,Math.min(1.3,c.pitch+pitch))}));
   const zoom=(direction:number)=>setCamera(c=>({...c,zoom:Math.min(1.65,Math.max(.6,c.zoom+direction))}));
+  const [right,up]=basis(camera);
+  const unit=(n:number)=>Math.max(10,Math.min(90,n));
   const button="rounded-md border border-[var(--line)] px-2 py-1 text-sm";
   return <>
-    <canvas className="tess-scene-canvas mt-2 block aspect-[5/3] w-full touch-none" data-projection="isometric" ref={canvas} aria-label={label+" · "+labels.scene3d}
+    <div className="tess-scene-canvas tess-scene-mesh-stage relative mt-2" data-projection="isometric">
+    <canvas className="block aspect-[5/3] w-full touch-none" ref={canvas} aria-label={label+" · "+labels.scene3d}
       onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);drag.current={x:e.clientX,y:e.clientY,pointer:e.pointerId,yaw:camera.yaw,pitch:camera.pitch,moved:false};}}
       onPointerMove={e=>{const d=drag.current;if(!d||d.pointer!==e.pointerId)return; const dx=e.clientX-d.x,dy=e.clientY-d.y;if(!d.moved && Math.hypot(dx,dy)<5)return;d.moved=true;setCamera(c=>({...c,yaw:d.yaw-dx*.01,pitch:Math.min(1.3,Math.max(-1.3,d.pitch+dy*.01))}));}}
       onPointerCancel={()=>{drag.current=null;}}
@@ -133,7 +167,17 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
           .sort((a,b)=>dot(b.position,v)-dot(a.position,v))[0];
         if(hit) onSelect(hit.id);
       }} />
-    <div className="flex flex-wrap gap-2">
+    <div className="pointer-events-none absolute inset-0">
+      {entities.filter(e=>e.kind==="box" && e.opacity>0).map(e=>{
+        const target=targets.find(t=>t.id===e.id)!;
+        const pos=target.position;
+        const left=unit(50+50*dot(pos,right)*.6*camera.zoom);
+        const top=unit(50-50*dot(pos,up)*camera.zoom-10);
+        return <span key={e.id} className="tess-scene-mesh-label" style={{left:left+"%",top:top+"%"}}>{e.label}</span>;
+      })}
+    </div>
+    </div>
+    <div className="mt-2 flex flex-wrap gap-2">
       <button className={button} type="button" onClick={()=>orbit(-.22)}>{labels.left}</button>
       <button className={button} type="button" onClick={()=>orbit(.22)}>{labels.right}</button>
       <button className={button} type="button" onClick={()=>orbit(0,.22)}>{labels.up}</button>

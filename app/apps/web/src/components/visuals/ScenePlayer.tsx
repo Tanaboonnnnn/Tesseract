@@ -28,7 +28,7 @@ function choosePlayer() {
   for (const [key, c] of candidates) c.setActive(key===selected);
 }
 let playSequence = 0;
-const TONE = {neutral:"var(--text-muted, #64748b)",primary:"var(--color-accent-500, #3478b8)",secondary:"#258477",caution:"#b4782a"};
+const TONE = {neutral:"var(--tess-scene-neutral)",primary:"var(--tess-scene-primary)",secondary:"var(--tess-scene-secondary)",caution:"var(--tess-scene-caution)"};
 const sx = (x:number) => 25 + x*3.7;
 const sy = (y:number) => 18 + y*1.62;
 
@@ -127,7 +127,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
               const highlighted = linked || beat.focus?.includes(e.id);
               const color=linked ? "var(--tess-scene-focus)" : TONE[e.tone ?? "neutral"];
               const x=sx(e.x), y=sy(e.y), w=e.width ?? 14, h=e.height ?? 24;
-              const iso = panel.kind==="diagram" && panel.projection==="isometric";
+              const iso = panel.kind==="mesh" || (panel.kind==="diagram" && panel.projection==="isometric");
               return <g key={e.id} data-scene-entity={e.id} data-linked={linked||undefined} opacity={e.opacity/100} strokeWidth={highlighted?3:1.5} stroke={color} fill="none"
                 onPointerEnter={matching?event=>{if(event.pointerType!=="touch")setHover(matching.id);}:undefined} onPointerLeave={matching?()=>setHover(null):undefined}
                 onClick={matching?()=>toggle(matching.id):undefined} className={matching?"tess-scene-target cursor-pointer":undefined} data-kind={e.kind}>
@@ -136,7 +136,11 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
                  e.kind==="box" ? <>{iso && <g className="tess-scene-solid" style={{color}}>
                    <path className="tess-scene-solid-top" d={"M"+(x-w/2)+" "+(y-h/2)+" l10 -7 h"+w+" l-10 7 Z"} />
                    <path className="tess-scene-solid-side" d={"M"+(x+w/2)+" "+(y-h/2)+" l10 -7 v"+h+" l-10 7 Z"} />
-                 </g>}<rect x={x-w/2} y={y-h/2} width={w} height={h} rx={iso?0:4} className={iso?"tess-scene-solid-front":undefined} style={iso?{color}:undefined} fill={linked?"var(--tess-scene-focus-bg)":"var(--panel-solid)"} /></> :
+                 </g>}<rect x={x-w/2} y={y-h/2} width={w} height={h} rx={iso?0:4} className={iso?"tess-scene-solid-front":undefined} style={iso?{color}:undefined} fill={linked?"var(--tess-scene-focus-bg)":"var(--panel-solid)"} />
+                 {iso && e.appearance && <g stroke="none" fill="var(--scene-paper)" aria-hidden="true">
+                   {e.appearance==="display"?<><rect x={x-w*.38} y={y-h*.31} width={w*.76} height={h*.52}/><rect x={x-w*.24} y={y-h*.22} width={w*.48} height={1.4} fill={TONE.primary}/></>:
+                     [-.28,0,.28].map(dy=><g key={dy}><rect x={x-w*.38} y={y+h*dy-1} width={w*.76} height={2}/><circle cx={x+w*.26} cy={y+h*dy} r={.8} fill={TONE.secondary}/></g>)}
+                 </g>}</> :
                  (e.kind==="circle" || e.kind==="point") ? <circle cx={x} cy={y} r={e.kind==="point"? (highlighted?8:5):w/2} fill={e.kind==="point"?color:"none"} /> : null}
                 {e.kind!=="path" && <text stroke="none" fill="currentColor" fontSize="12" className={linked?"tess-scene-linked-label":undefined} fontWeight={highlighted?700:400} x={x} y={y+(e.kind==="box"?h/2+16:e.kind==="circle"?w/2+16:e.kind==="point"?20:0)} textAnchor="middle">{e.label}</text>}
               </g>;
@@ -154,6 +158,9 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
         }
       </section>)}
     </div>
+    {!!scene.legend?.length && <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label={labels.legend}>
+      {scene.legend.map((item,i)=><li key={i} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full" style={{background:TONE[item.tone]}}/>{item.label}</li>)}
+    </ul>}
     {link && !formulaShowsExplanation && <p className="break-words text-sm"><strong>{link.term}:</strong> {link.explanation}</p>}
     <div className="tess-scene-caption rounded-lg border border-[var(--line)] p-3"><p className="font-semibold">{beat.label}</p><p className="break-words text-sm">{beat.text}</p></div>
     <div className="flex flex-wrap items-center gap-2">
