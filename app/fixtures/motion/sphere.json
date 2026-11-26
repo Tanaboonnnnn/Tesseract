@@ -6,12 +6,12 @@
     {
       "id": "solid",
       "kind": "mesh",
-      "label": "A sphere and an outside marker"
+      "label": "ทรงกลมกับจุดวัดระยะด้านนอก"
     },
     {
       "id": "math",
       "kind": "inspect",
-      "label": "Compare the measurements",
+      "label": "อ่านความหมายของตัวแปร",
       "tex": "\\term{distance}{d} > \\term{radius}{r}"
     }
   ],
@@ -20,7 +20,7 @@
       "id": "sphere",
       "panel": "solid",
       "kind": "circle",
-      "label": "Sphere",
+      "label": "ทรงกลม",
       "x": 43,
       "y": 50,
       "z": 50,
@@ -31,7 +31,7 @@
       "id": "marker",
       "panel": "solid",
       "kind": "point",
-      "label": "Outside marker",
+      "label": "จุดวัดระยะ",
       "x": 75,
       "y": 40,
       "z": 52,
@@ -43,8 +43,8 @@
     {
       "id": "find",
       "at_ms": 0,
-      "label": "Find the center",
-      "text": "Radius is the distance from the center to the surface, in any direction.",
+      "label": "ดูตำแหน่งเริ่มต้น",
+      "text": "รัศมีวัดจากจุดศูนย์กลางถึงผิวทรงกลม จุดสีเขียวอยู่นอกผิว",
       "focus": [
         "sphere"
       ]
@@ -52,8 +52,8 @@
     {
       "id": "orbit",
       "at_ms": 3200,
-      "label": "Watch the marker move in depth",
-      "text": "Play to move the outside marker through depth; rotate separately to see that changing the viewpoint does not move either object.",
+      "label": "สังเกตการเคลื่อนในแนวลึก",
+      "text": "กดเล่นเพื่อให้จุดวัดเคลื่อน แล้วหมุนมุมมองเพื่อแยกการเคลื่อนจริงออกจากการเปลี่ยนมุมกล้อง",
       "focus": [
         "marker"
       ]
@@ -67,7 +67,7 @@
       "target_ids": [
         "sphere"
       ],
-      "explanation": "Distance from the sphere’s center to its surface."
+      "explanation": "รัศมีจากศูนย์กลางถึงผิวทรงกลม"
     },
     {
       "id": "distance",
@@ -76,7 +76,7 @@
       "target_ids": [
         "marker"
       ],
-      "explanation": "Distance from the sphere’s center to the outside marker."
+      "explanation": "ระยะจากศูนย์กลางถึงจุดที่อยู่นอกผิว"
     }
   ],
   "loop": true,

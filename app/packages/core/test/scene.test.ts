@@ -106,3 +106,14 @@ test("the 3D example's marker moves in depth while the sphere stays fixed", () =
   assert.equal(at(8000,"marker").z,52);
   assert.deepEqual(at(3200,"sphere"),at(5600,"sphere"));
 });
+
+test("responses return along the same route while a later request can depart", () => {
+  const scene=loadFixture("load-balancer");
+  const at=(ms:number,id:string)=>sampleScene(scene,ms).entities.find(e=>e.id===id)!;
+  assert.equal(at(2300,"response").opacity,0);
+  assert.equal(at(2310,"response").x,88);
+  assert.ok(at(2700,"response").x < at(2500,"response").x);
+  assert.ok(at(2700,"request").opacity > 0);
+  assert.equal(at(3790,"response").x,9);
+  assert.equal(at(3800,"response").opacity,0);
+});

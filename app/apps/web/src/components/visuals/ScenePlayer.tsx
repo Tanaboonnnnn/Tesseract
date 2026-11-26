@@ -1,4 +1,5 @@
 import "./scene-layout.css";
+import { lessonLabels } from "../../lib/lesson-language.ts";
 import { FormulaBlock } from "./Lesson.tsx";
 import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -9,12 +10,13 @@ const SceneMesh = lazy(()=>import("./SceneMesh.tsx"));
 type MeshProps = React.ComponentProps<typeof SceneMesh>;
 function OptionalMesh({fallback, ...props}: Omit<MeshProps,"onUnavailable"> & {fallback:ReactNode}) {
   const [view,setView]=useState<"flat"|"mesh"|"unavailable">("flat");
+  const labels=lessonLabels(props.language);
   const unavailable=useCallback(()=>setView("unavailable"),[]);
   return <>
     {view==="mesh" ? <Suspense fallback={fallback}><SceneMesh {...props} onUnavailable={unavailable}/></Suspense> : fallback}
     <div className="mb-2 flex flex-wrap items-center gap-2">
-      {view==="unavailable" ? <p className="text-xs">3D is unavailable. The 2D view uses the same timeline and labels.</p> :
-      <button type="button" className="rounded-md border border-[var(--line)] px-2 py-1 text-sm" onClick={()=>setView(view==="mesh"?"flat":"mesh")}>{view==="mesh"?"Use 2D view":"Open 3D view"}</button>}
+      {view==="unavailable" ? <p className="text-xs">{labels.unavailable}</p> :
+      <button type="button" className="rounded-md border border-[var(--line)] px-2 py-1 text-sm" onClick={()=>setView(view==="mesh"?"flat":"mesh")}>{view==="mesh"?labels.flat:labels.open3d}</button>}
     </div>
   </>;
 }
@@ -30,7 +32,8 @@ const TONE = {neutral:"var(--text-muted, #64748b)",primary:"var(--color-accent-5
 const sx = (x:number) => 25 + x*3.7;
 const sy = (y:number) => 18 + y*1.62;
 
-export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
+export function ScenePlayer({ scene, title, language }: { scene:Scene; title:string; language?:string }) {
+  const labels=lessonLabels(language);
   const id = useId();
   const root = useRef<HTMLElement>(null);
   const clock = useRef(0);
@@ -114,7 +117,7 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
         </div> : panel.kind==="inspect" ? <div className="mt-2 flex flex-wrap gap-2">{scene.bindings?.filter(b=>b.panel===panel.id).map(b=><button key={b.id} type="button" className={button+" break-words "+linkClass(b.id)} aria-pressed={pinned===b.id} disabled={!b.target_ids.some(t=>shown.has(t))} onPointerEnter={e=>{if(e.pointerType!=="touch")setHover(b.id);}} onPointerLeave={()=>setHover(null)} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{b.term}</button>)}</div> :
           <>
           {(() => {
-            const drawing = <svg className="tess-scene-canvas mt-2 h-auto w-full" data-projection={panel.kind==="diagram"?panel.projection:undefined} viewBox="0 0 420 214" aria-label={panel.label}>
+            const drawing = <svg className="tess-scene-canvas mt-2 h-auto w-full" data-projection={panel.kind==="diagram"?panel.projection:panel.kind==="mesh"?"isometric":undefined} viewBox="0 0 420 214" aria-label={panel.label}>
             {panel.kind==="plot" && <g fill="none" stroke="currentColor" opacity=".45"><path d="M25 18 V180 H395" /><path d="M25 140 H395 M25 100 H395 M25 60 H395" opacity=".3" /></g>}
             {panel.kind==="plot" && <><text x="25" y="14" fontSize="11" fill="currentColor">{panel.y_label}</text><text x="395" y="207" fontSize="11" textAnchor="end" fill="currentColor">{panel.x_label}</text></>}
             {entities.filter(e=>e.panel===panel.id && e.opacity>0).map(e=>{
@@ -139,7 +142,7 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
               </g>;
             })}
           </svg>;
-            return panel.kind==="mesh" ? <OptionalMesh label={panel.label} fallback={drawing}
+            return panel.kind==="mesh" ? <OptionalMesh label={panel.label} language={language} fallback={drawing}
               entities={entities.filter(e=>e.panel===panel.id)} highlighted={new Set([...selected,...(beat.focus??[])])}
               onSelect={entity=>{const binding=(scene.bindings??[]).find(b=>b.target_ids.includes(entity));if(binding)toggle(binding.id);}}/> : drawing;
           })()}
@@ -152,16 +155,16 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
       </section>)}
     </div>
     {link && !formulaShowsExplanation && <p className="break-words text-sm"><strong>{link.term}:</strong> {link.explanation}</p>}
-    <div className="rounded-lg border border-[var(--line)] p-3"><p className="font-semibold">{beat.label}</p><p className="break-words text-sm">{beat.text}</p></div>
+    <div className="tess-scene-caption rounded-lg border border-[var(--line)] p-3"><p className="font-semibold">{beat.label}</p><p className="break-words text-sm">{beat.text}</p></div>
     <div className="flex flex-wrap items-center gap-2">
-      <button type="button" className={button} disabled={step<=0} onClick={()=>seek(scene.beats[step-1]!.at_ms)}>Previous</button>
-      <button type="button" className={button} onClick={playing?()=>setMode("pause"):play}>{playing?"Pause":"Play"}</button>
-      <button type="button" className={button} disabled={step>=scene.beats.length-1} onClick={()=>seek(scene.beats[step+1]!.at_ms)}>Next</button>
-      <button type="button" className={button} onClick={()=>{clock.current=0;setTime(0);play();}}>Replay</button>
-      <label className="text-sm"><input type="checkbox" checked={autoplay} onChange={e=>{localStorage.setItem(AUTO_KEY,e.target.checked?"on":"off");window.dispatchEvent(new Event("tesseract-scene-autoplay"));}} /> Autoplay</label>
-      <label className="text-sm">Speed <select className={button} value={speed} onChange={e=>setSpeed(Number(e.target.value))}>{[0.5,1,1.5,2].map(n=><option key={n} value={n}>{n}×</option>)}</select></label>
+      <button type="button" className={button} disabled={step<=0} onClick={()=>seek(scene.beats[step-1]!.at_ms)}>{labels.prev}</button>
+      <button type="button" className={button} onClick={playing?()=>setMode("pause"):play}>{playing?labels.pause:labels.play}</button>
+      <button type="button" className={button} disabled={step>=scene.beats.length-1} onClick={()=>seek(scene.beats[step+1]!.at_ms)}>{labels.next}</button>
+      <button type="button" className={button} onClick={()=>{clock.current=0;setTime(0);play();}}>{labels.replay}</button>
+      <label className="text-sm"><input type="checkbox" checked={autoplay} onChange={e=>{localStorage.setItem(AUTO_KEY,e.target.checked?"on":"off");window.dispatchEvent(new Event("tesseract-scene-autoplay"));}} /> {labels.autoplay}</label>
+      <label className="text-sm">{labels.speed} <select className={button} value={speed} onChange={e=>setSpeed(Number(e.target.value))}>{[0.5,1,1.5,2].map(n=><option key={n} value={n}>{n}×</option>)}</select></label>
     </div>
-    <label className="block text-sm">Timeline <input className="block w-full" type="range" min={0} max={scene.duration_ms} step={1} value={Math.round(time)} onChange={e=>seek(Number(e.target.value))} /></label>
+    <label className="block text-sm">{labels.timeline} <input className="block w-full" type="range" min={0} max={scene.duration_ms} step={1} value={Math.round(time)} onChange={e=>seek(Number(e.target.value))} /></label>
     <div className="flex flex-wrap gap-2">{scene.beats.map(b=><button type="button" key={b.id} className={button} aria-current={b===beat?"step":undefined} onClick={()=>seek(b.at_ms)}>{b.label}</button>)}</div>
     {scene.controls?.map(c=><label key={c.id} className="block text-sm">{c.label}: {inputs[c.id] ?? c.initial}<input className="block w-full" type="range" min={c.min} max={c.max} step="any" value={inputs[c.id] ?? c.initial} onChange={e=>setInputs(old=>({...old,[c.id]:Number(e.target.value)}))}/></label>)}
   </section>;

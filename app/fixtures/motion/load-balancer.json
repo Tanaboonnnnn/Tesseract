@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "style": "minimal-technical",
-  "duration_ms": 8000,
+  "duration_ms": 9300,
   "loop": true,
   "panels": [
     {
       "id": "network",
       "kind": "diagram",
-      "label": "Round Robin · request routing",
+      "label": "กระจายคำขอแบบวนคิว",
       "projection": "isometric"
     }
   ],
@@ -20,7 +20,7 @@
       "y": 53,
       "width": 40,
       "height": 28,
-      "label": "Client"
+      "label": "ผู้ใช้"
     },
     {
       "id": "balancer",
@@ -30,7 +30,7 @@
       "y": 53,
       "width": 40,
       "height": 28,
-      "label": "Balancer",
+      "label": "ตัวกระจายงาน",
       "tone": "secondary"
     },
     {
@@ -41,7 +41,7 @@
       "y": 20,
       "width": 43,
       "height": 27,
-      "label": "Server A"
+      "label": "เครื่อง A"
     },
     {
       "id": "server-b",
@@ -51,7 +51,7 @@
       "y": 53,
       "width": 43,
       "height": 27,
-      "label": "Server B"
+      "label": "เครื่อง B"
     },
     {
       "id": "server-c",
@@ -61,7 +61,7 @@
       "y": 86,
       "width": 43,
       "height": 27,
-      "label": "Server C"
+      "label": "เครื่อง C"
     },
     {
       "id": "input",
@@ -69,7 +69,7 @@
       "kind": "path",
       "x": 0,
       "y": 0,
-      "label": "Incoming requests",
+      "label": "เส้นทางจากผู้ใช้",
       "points": [
         [
           9,
@@ -87,7 +87,7 @@
       "kind": "path",
       "x": 0,
       "y": 0,
-      "label": "Path to server A",
+      "label": "เส้นทางไปเครื่อง A",
       "points": [
         [
           43,
@@ -153,7 +153,7 @@
       "kind": "path",
       "x": 0,
       "y": 0,
-      "label": "Path to server B",
+      "label": "เส้นทางไปเครื่อง B",
       "points": [
         [
           43,
@@ -171,7 +171,7 @@
       "kind": "path",
       "x": 0,
       "y": 0,
-      "label": "Path to server C",
+      "label": "เส้นทางไปเครื่อง C",
       "points": [
         [
           43,
@@ -238,15 +238,24 @@
       "x": 9,
       "y": 53,
       "tone": "primary",
-      "label": "Request"
+      "label": "คำขอ"
+    },
+    {
+      "id": "response",
+      "panel": "network",
+      "kind": "point",
+      "x": 88,
+      "y": 20,
+      "tone": "secondary",
+      "label": "คำตอบ"
     }
   ],
   "beats": [
     {
       "id": "first",
       "at_ms": 0,
-      "label": "Request 1 → A",
-      "text": "The balancer sends the first request to Server A.",
+      "label": "คำขอที่ 1 → เครื่อง A",
+      "text": "ตัวกระจายงานส่งคำขอแรกให้ A ดูจุดสีเขียวที่วิ่งกลับมาเป็นคำตอบ",
       "focus": [
         "server-a",
         "route-a"
@@ -255,8 +264,8 @@
     {
       "id": "second",
       "at_ms": 2500,
-      "label": "Request 2 → B",
-      "text": "The next request goes to Server B, even though the client is the same.",
+      "label": "คำขอที่ 2 → เครื่อง B",
+      "text": "แม้ผู้ใช้คนเดิม คำขอถัดไปไป B เพราะถึงคิวของเครื่องถัดไป",
       "focus": [
         "server-b",
         "route-b"
@@ -265,8 +274,8 @@
     {
       "id": "third",
       "at_ms": 5000,
-      "label": "Request 3 → C",
-      "text": "The third request goes to Server C. With the same three healthy servers, the sequence then returns to A.",
+      "label": "คำขอที่ 3 → เครื่อง C",
+      "text": "คำขอที่สามไป C ถ้าทั้งสามเครื่องยังพร้อม รอบถัดไปจะเริ่มที่ A อีกครั้ง",
       "focus": [
         "server-c",
         "route-c"
@@ -595,6 +604,319 @@
         },
         {
           "at_ms": 7140,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "entity": "response",
+      "property": "x",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 2310,
+          "value": 88
+        },
+        {
+          "at_ms": 2491,
+          "value": 77.78
+        },
+        {
+          "at_ms": 2518,
+          "value": 76.246
+        },
+        {
+          "at_ms": 2547,
+          "value": 74.67
+        },
+        {
+          "at_ms": 2579,
+          "value": 73.05
+        },
+        {
+          "at_ms": 2614,
+          "value": 71.386
+        },
+        {
+          "at_ms": 2653,
+          "value": 69.68
+        },
+        {
+          "at_ms": 2828,
+          "value": 62.32
+        },
+        {
+          "at_ms": 2868,
+          "value": 60.603
+        },
+        {
+          "at_ms": 2903,
+          "value": 58.907
+        },
+        {
+          "at_ms": 2936,
+          "value": 57.233
+        },
+        {
+          "at_ms": 2967,
+          "value": 55.581
+        },
+        {
+          "at_ms": 2995,
+          "value": 53.95
+        },
+        {
+          "at_ms": 3189,
+          "value": 43
+        },
+        {
+          "at_ms": 3790,
+          "value": 9
+        },
+        {
+          "at_ms": 4810,
+          "value": 88
+        },
+        {
+          "at_ms": 5653,
+          "value": 43
+        },
+        {
+          "at_ms": 6290,
+          "value": 9
+        },
+        {
+          "at_ms": 7310,
+          "value": 88
+        },
+        {
+          "at_ms": 7491,
+          "value": 77.78
+        },
+        {
+          "at_ms": 7518,
+          "value": 76.246
+        },
+        {
+          "at_ms": 7547,
+          "value": 74.67
+        },
+        {
+          "at_ms": 7579,
+          "value": 73.05
+        },
+        {
+          "at_ms": 7614,
+          "value": 71.386
+        },
+        {
+          "at_ms": 7653,
+          "value": 69.68
+        },
+        {
+          "at_ms": 7828,
+          "value": 62.32
+        },
+        {
+          "at_ms": 7868,
+          "value": 60.603
+        },
+        {
+          "at_ms": 7903,
+          "value": 58.907
+        },
+        {
+          "at_ms": 7936,
+          "value": 57.233
+        },
+        {
+          "at_ms": 7967,
+          "value": 55.581
+        },
+        {
+          "at_ms": 7995,
+          "value": 53.95
+        },
+        {
+          "at_ms": 8189,
+          "value": 43
+        },
+        {
+          "at_ms": 8790,
+          "value": 9
+        }
+      ]
+    },
+    {
+      "entity": "response",
+      "property": "y",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 2310,
+          "value": 20
+        },
+        {
+          "at_ms": 2491,
+          "value": 20.0
+        },
+        {
+          "at_ms": 2518,
+          "value": 20.356
+        },
+        {
+          "at_ms": 2547,
+          "value": 21.426
+        },
+        {
+          "at_ms": 2579,
+          "value": 23.208
+        },
+        {
+          "at_ms": 2614,
+          "value": 25.702
+        },
+        {
+          "at_ms": 2653,
+          "value": 28.91
+        },
+        {
+          "at_ms": 2828,
+          "value": 44.09
+        },
+        {
+          "at_ms": 2868,
+          "value": 47.298
+        },
+        {
+          "at_ms": 2903,
+          "value": 49.792
+        },
+        {
+          "at_ms": 2936,
+          "value": 51.574
+        },
+        {
+          "at_ms": 2967,
+          "value": 52.644
+        },
+        {
+          "at_ms": 2995,
+          "value": 53.0
+        },
+        {
+          "at_ms": 3189,
+          "value": 53
+        },
+        {
+          "at_ms": 3790,
+          "value": 53
+        },
+        {
+          "at_ms": 4810,
+          "value": 53
+        },
+        {
+          "at_ms": 5653,
+          "value": 53
+        },
+        {
+          "at_ms": 6290,
+          "value": 53
+        },
+        {
+          "at_ms": 7310,
+          "value": 86
+        },
+        {
+          "at_ms": 7491,
+          "value": 86.0
+        },
+        {
+          "at_ms": 7518,
+          "value": 85.644
+        },
+        {
+          "at_ms": 7547,
+          "value": 84.574
+        },
+        {
+          "at_ms": 7579,
+          "value": 82.792
+        },
+        {
+          "at_ms": 7614,
+          "value": 80.298
+        },
+        {
+          "at_ms": 7653,
+          "value": 77.09
+        },
+        {
+          "at_ms": 7828,
+          "value": 61.91
+        },
+        {
+          "at_ms": 7868,
+          "value": 58.702
+        },
+        {
+          "at_ms": 7903,
+          "value": 56.208
+        },
+        {
+          "at_ms": 7936,
+          "value": 54.426
+        },
+        {
+          "at_ms": 7967,
+          "value": 53.356
+        },
+        {
+          "at_ms": 7995,
+          "value": 53.0
+        },
+        {
+          "at_ms": 8189,
+          "value": 53
+        },
+        {
+          "at_ms": 8790,
+          "value": 53
+        }
+      ]
+    },
+    {
+      "entity": "response",
+      "property": "opacity",
+      "easing": "step",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 0
+        },
+        {
+          "at_ms": 2310,
+          "value": 100
+        },
+        {
+          "at_ms": 3800,
+          "value": 0
+        },
+        {
+          "at_ms": 4810,
+          "value": 100
+        },
+        {
+          "at_ms": 6300,
+          "value": 0
+        },
+        {
+          "at_ms": 7310,
+          "value": 100
+        },
+        {
+          "at_ms": 8800,
           "value": 0
         }
       ]

@@ -16,7 +16,7 @@ import { makeFx } from "./shared.ts";
 import { StateView } from "./StateView.tsx";
 import { TreeView } from "./TreeView.tsx";
 
-export function Visual({ visual, keys = false, learning = "" }: { visual: VisualData; keys?: boolean; learning?: string }) {
+export function Visual({ visual, keys = false, learning = "", language }: { visual: VisualData; keys?: boolean; learning?: string; language?:string }) {
   const n = visual.steps.length;
   // -1 = overview (everything visible); build mode starts at step 0 so the picture builds up.
   const first = visual.step_mode === "build" && n ? 0 : -1;
@@ -65,7 +65,7 @@ export function Visual({ visual, keys = false, learning = "" }: { visual: Visual
   const fx = makeFx(visual, step);
   const caption = step >= 0 ? visual.steps[step]?.text : null;
 
-  if (visual.type === "scene") return <ScenePlayer key={visual.id+":"+visual.updated} scene={visual.data} title={visual.title} />;
+  if (visual.type === "scene") return <ScenePlayer key={visual.id+":"+visual.updated} scene={visual.data} title={visual.title} language={language} />;
   if (visual.type === "lesson") return <Lesson visual={visual} learning={learning} />;
   if (visual.type === "html") return <HtmlFrame html={visual.data.html} height={visual.data.height} title={visual.title} />;
 

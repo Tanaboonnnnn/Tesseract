@@ -1,3 +1,4 @@
+import { lessonLabels } from "../../lib/lesson-language.ts";
 import { useEffect, useRef, useState } from "react";
 import type { Scene } from "@tesseract/core";
 
@@ -94,7 +95,8 @@ function createRenderer(canvas:HTMLCanvasElement) {
   };
 }
 
-export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,label}:{entities:Entity[];highlighted:ReadonlySet<string>;onSelect:(id:string)=>void;onUnavailable:()=>void;label:string}) {
+export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,label,language}:{entities:Entity[];highlighted:ReadonlySet<string>;onSelect:(id:string)=>void;onUnavailable:()=>void;label:string;language?:string}) {
+  const labels=lessonLabels(language);
   const canvas=useRef<HTMLCanvasElement>(null);
   const renderer=useRef<ReturnType<typeof createRenderer>|null>(null);
   const [camera,setCamera]=useState(initial);
@@ -120,7 +122,7 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
   const zoom=(direction:number)=>setCamera(c=>({...c,zoom:Math.min(1.65,Math.max(.6,c.zoom+direction))}));
   const button="rounded-md border border-[var(--line)] px-2 py-1 text-sm";
   return <>
-    <canvas className="mt-1 block aspect-[5/3] w-full touch-none rounded-md" ref={canvas} aria-label={label+" 3D scene"}
+    <canvas className="tess-scene-canvas mt-2 block aspect-[5/3] w-full touch-none" data-projection="isometric" ref={canvas} aria-label={label+" · "+labels.scene3d}
       onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);drag.current={x:e.clientX,y:e.clientY,pointer:e.pointerId,yaw:camera.yaw,pitch:camera.pitch,moved:false};}}
       onPointerMove={e=>{const d=drag.current;if(!d||d.pointer!==e.pointerId)return; const dx=e.clientX-d.x,dy=e.clientY-d.y;if(!d.moved && Math.hypot(dx,dy)<5)return;d.moved=true;setCamera(c=>({...c,yaw:d.yaw-dx*.01,pitch:Math.min(1.3,Math.max(-1.3,d.pitch+dy*.01))}));}}
       onPointerCancel={()=>{drag.current=null;}}
@@ -132,13 +134,13 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
         if(hit) onSelect(hit.id);
       }} />
     <div className="flex flex-wrap gap-2">
-      <button className={button} type="button" onClick={()=>orbit(-.22)}>Rotate left</button>
-      <button className={button} type="button" onClick={()=>orbit(.22)}>Rotate right</button>
-      <button className={button} type="button" onClick={()=>orbit(0,.22)}>Tilt up</button>
-      <button className={button} type="button" onClick={()=>orbit(0,-.22)}>Tilt down</button>
-      <button className={button} type="button" onClick={()=>zoom(.15)}>Zoom in</button>
-      <button className={button} type="button" onClick={()=>zoom(-.15)}>Zoom out</button>
-      <button className={button} type="button" onClick={()=>setCamera(initial)}>Reset view</button>
+      <button className={button} type="button" onClick={()=>orbit(-.22)}>{labels.left}</button>
+      <button className={button} type="button" onClick={()=>orbit(.22)}>{labels.right}</button>
+      <button className={button} type="button" onClick={()=>orbit(0,.22)}>{labels.up}</button>
+      <button className={button} type="button" onClick={()=>orbit(0,-.22)}>{labels.down}</button>
+      <button className={button} type="button" onClick={()=>zoom(.15)}>{labels.closer}</button>
+      <button className={button} type="button" onClick={()=>zoom(-.15)}>{labels.farther}</button>
+      <button className={button} type="button" onClick={()=>setCamera(initial)}>{labels.reset}</button>
     </div>
   </>;
 }

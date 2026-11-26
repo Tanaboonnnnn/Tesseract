@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { api, type CourseDetail, type CourseRevision } from "../lib/api.ts";
 import { Button, Card, ErrorNote, Loading, PageHeader, inputClass } from "../components/ui.tsx";
+import { lessonLabels, isThaiLesson } from "../lib/lesson-language.ts";
 import { Markdown } from "../components/Markdown.tsx";
 const Visual = lazy(() => import("../components/visuals/Visual.tsx").then(m => ({ default: m.Visual })));
 
@@ -132,17 +133,19 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
   if(query.isPending) return <Loading/>;
   if(query.error || !query.data) return <ErrorNote error={query.error}/>;
   const d=query.data;
+  const label=lessonLabels(d.bundle.language);
+  const thai=isThaiLesson(d.bundle.language);
   const selected = Math.max(0, d.bundle.lessons.findIndex(l => l.id === hash.slice(1)));
   const lesson = d.bundle.lessons[selected]!;
   const path = draft ? "/learning/drafts/" + id : "/learning/classroom/" + id;
   const lessonLink = (topic: string, panel = tab) => path + (panel === "learn" ? "" : "?tab=" + panel) + "#" + topic;
-  const sections = [{id:"learn", label:"Learn"}, {id:"lab",label:"Lab"}, {id:"check",label:"Check"}] as const;
+  const sections = [{id:"learn", label:label.learn}, {id:"lab",label:label.lab}, {id:"check",label:label.check}] as const;
   const sources = d.bundle.sources.filter(s => lesson.source_ids.includes(s.id));
   const downloads = sources.filter(s => /[.](pcap|pcapng)(?:$|[?#])/i.test(s.url));
   const dayBased = d.bundle.lessons.every(l => /^day-[0-9]+$/.test(l.id));
-  const dayLabel = (i: number) => (dayBased ? "Day " : "Lesson ") + (i + 1);
+  const dayLabel = (i: number) => (dayBased ? label.day : label.lesson) + " " + (i + 1);
   return <div className="space-y-5">
-    <Link to="/learning" className="underline">Back to Learning</Link>
+    <Link to="/learning" className="underline">{label.back}</Link>
     <PageHeader title={d.title}/>
     {draft && <Card className="p-4 space-y-2">
       <p className="font-semibold">{d.published ? "Current version" : d.previously_published ? "Version history preview" : "Draft preview"}</p>
@@ -153,8 +156,8 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
         {d.published && <Link className="underline" to={"/learning/classroom/" + d.course_id}>Open in Learning</Link>}
       </div><ErrorNote error={action.error}/>
     </Card>}
-    <nav aria-label="Lesson days">
-      <label className="block sm:hidden">{dayLabel(selected)} of {d.bundle.lessons.length}
+    <nav aria-label={label.lessonDays}>
+      <label className="block sm:hidden">{dayLabel(selected)} {label.of} {d.bundle.lessons.length}
         <select className={inputClass} value={lesson.id} onChange={e => nav(lessonLink(e.target.value,"learn"))}>
           {d.bundle.lessons.map((l,i) => <option key={l.id} value={l.id}>{dayLabel(i)}: {l.title}</option>)}
         </select>
@@ -167,45 +170,51 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
         </Link>)}
       </div>
     </nav>
-    <section key={lesson.id} id={lesson.id} className="min-w-0 space-y-4 scroll-mt-5">
+    <section key={lesson.id} id={lesson.id} className="min-w-0 space-y-4 scroll-mt-5" lang={thai?"th":undefined}>
       <div><p className="muted text-xs uppercase tracking-wide">{dayLabel(selected)} / {d.bundle.lessons.length}</p><h2 className="text-xl font-semibold">{lesson.title}</h2></div>
-      <nav aria-label="Lesson sections" className="flex flex-wrap gap-2 border-b border-slate-500/25">
+      <nav aria-label={label.sections} className="flex flex-wrap gap-2 border-b border-slate-500/25">
         {sections.map(p=><Link key={p.id} to={lessonLink(lesson.id,p.id)} aria-current={p.id===tab?"page":undefined}
           className={p.id===tab?"border-b-2 border-accent-500 px-4 py-2 font-semibold":"px-4 py-2 muted hover:underline"}>
           {p.label}
         </Link>)}
       </nav>
       {tab === "learn" && <div className="space-y-4">
-        <p>{lesson.objective}</p>
+        <p className="max-w-[68ch] text-base leading-relaxed muted">{lesson.objective}</p>
       {(lesson.layout==="inline" || lesson.blocks.some(b=>b.type==="visual" && b.visual.type==="scene")) ? (
-        <article aria-label="Lesson content" className="space-y-4">
+        <article aria-label={label.content} className="space-y-5">
+          {lesson.blocks.length>2 && <nav aria-label={label.outline} className="flex max-w-[52rem] flex-wrap gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-3">
+            {lesson.blocks.map((b,i)=> {
+              const heading=b.type==="text"?b.markdown.match(/^#{1,6} +([^\r\n]+)$/m)?.[1]:b.visual.title;
+              return heading && <a className="rounded-full border border-[var(--line)] px-3 py-1 text-sm hover:bg-[var(--lane)]" key={i} href={"#"+lesson.id} onClick={e=>{e.preventDefault();document.getElementById(lesson.id+"-part-"+(i+1))?.scrollIntoView({block:"start"});}}>{i+1}. {heading}</a>;
+            })}
+          </nav>}
           {lesson.blocks.map((b,i) => b.type==="text" ? (
-            <div key={i} className="max-w-[72ch]"><Markdown text={b.markdown}/></div>
+            <div key={i} id={lesson.id+"-part-"+(i+1)} className="max-w-[52rem] scroll-mt-5 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] px-4 py-3 sm:px-6 sm:py-4"><div className="max-w-[68ch] leading-relaxed"><Markdown text={b.markdown}/></div></div>
           ) : (
-            <section key={i} aria-label={b.visual.title} className="min-w-0 space-y-2">
+            <section key={i} id={lesson.id+"-part-"+(i+1)} aria-label={b.visual.title} className="max-w-[52rem] min-w-0 scroll-mt-5 space-y-2">
               <h3 className="text-sm font-semibold">{b.visual.title}</h3>
-              <Suspense fallback={<Loading/>}><Visual visual={b.visual}/></Suspense>
-              <details className="text-sm muted"><summary>Read the steps</summary><p>{b.fallback}</p></details>
+              <Suspense fallback={<Loading/>}><Visual visual={b.visual} language={d.bundle.language}/></Suspense>
+              <details className="text-sm muted"><summary>{label.steps}</summary><p>{b.fallback}</p></details>
             </section>
           ))}
         </article>
       ) : <>
-      {lesson.blocks.some(b=>b.type==="visual") && <section aria-label="Interactive visuals" className="space-y-3">
-        <h3 className="font-semibold">Interactive visuals</h3>
+      {lesson.blocks.some(b=>b.type==="visual") && <section aria-label={label.visual} className="space-y-3">
+        <h3 className="font-semibold">{label.visual}</h3>
         {lesson.blocks.flatMap((b,i)=> b.type==="visual" ? [<Card key={i} className="space-y-2 p-3 sm:p-4">
           <h4 className="font-semibold">{b.visual.title}</h4>
-          <Suspense fallback={<Loading/>}><Visual visual={b.visual}/></Suspense>
-          <details className="text-sm muted"><summary>Read the steps</summary><p>{b.fallback}</p></details>
+          <Suspense fallback={<Loading/>}><Visual visual={b.visual} language={d.bundle.language}/></Suspense>
+          <details className="text-sm muted"><summary>{label.steps}</summary><p>{b.fallback}</p></details>
         </Card>] : [])}
       </section>}
       <details className="rounded-lg border border-slate-500/25 p-3" open>
-        <summary className="font-semibold">Lesson notes</summary>
+        <summary className="font-semibold">{label.notes}</summary>
         {lesson.blocks.map((b,i) => b.type==="text" ? <Markdown key={i} text={b.markdown}/> : null)}
       </details>
       </>}
       </div>}
       {tab === "lab" && <div className="space-y-4">
-        {!lesson.labs.length && <Card className="p-4"><p>No lab is assigned to this day.</p><p className="muted text-sm">Choose another day or check your understanding here.</p></Card>}
+        {!lesson.labs.length && <Card className="p-4"><p>{label.noLab}</p><p className="muted text-sm">{thai?"เลือกบทอื่นหรือไปทบทวนความเข้าใจได้":"Choose another day or check your understanding here."}</p></Card>}
         {downloads.length > 0 && <Card className="space-y-2 p-4">
           <h3 className="font-semibold">Practice files</h3>
           {downloads.map(s=><a key={s.id} href={s.url} className="block underline break-words" target="_blank" rel="noreferrer">{s.title}</a>)}
@@ -221,15 +230,15 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
         </details>)}
       </div>}
       {tab === "check" && <div className="space-y-4">
-        <h3 className="font-semibold">Check your understanding</h3>
-        {!draft && <p className="text-sm muted">{attempts.data?.filter(a=>a.lesson_id===lesson.id).length ?? 0} saved answers for this lesson</p>}
-        {lesson.questions.length===0 && <p>No questions are assigned to this day.</p>}
+        <h3 className="font-semibold">{label.knowledge}</h3>
+        {!draft && <p className="text-sm muted">{attempts.data?.filter(a=>a.lesson_id===lesson.id).length ?? 0} {label.saved}</p>}
+        {lesson.questions.length===0 && <p>{label.noQuestions}</p>}
         {lesson.questions.map(q=>draft ? <details key={q.id} className="rounded-lg border border-slate-500/25 p-4"><summary>{q.prompt}</summary>{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> :
           <><ul className="list-disc ml-5">{q.choices.map((choice,i)=><li key={i}>{choice}{q.correct.includes(i) ? " (correct)" : ""}</li>)}</ul><p>{q.explanation}</p></>}</details> :
           <Answer key={d.revision_id+":"+lesson.id+":"+q.id} course={d} lesson={lesson.id} q={q}/>)}
       </div>}
       {tab !== "check" && sources.length>0 && <details className="text-sm muted">
-        <summary>Sources and further reading</summary>
+        <summary>{label.sources}</summary>
         <ul className="mt-2 space-y-1">{sources.map(s=><li key={s.id}><a href={s.url} className="underline break-words" target="_blank" rel="noreferrer">{s.title}</a></li>)}</ul>
       </details>}
     </section>
@@ -238,6 +247,7 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
 }
 
 function Answer({course,lesson,q}:{course:CourseDetail;lesson:string;q:Bundle["lessons"][number]["questions"][number]}) {
+  const label=lessonLabels(course.bundle.language);
   const [written,write]=useState("");
   const [choices,choose]=useState<number[]>([]);
   const [submitted,setSubmitted]=useState(false);
@@ -248,10 +258,10 @@ function Answer({course,lesson,q}:{course:CourseDetail;lesson:string;q:Bundle["l
   }),onSuccess:()=>{setSubmitted(true);void qc.invalidateQueries({queryKey:["classroom-attempts",course.course_id]});}});
   return <Card className="p-3 space-y-2">
     <p className="font-semibold">{q.prompt}</p>
-    {q.type==="explain" ? <textarea aria-label="Your answer" className={inputClass} maxLength={4000} disabled={submitted||save.isPending} value={written} onChange={e=>write(e.target.value)}/> :
+    {q.type==="explain" ? <textarea aria-label={label.entry} className={inputClass} maxLength={4000} disabled={submitted||save.isPending} value={written} onChange={e=>write(e.target.value)}/> :
       q.choices.map((s,i)=><label className="block" key={i}><input type={q.type==="single"?"radio":"checkbox"} name={attempt} disabled={submitted||save.isPending} checked={choices.includes(i)} onChange={()=>choose(xs=>q.type==="single"?[i]:xs.includes(i)?xs.filter(x=>x!==i):[...xs,i])}/> {s}</label>)}
     <ErrorNote error={save.error}/>
-    {!submitted && <Button disabled={save.isPending || (q.type==="explain"?!written.trim():!choices.length)} onClick={()=>save.mutate()}>Check answer</Button>}
-    {submitted && <div aria-live="polite">{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> : <p>{save.data?.score===1?"Correct. ":"Review this one. "}{q.explanation}</p>}</div>}
+    {!submitted && <Button disabled={save.isPending || (q.type==="explain"?!written.trim():!choices.length)} onClick={()=>save.mutate()}>{label.submit}</Button>}
+    {submitted && <div aria-live="polite">{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> : <p>{save.data?.score===1?label.correct:label.incorrect}{q.explanation}</p>}</div>}
   </Card>;
 }
