@@ -1,10 +1,11 @@
 .iso-shell {container-type:inline-size;margin:0;min-width:0;}
-.iso-scene {width:100%;height:auto;display:block;background:var(--iso-bg);color:var(--iso-ink);border-radius:.55rem;max-height:34rem;}
+.iso-scene {width:100%;height:auto;display:block;background:var(--iso-bg);color:var(--iso-ink);border-radius:.55rem;max-height:min(30rem,57svh);}
 .iso-scene .iso-edge {stroke:var(--iso-ink);stroke-width:1.5;stroke-linejoin:round;}
 .iso-scene .iso-detail {stroke:var(--iso-ink);stroke-width:1;stroke-linejoin:round;stroke-linecap:round;fill:none;}
 .iso-scene .iso-grid {stroke:var(--iso-soft);stroke-width:1;opacity:.13;fill:none;}
 .iso-scene .iso-link {stroke:var(--iso-soft);stroke-width:3;opacity:.43;stroke-linejoin:round;stroke-linecap:round;fill:none;}
-.iso-scene .iso-link[data-active] {stroke:var(--iso-accent);opacity:1;}
+.iso-scene .iso-link[data-active] {stroke:var(--iso-accent);stroke-width:4;stroke-dasharray:none;opacity:1;}
+.iso-scene .iso-playback-marker .iso-edge {stroke-width:2;}
 .iso-scene .iso-link[data-focused]:not([data-active]) {opacity:.9;}
 .iso-scene .iso-shadow {fill:var(--iso-ink);opacity:.12;filter:blur(1.5px);}
 .iso-scene .iso-annotation[data-dim] {opacity:.78;}

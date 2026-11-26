@@ -171,7 +171,9 @@ function FlowToken({points,step,enabled,flow,sequence,run,duration,parked=false}
     if(sequence==="pause")a.pause();
     else if(sequence==="run"&&a.playState==="paused")a.play();
   },[sequence]);
-  return <g data-iso-packet={flow} data-iso-parked={parked||undefined} ref={ref} style={{transform:`translate(${p[0]}px, ${p[1]}px)`}}>{tokenGlyph()}</g>;
+  return <g data-iso-packet={flow} data-iso-parked={parked||undefined} ref={ref} style={{transform:`translate(${p[0]}px, ${p[1]}px)`}}>
+    {automatic?<g className="iso-playback-marker" transform="scale(1.6)">{tokenGlyph()}</g>:tokenGlyph()}
+  </g>;
 }
 function Body({children,fault,animate,step,id,dim}:{children:React.ReactNode;fault:boolean;animate:boolean;step:number;id:string;dim:boolean}){
   const ref=useRef<SVGGElement>(null);
@@ -183,8 +185,8 @@ function Body({children,fault,animate,step,id,dim}:{children:React.ReactNode;fau
   },[fault,animate,step]);
   return <g ref={ref} className="iso-body" data-id={id} data-dim={dim||undefined}>{children}</g>;
 }
-export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0}:{
-  checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan;sequence?:IsoSequence;run?:number;
+export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,sceneRef}:{
+  checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan;sequence?:IsoSequence;run?:number;sceneRef?:(svg:SVGSVGElement|null)=>void;
 }){
   const {value,geometry}=checked;
   const {pack,objects,theme_hint}=value.data;
@@ -218,7 +220,7 @@ export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0}:{
   const labeled=objects.filter(o=>visible.has(o.id)&&layout.labels.has(o.id));
   const pinNumber=(id:string)=>objects.filter(o=>o.label).findIndex(o=>o.id===id)+1;
   return <figure className="iso-shell" data-iso-theme={theme_hint}>
-    <svg className="iso-scene" data-iso-theme={theme_hint} data-iso-view={view.turn} viewBox={viewBox} role="img" aria-label={value.title}>
+    <svg ref={sceneRef} className="iso-scene" data-iso-theme={theme_hint} data-iso-view={view.turn} viewBox={viewBox} role="img" aria-label={value.title}>
       <Grid ground={layout.ground} camera={camera}/>
       {painted.filter(id=>visible.has(id)).map(id=>{
         const o=byId.get(id)!;
