@@ -162,17 +162,33 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
       {scene.legend.map((item,i)=><li key={i} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full" style={{background:TONE[item.tone]}}/>{item.label}</li>)}
     </ul>}
     {link && !formulaShowsExplanation && <p className="break-words text-sm"><strong>{link.term}:</strong> {link.explanation}</p>}
-    <div className="tess-scene-caption rounded-lg border border-[var(--line)] p-3"><p className="font-semibold">{beat.label}</p><p className="break-words text-sm">{beat.text}</p></div>
-    <div className="flex flex-wrap items-center gap-2">
-      <button type="button" className={button} disabled={step<=0} onClick={()=>seek(scene.beats[step-1]!.at_ms)}>{labels.prev}</button>
-      <button type="button" className={button} onClick={playing?()=>setMode("pause"):play}>{playing?labels.pause:labels.play}</button>
-      <button type="button" className={button} disabled={step>=scene.beats.length-1} onClick={()=>seek(scene.beats[step+1]!.at_ms)}>{labels.next}</button>
-      <button type="button" className={button} onClick={()=>{clock.current=0;setTime(0);play();}}>{labels.replay}</button>
-      <label className="text-sm"><input type="checkbox" checked={autoplay} onChange={e=>{localStorage.setItem(AUTO_KEY,e.target.checked?"on":"off");window.dispatchEvent(new Event("tesseract-scene-autoplay"));}} /> {labels.autoplay}</label>
-      <label className="text-sm">{labels.speed} <select className={button} value={speed} onChange={e=>setSpeed(Number(e.target.value))}>{[0.5,1,1.5,2].map(n=><option key={n} value={n}>{n}×</option>)}</select></label>
+    <div className="space-y-2 rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className={button+" min-h-11 bg-accent-600 font-semibold text-white hover:bg-accent-700"} onClick={playing?()=>setMode("pause"):play}>{playing?labels.pause:labels.play}</button>
+        <button type="button" className={button+" min-h-11"} onClick={()=>{clock.current=0;setTime(0);play();}}>{labels.replay}</button>
+        <span className="ml-auto text-sm muted">{labels.step} {step+1} / {scene.beats.length}</span>
+      </div>
+      <label className="block text-sm">{labels.timeline} <input className="block min-h-8 w-full" type="range" min={0} max={scene.duration_ms} step={1} list={id+"-markers"} value={Math.round(time)} onChange={e=>seek(Number(e.target.value))} /></label>
+      <datalist id={id+"-markers"}>{scene.beats.map(b=><option key={b.id} value={b.at_ms}/>)}</datalist>
+      <details className="text-sm"><summary className="w-fit cursor-pointer muted">{labels.controls}</summary>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <label><input type="checkbox" checked={autoplay} onChange={e=>{localStorage.setItem(AUTO_KEY,e.target.checked?"on":"off");window.dispatchEvent(new Event("tesseract-scene-autoplay"));}} /> {labels.autoplay}</label>
+          <label>{labels.speed} <select className={button} value={speed} onChange={e=>setSpeed(Number(e.target.value))}>{[0.5,1,1.5,2].map(n=><option key={n} value={n}>{n}×</option>)}</select></label>
+        </div>
+      </details>
     </div>
-    <label className="block text-sm">{labels.timeline} <input className="block w-full" type="range" min={0} max={scene.duration_ms} step={1} value={Math.round(time)} onChange={e=>seek(Number(e.target.value))} /></label>
-    <div className="flex flex-wrap gap-2">{scene.beats.map(b=><button type="button" key={b.id} className={button} aria-current={b===beat?"step":undefined} onClick={()=>seek(b.at_ms)}>{b.label}</button>)}</div>
+    <nav aria-label={labels.guide} className="space-y-2">
+      <h5 className="text-sm font-semibold">{labels.guide}</h5>
+      <ol className="tess-scene-steps">
+        {scene.beats.map((b,i)=><li key={b.id}>
+          <button type="button" className="tess-scene-step" aria-current={b===beat?"step":undefined} onClick={()=>seek(b.at_ms)}>
+            <span className="tess-scene-step-number" aria-hidden="true">{i+1}</span>
+            <span className="min-w-0 break-words">{b.label}</span>
+          </button>
+        </li>)}
+      </ol>
+      <p className="tess-scene-caption rounded-lg border border-[var(--line)] p-3 text-sm" aria-live={playing?"off":"polite"}>{beat.text}</p>
+    </nav>
     {scene.controls?.map(c=><label key={c.id} className="block text-sm">{c.label}: {inputs[c.id] ?? c.initial}<input className="block w-full" type="range" min={c.min} max={c.max} step="any" value={inputs[c.id] ?? c.initial} onChange={e=>setInputs(old=>({...old,[c.id]:Number(e.target.value)}))}/></label>)}
   </section>;
 }

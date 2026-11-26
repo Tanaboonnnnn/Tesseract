@@ -134,3 +134,12 @@ test("a non-network scene uses a real 3D guide path; flat panels reject depth co
   const flat={...scene,panels:scene.panels.map(p=>p.id==="solid"?{...p,kind:"diagram"}:p)};
   assert.equal(SceneSchema.safeParse(flat).success,false);
 });
+
+test("story points on the guided rail share the animation's sampling clock", () => {
+  const scene=loadFixture("load-balancer");
+  assert.equal(scene.beats.length,5);
+  for(const [i,b] of scene.beats.entries()){
+    assert.equal(sampleScene(scene,b.at_ms).beat.id,b.id);
+    if(i>0)assert.equal(sampleScene(scene,b.at_ms-1).beat.id,scene.beats[i-1]?.id);
+  }
+});
