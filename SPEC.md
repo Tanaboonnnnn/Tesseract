@@ -371,6 +371,10 @@ Each roadmap/course is shown with the same diagram as §4.14, built from its top
   prerequisites are understood. Summary: "x/y understood", "n to review".
 - AI reshapes it with the topic tools (`add_topic`, `update_topic` phase / depends_on). API: `GET /api/learning/:id/map`.
 
+### Classroom authoring via MCP
+
+The saved Classroom bundle supports v1 and v2. New MCP draft writes require v2, a nonempty objective, a text first block, and structured lesson guidance (one prediction prompt and 1-4 recap points). Typed visuals are optional and follow the explanation they support. The stricter write policy does not migrate existing revisions or change the owner's local import path. Historical matching MCP retries keep their original receipts. The app, not the bundle, owns page layout.
+
 ## 5. MCP Tools (v1)
 
 All AI clients get full read/write; every write is logged with the agent name.
@@ -479,7 +483,7 @@ List/get tools return compact summaries by default; `detail: true` for full data
 
 ## 11. Tesseract foundation and Classroom draft contract
 
-Classroom owns the layout: topic navigation, stable Learn / Lab / Check tabs, a narrower reading column and wider embedded visuals. Learn displays the objective, source-derived outline, authored blocks in their original order, prediction and recap when available, then Lab / Check actions and sources. New v2 lessons may supply `guidance: {question, takeaways}` (one to four plain-text takeaways); validation requires an explanatory text block first and does not accept guidance in v1. The author chooses the order of explanations and what visuals help, not the page layout. Existing lesson IDs, revisions and answer records are not changed.
+Classroom owns the layout: topic navigation, stable Learn / Lab / Check tabs, a narrower reading column and wider embedded visuals. Learn displays the objective, source-derived outline, authored blocks in their original order, prediction and recap when available, then Lab / Check actions and sources. For stored or locally imported v2 lessons, authors may supply `guidance: {question, takeaways}` (one to four plain-text takeaways); validation requires an explanatory text block first and does not accept guidance in v1. The author chooses the order of explanations and what visuals help, not the page layout. Existing lesson IDs, revisions and answer records are not changed.
 
 This fork keeps existing Projects, Goals, Learning, Skills, Notes, Quizzes, Activity, Calendar, themes, Windows launcher, phone pairing, local MCP and legacy remote MCP. New installations have no sample courses; fixtures are private to tests. Host settings, tokens and service credentials are isolated under `~/.tesseract/`; the fork never automatically reads or moves upstream credentials.
 
@@ -502,7 +506,7 @@ V2 adds the built-in `iso` visual under the existing typed visual block. V1 does
 
 ### Isolated MCP profile
 
-`npm run mcp -- --profile classroom --data <isolated-data-directory>` exposes only `classroom_format`, `submit_course_draft`, `get_draft_receipt`, and `get_draft_status`. Validation is before writes, input is capped at 256 KiB, a retry of the same request returns the original receipt, and conflicting IDs/stale revisions fail explicitly. Submission never publishes. A client that requests MCP progress sees `running` when the submission handler starts. The read-only status looks up the same request ID and returns a durable `staged` receipt or `unknown` (no durable receipt; not proof that a request never ran, and not permission to replay). Queries do not repeat the write. The existing remote mode remains available for legacy workspace features but has no write path into Classroom. No production tunnel is configured by this work. The classroom profile is for isolated test data; it is not routed by the normal app or legacy tunnel. User-facing classroom implementation and real classroom creation are later steps, separate from foundation verification.
+`npm run mcp -- --profile classroom --data <isolated-data-directory>` exposes only `classroom_format`, `submit_course_draft`, `get_draft_receipt`, and `get_draft_status`. Validation is before writes, input is capped at 256 KiB, a retry of the same request returns the original receipt, and conflicting IDs/stale revisions fail explicitly. Submission never publishes. A client that requests MCP progress sees `running` when the submission handler starts. The read-only status looks up the same request ID and returns a durable `staged` receipt or `unknown` (no durable receipt; not proof that a request never ran, and not permission to replay). Queries do not repeat the write. The local, remote and isolated Classroom profiles use the same authoring gate on submit_course_draft. classroom_format supplies an accepted v2 example, machine-readable rules, and on-demand schemas. Invalid drafts return issues with paths and repair suggestions for the authoring rules and are not staged. Import and reading of existing compatible revisions remain available. The MCP surface has no publish operation; only the owner can publish locally.
 
 ### Performance verification
 

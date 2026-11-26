@@ -65,7 +65,7 @@ export const ClassroomBundleSchema = z.strictObject({
     guidance: guidance.optional(),
   })).min(1).max(24),
 }).superRefine((bundle, ctx) => {
-  const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: "custom", path, message });
+  const issue = (path: (string | number)[], message: string, params?: {rule:string; fix:string}) => ctx.addIssue({ code: "custom", path, message, params });
   const sourceIds = new Set(bundle.sources.map((s) => s.id));
   if (sourceIds.size !== bundle.sources.length) issue(["sources"], "Source IDs must be unique");
   if (new Set(bundle.lessons.map((l) => l.id)).size !== bundle.lessons.length) issue(["lessons"], "Lesson IDs must be unique");
@@ -73,7 +73,9 @@ export const ClassroomBundleSchema = z.strictObject({
     if(l.guidance&&bundle.schema_version===1)
       issue(["lessons",i,"guidance"],"Guided lessons use schema_version 2; omit guidance for v1 compatibility.");
     if(l.guidance&&l.blocks[0]?.type!=="text")
-      issue(["lessons",i,"blocks",0],"Begin a guided lesson with an explanatory text block; put visuals after the related explanation.");
+      issue(["lessons",i,"blocks",0],
+        "Lesson " + l.id + " must begin with an explanatory text block.",
+        {rule:"lesson-text-first",fix:"Move or add a {type: text, markdown: ...} block before the first visual. Place visuals after the explanation they support."});
     if(bundle.schema_version===1)l.blocks.forEach((b,j)=>{
       if(b.type==="visual"&&b.visual.type==="iso")
         ctx.addIssue({code:"custom",path:["lessons",i,"blocks",j,"visual","type"],message:"ISO is not part of Classroom bundle v1.",params:{rule:"classroom-version",fix:"Use schema_version 2 on a compatible host, or use a v1 visual type."}});
@@ -95,7 +97,11 @@ export const ClassroomSubmitSchema = z.strictObject({
 });
 export type ClassroomIssue = { code:string; path:string; message:string; rule?:string; fix?:string };
 const bundleIssue=(i:z.core.$ZodIssue):ClassroomIssue=>{
-  const detail=i.code==="custom"?i.params:undefined;
+  let detail=i.code==="custom"?i.params:undefined;
+  if (!detail && i.path[0]==="lessons") {
+    if (i.path[2]==="guidance") detail={rule:"lesson-guidance-format",fix:"Set guidance.question to a short prediction prompt and guidance.takeaways to 1-4 nonempty plain-text strings (240 characters each). See classroom_format."};
+    if (i.path[2]==="objective") detail={rule:"lesson-objective",fix:"Write a nonempty learning objective (up to 1000 characters) for this lesson."};
+  }
   return {code:"VALIDATION",path:["bundle",...i.path].join("."),message:i.message,
     ...(typeof detail?.rule==="string"&&typeof detail.fix==="string"?{rule:detail.rule,fix:detail.fix}:{})};
 };
@@ -109,6 +115,19 @@ function storedBundle(body:string):ClassroomBundle{
   return result.data;
 }
 type Receipt = { ok: true; status: "staged"; course_id: string; revision_id: string } | { ok: false; issues: ClassroomIssue[] };
+function authoringIssues(bundle: ClassroomBundle): ClassroomIssue[] {
+  if (bundle.schema_version !== 2) return [{
+    code:"VALIDATION", path:"bundle.schema_version", rule:"authoring-version",
+    message:"New MCP Classroom drafts must use schema version 2.",
+    fix:"Set schema_version to 2 and add guidance to each lesson using classroom_format. Older revisions remain readable.",
+  }];
+  return bundle.lessons.flatMap((lesson,index) => lesson.guidance ? [] : [{
+    code:"VALIDATION", path:"bundle.lessons."+index+".guidance", rule:"lesson-guidance-required",
+    message:"Lesson "+lesson.id+" is missing a prediction and recap.",
+    fix:"Add guidance: {question: a short prediction prompt, takeaways: an array of 1-4 short recap points}. See classroom_format for an example.",
+  }]);
+}
+
 type RevisionSummary = { revision_id: string; course_id: string; title: string; created_at: string; published: boolean; previously_published: boolean; latest: boolean };
 type RevisionRow = RevisionSummary & { body: string; sequence: number };
 type AttemptRow = { attempt_id: string; revision_id: string; lesson_id: string; question_id: string; answer: string; score: number | null; created_at: string };
@@ -155,7 +174,7 @@ export class ClassroomStore {
     } finally { db.close(); } // closing rolls back any unfinished transaction
   }
 
-  submit(input: unknown): Receipt {
+  submit(input: unknown, options: { requireGuidance?: boolean } = {}): Receipt {
     let bytes: string;
     try { bytes = canonical(input); } catch { return fail("VALIDATION", "", "Send JSON data only"); }
     if (!bytes || Buffer.byteLength(bytes) > MAX_REQUEST_BYTES) return fail("VALIDATION", "", "Draft exceeds the 256 KiB limit");
@@ -166,6 +185,19 @@ export class ClassroomStore {
     const { request_id, base_revision } = header.data;
     const { course_id, title } = parsed.data;
     const digest = hash(bytes);
+    if (options.requireGuidance) {
+      const issues = authoringIssues(parsed.data);
+      if (issues.length) {
+        // A retry of a historical, accepted payload still recovers its original receipt.
+        const prior = this.use<{revision_id:string;course_id:string;payload_hash:string}|null>(false,null,db =>
+          (db.prepare("SELECT revision_id, course_id, payload_hash FROM revisions WHERE request_id = ?").get(request_id) as
+            {revision_id:string;course_id:string;payload_hash:string}|undefined) ?? null);
+        if (prior) return prior.payload_hash === digest
+          ? {ok:true,status:"staged",course_id:prior.course_id,revision_id:prior.revision_id}
+          : fail("REQUEST_CONFLICT","request_id","This ID already belongs to a different submission");
+        return {ok:false,issues};
+      }
+    }
     const body = JSON.stringify(parsed.data);
     return this.use<Receipt>(true, fail("UNAVAILABLE", "", "Draft store unavailable"), (db) => {
       const prior = db.prepare("SELECT revision_id, course_id, payload_hash FROM revisions WHERE request_id = ?").get(request_id);

@@ -438,6 +438,10 @@ it("reports draft execution via stdio and recovers the same receipt after reconn
   const request_id = "synthetic-stdio-01";
   expect(await call(first, "get_draft_status", { request_id })).toEqual({ request_id, status: "unknown" });
   const { example } = await call(first, "classroom_format");
+  const incomplete = structuredClone(example);
+  delete incomplete.lessons[0].guidance;
+  expect(await call(first,"submit_course_draft",{request_id,bundle:incomplete})).toMatchObject({ok:false,issues:[{rule:"lesson-guidance-required",fix:expect.any(String)}]});
+  expect(await call(first, "get_draft_status", { request_id })).toEqual({ request_id, status: "unknown" });
   const messages: string[] = [];
   const receipt = await call(first, "submit_course_draft", { request_id, bundle: example }, messages);
   expect(messages).toEqual(["running"]);
@@ -544,7 +548,9 @@ it("exposes compact ISO authoring without adding a remote tool or Classroom v1 t
   expect((await call("save_visual",{learning:"unused-iso-learning",...f.example})).error).toMatch(/NOT_FOUND/);
   const {example}=await call("classroom_format");
   example.lessons[0]!.blocks.push({type:"visual",visual:{id:"iso-demo",...f.example},fallback:"Text fallback."});
-  expect(await call("submit_course_draft",{request_id:"iso-frozen-v1",bundle:example})).toMatchObject({ok:false});
+  example.schema_version=1;
+  delete example.lessons[0].guidance;
+  expect(await call("submit_course_draft",{request_id:"iso-frozen-v1",bundle:example})).toMatchObject({ok:false,issues:expect.arrayContaining([expect.objectContaining({rule:"classroom-version"})])});
   expect(store.listActivity().length).toBe(before);
   expect(new ClassroomStore(store.dataDir).listDrafts()).toHaveLength(0);
 });
@@ -602,4 +608,60 @@ it("stages validated Classroom ISO only in explicit v2 and never publishes from 
   expect((await client.listTools()).tools.map(t=>t.name)).not.toContain("publish_course");
   const db=new ClassroomStore(store.dataDir);
   expect(db.getRevision(ok.revision_id)?.bundle).toMatchObject({schema_version:2});
+});
+
+it("teaches fresh MCP clients the enforced draft contract and returns actionable repairs", async () => {
+  for (const profile of ["classroom", "local", "remote"] as const) {
+    const {client, call, store} = await connect("fresh-course-author", {profile});
+    const tools = (await client.listTools()).tools;
+    expect(tools.find(t => t.name === "submit_course_draft")?.description).toMatch(/classroom_format.*v2/i);
+    expect(tools.map(t => t.name)).not.toContain("publish_course");
+    const format = await call("classroom_format");
+    expect(format.authoring_version).toBe(2);
+    expect(format.example).toMatchObject({schema_version:2, lessons:[{guidance:{question:expect.any(String), takeaways:[expect.any(String)]}}]});
+    const broken = structuredClone(format.example);
+    delete broken.lessons[0].guidance;
+    const db = new ClassroomStore(store.dataDir);
+    const request_id = "fresh-course-01";
+    expect(await call("submit_course_draft", {request_id, bundle:broken})).toMatchObject({ok:false,issues:[
+      {path:"bundle.lessons.0.guidance",rule:"lesson-guidance-required",message:expect.stringContaining(broken.lessons[0].id),fix:expect.stringContaining("takeaways")},
+    ]});
+    expect(await call("get_draft_status", {request_id})).toMatchObject({status:"unknown"});
+    expect(db.listDrafts()).toEqual([]);
+    const invalid = structuredClone(format.example);
+    invalid.lessons[0].guidance.takeaways = [];
+    expect(await call("submit_course_draft",{request_id,bundle:invalid})).toMatchObject({ok:false,issues:[{path:"bundle.lessons.0.guidance.takeaways",rule:"lesson-guidance-format",fix:expect.any(String)}]});
+    const legacy = {...broken, schema_version:1};
+    expect(await call("submit_course_draft", {request_id, bundle:legacy})).toMatchObject({ok:false,issues:[
+      {path:"bundle.schema_version",rule:"authoring-version",fix:expect.stringContaining("2")},
+    ]});
+    const receipt = await call("submit_course_draft", {request_id, bundle:format.example});
+    expect(receipt).toMatchObject({ok:true,status:"staged"});
+    expect(await call("submit_course_draft", {request_id, bundle:format.example})).toEqual(receipt);
+    expect(db.getRevision(receipt.revision_id)?.bundle.lessons[0]?.guidance).toEqual(format.example.lessons[0].guidance);
+    expect(db.listPublished()).toEqual([]);
+
+    const revised = structuredClone(format.example);
+    const opening = revised.lessons[0].blocks[0];
+    revised.lessons[0].blocks = [{type:"visual", fallback:"A comparison.", visual:{type:"lesson", id:"comparison", title:"Comparison", data:{blocks:[{kind:"text",md:"Compare the two cases."}]}}}, opening];
+    expect(await call("submit_course_draft", {request_id:"fresh-course-02",base_revision:receipt.revision_id,bundle:revised})).toMatchObject({ok:false,issues:[
+      {path:"bundle.lessons.0.blocks.0",rule:"lesson-text-first",fix:expect.stringContaining("text")},
+    ]});
+  }
+});
+
+it("preserves legacy published courses, import and receipt recovery under the MCP authoring gate", async () => {
+  const {call,store} = await connect("legacy-course-author", {profile:"remote"});
+  const format = await call("classroom_format");
+  const bundle = {...format.example,schema_version:1};
+  delete bundle.lessons[0].guidance;
+  const db = new ClassroomStore(store.dataDir);
+  const payload = {request_id:"legacy-course-01",bundle};
+  const receipt = db.submit(payload);
+  if(!receipt.ok) throw Error(JSON.stringify(receipt));
+  db.publish(receipt.revision_id);
+  expect(db.getPublished(bundle.course_id)?.bundle.schema_version).toBe(1);
+  expect(await call("submit_course_draft",payload)).toEqual(receipt);
+  expect(await call("submit_course_draft",{...payload,bundle:{...bundle,title:"Different"}})).toMatchObject({ok:false,issues:[{code:"REQUEST_CONFLICT"}]});
+  expect(db.listDrafts()).toHaveLength(1);
 });

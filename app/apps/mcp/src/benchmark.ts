@@ -39,9 +39,9 @@ async function run(profile: ServerOptions["profile"], f: (call: Client["callTool
 }
 try {
   const bundle = {
-    schema_version: 1, course_id: "synthetic-test-only", title: "Synthetic", language: "en",
+    schema_version: 2, course_id: "synthetic-test-only", title: "Synthetic", language: "en",
     sources: [{ id: "ref", title: "Test", url: "https://example.com/test", accessed_on: "2026-01-01", rights: "reference-only", summary: "Test only." }],
-    lessons: [{ id: "one", title: "Test", objective: "Test round trip", source_ids: ["ref"], blocks: [{ type: "text", markdown: "Placeholder" }] }],
+    lessons: [{ id: "one", title: "Test", objective: "Test round trip", source_ids: ["ref"], blocks: [{ type: "text", markdown: "The input arrives before the example processes it." }], guidance: { question: "What arrives first?", takeaways: ["Identify the input."] } }],
   };
   const remote = await run("remote", async (call) => {
     if ((await call({ name: "list_learning" })).isError) throw new Error("Legacy benchmarking call failed");

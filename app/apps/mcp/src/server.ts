@@ -181,18 +181,20 @@ export const REMOTE_TOOLS = [
 const REMOTE_NOTE = `
 - You are connected remotely (cloud chat through a tunnel). This is a read-mostly tool set: deleting, undoing and
   changing skill levels or assessments are not available here; ask the user to do those in the app.
-- Use classroom_format and submit_course_draft for a new course. Drafts are not published; the owner reviews them on this PC. After silence or timeout, query get_draft_status with the same request ID; never automatically resend.`;
+- Read classroom_format before submit_course_draft: new Classroom drafts require v2, text first, and lesson guidance. Drafts are not published; the owner reviews them on this PC. After silence or timeout, query get_draft_status with the same request ID; never automatically resend.`;
 
 const CLASSROOM_EXAMPLE = {
-  schema_version: 1, course_id: "synthetic-example", title: "Synthetic example", language: "en",
-  sources: [{ id: "ref", title: "Illustrative only", url: "https://example.com/reference", accessed_on: "2026-01-01", rights: "reference-only", summary: "Shape example; not a factual course." }],
-  lessons: [{ id: "intro", title: "Example lesson", objective: "Demonstrate payload shape", source_ids: ["ref"], blocks: [{ type: "text", markdown: "Write supported Markdown here." }],
-    questions: [{ id: "reason", type: "explain", prompt: "Explain in your own words.", rubric: ["State a reason"], model_answer: "Illustrative answer." }] }],
+  schema_version: 2, course_id: "liter-water-example", title: "Reading a measuring jug", language: "en",
+  sources: [{ id: "ref", title: "Illustrative only", url: "https://example.com/reference", accessed_on: "2026-01-01", rights: "reference-only", summary: "Placeholder citation: replace with a source you checked when authoring a real course." }],
+  lessons: [{ id: "intro", title: "Read the scale", objective: "Use tick marks to determine a volume in milliliters.", source_ids: ["ref"],
+    blocks: [{ type: "text", markdown: "## Find the interval\nIf four equal intervals separate 100 mL from 300 mL, each interval represents 50 mL. Count intervals, not marks." }],
+    guidance: {question:"What reading would you get two intervals above 100 mL?",takeaways:["Find the value per interval before reading the scale."]},
+    questions: [{ id: "reason", type: "explain", prompt: "Why divide the difference by the number of intervals?", rubric: ["Connect equal intervals to equal portions of the total difference."], model_answer: "The intervals partition the total difference into equal portions." }] }],
 } as const;
 
 function classroomServer(store: Store): McpServer {
   const server = new McpServer({ name: "tesseract-classroom", version: "0.1.0" }, {
-    instructions: "Draft-only. Use classroom_format if you need the bundle shape. Submit once with a stable request_id. On timeout call get_draft_status first. Unknown means no durable receipt, not proof of no execution. Never automatically replay a write; if approved, reuse the same ID and payload. Only the owner can publish locally. Do not send secrets, raw HTML, copied articles, or private files.",
+    instructions: "Draft-only. Read classroom_format first. New submissions require v2, an explanatory first block and guidance per lesson. Submit once with a stable request_id. On timeout call get_draft_status first. Unknown means no durable receipt, not proof of no execution. Never automatically replay a write; if approved, reuse the same ID and payload. Only the owner can publish locally. Do not send secrets, raw HTML, copied articles, or private files.",
   });
   registerDraftTools(server, store);
   return server;
@@ -205,14 +207,15 @@ function classIsoFormat(pack:string) {
 function registerDraftTools(server: McpServer, store: Store) {
   const c = new ClassroomStore(store.dataDir);
   server.registerTool("classroom_format", { description: "Course bundle example, constraints and optional validator-derived input JSON Schema.", inputSchema: { include_schema: z.boolean().optional(), include_scene_schema: z.boolean().optional(), iso_pack:z.string().max(64).optional() }, annotations: READ }, ({ include_schema, include_scene_schema, iso_pack }) => ok({
-    supported_versions:[1,2],
+    supported_versions:[1,2], authoring_version:2,
+    authoring_rules:{schema_version:2, required_lesson_fields:["objective","guidance.question","guidance.takeaways"], first_block:"text", visuals:"optional", publish:"owner only", repairs:"A rejected draft is not stored. Apply issues[].fix at issues[].path before resubmitting."},
     ...(iso_pack!==undefined?{iso: classIsoFormat(iso_pack)}:{}),
     ...(include_schema ? { schema: z.toJSONSchema(ClassroomBundleSchema, { io: "input", unrepresentable: "any" }) } : {}),
     ...(include_scene_schema ? {scene_schema: z.toJSONSchema(SceneSchema, { io:"input" }), scene_example: SCENE_EXAMPLES.scene.example} : {}),
     scene: "Optional scene visual, v1. Use one focus per beat and a text fallback. Combine diagram, plot, inspect and optional mesh panels without subject-specific templates. Use a single mesh panel with stage=explainer for orthographic SVG; supply world X/Y/Z, positive solid dimensions, optional label offsets, and separate a fault beat from its reaction. Request include_scene_schema for the full contract; validate_course_visual checks only scene data, without storing it.",
     lesson_layout: "The reader controls navigation, tabs and placement. Learn renders blocks in their authored order, with visuals inline after the explanation they support. Do not design page chrome or introduce layout markup.",
     lesson_structure: "For new lessons author schema_version 2 and guidance: {question: a prediction, takeaways: [1–4 short statements]}. Start blocks with an explanation, give major text blocks Markdown headings, and only add visuals that explain that concept. The reader places objective, outline, ordered blocks, prediction, recap and Lab / Check actions in that order. Old bundles without guidance stay readable.",
-    lesson_guidance_example: {question:"What changes if the input arrives before the system is ready?",takeaways:["Track the event before interpreting the result."]},
+    lesson_guidance_example: CLASSROOM_EXAMPLE.lessons[0].guidance,
     example: CLASSROOM_EXAMPLE, limits: { max_bytes: 262144, max_lessons: 24 },
     blocks: { text: "{type, markdown}", visual: "{type, visual: typed Panya/Tesseract renderer data, fallback}" },
     questions: { single: "{id,type,prompt,choices,correct:[one zero-based index],explanation}", explain: "{id,type,prompt,rubric,model_answer}", multi: "{id,type,prompt,choices,correct,explanation}" },
@@ -229,14 +232,14 @@ function registerDraftTools(server: McpServer, store: Store) {
       const receipt = c.getReceipt(request_id);
       return receipt ? { request_id, status: "staged", receipt } : { request_id, status: "unknown" };
     }));
-  server.registerTool("submit_course_draft", { description: "Validate and stage one sourced course bundle. Same ID and payload return the same receipt. Never publishes.", inputSchema: ClassroomSubmitSchema.shape, annotations: WRITE },
+  server.registerTool("submit_course_draft", { description: "Read classroom_format first. Stages v2 only: each lesson needs an objective, text first, prediction and recap. Same ID and payload return the same receipt. Never publishes.", inputSchema: ClassroomSubmitSchema.shape, annotations: WRITE },
     async (input, extra) => {
       const progressToken = extra._meta?.progressToken;
       if (progressToken !== undefined) {
         await extra.sendNotification({ method: "notifications/progress", params: { progressToken, progress: 0, total: 1, message: "running" } });
       }
       if (extra.signal.aborted) return { isError: true, content: [{ type: "text", text: "Request cancelled before staging. Check status by request ID." }] };
-      return run(() => c.submit(input));
+      return run(() => c.submit(input, {requireGuidance:true}));
     });
 }
 
