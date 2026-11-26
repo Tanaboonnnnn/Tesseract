@@ -107,9 +107,9 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
   const button="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--lane)] disabled:opacity-40";
   const toggle = (key:string)=>setPinned(old=>old===key ? null : key);
 
-  return <section ref={root} aria-label={title} className="tess-scene-layout my-3 min-w-0 space-y-3 rounded-xl border border-[var(--line)] p-3 sm:p-4" onKeyDown={e=>{if(e.key==="Escape"){setPinned(null);setHover(null);setFocus(null);}}}>
+  return <section ref={root} aria-label={title} className="tess-scene-layout tess-scene-editorial my-4 min-w-0 rounded-xl border border-[var(--line)] p-4 sm:p-6" onKeyDown={e=>{if(e.key==="Escape"){setPinned(null);setHover(null);setFocus(null);}}}>
     <div className="tess-scene-panels min-w-0 gap-3" data-layout={layout}>
-      {scene.panels.map(panel=><section key={panel.id} data-panel-kind={panel.kind} className="min-w-0 rounded-lg bg-[var(--lane)] p-3">
+      {scene.panels.map(panel=><section key={panel.id} data-panel-kind={panel.kind} className="tess-scene-panel min-w-0">
         <h4 className="break-words text-sm font-semibold">{panel.label}</h4>
         {panel.kind==="inspect" && panel.tex ? <div className="mt-2">
         <FormulaBlock b={{kind:"formula",tex:panel.tex,where:[],terms:(scene.bindings??[]).filter(b=>b.panel===panel.id).map(b=>({id:b.id,label:b.term,note:b.explanation}))}}
@@ -162,7 +162,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
       {scene.legend.map((item,i)=><li key={i} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full" style={{background:TONE[item.tone]}}/>{item.label}</li>)}
     </ul>}
     {link && !formulaShowsExplanation && <p className="break-words text-sm"><strong>{link.term}:</strong> {link.explanation}</p>}
-    <div className="space-y-2 rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] p-3">
+    <div className="tess-scene-transport">
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={button+" min-h-11 bg-accent-600 font-semibold text-white hover:bg-accent-700"} onClick={playing?()=>setMode("pause"):play}>{playing?labels.pause:labels.play}</button>
         <button type="button" className={button+" min-h-11"} onClick={()=>{clock.current=0;setTime(0);play();}}>{labels.replay}</button>
@@ -177,7 +177,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
         </div>
       </details>
     </div>
-    <nav aria-label={labels.guide} className="space-y-2">
+    <nav aria-label={labels.guide} className="tess-scene-guide">
       <h5 className="text-sm font-semibold">{labels.guide}</h5>
       <ol className="tess-scene-steps">
         {scene.beats.map((b,i)=><li key={b.id}>
@@ -187,7 +187,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
           </button>
         </li>)}
       </ol>
-      <p className="tess-scene-caption rounded-lg border border-[var(--line)] p-3 text-sm" aria-live={playing?"off":"polite"}>{beat.text}</p>
+      <p className="tess-scene-caption text-sm" aria-live={playing?"off":"polite"}>{beat.text}</p>
     </nav>
     {scene.controls?.map(c=><label key={c.id} className="block text-sm">{c.label}: {inputs[c.id] ?? c.initial}<input className="block w-full" type="range" min={c.min} max={c.max} step="any" value={inputs[c.id] ?? c.initial} onChange={e=>setInputs(old=>({...old,[c.id]:Number(e.target.value)}))}/></label>)}
   </section>;

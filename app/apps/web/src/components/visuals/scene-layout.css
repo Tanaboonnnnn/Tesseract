@@ -61,10 +61,7 @@
 }
 
 .tess-scene-layout:has([data-layout="single"]) { max-width: 52rem; }
-.tess-scene-caption {
-  border-inline-start: 3px solid var(--color-accent-500);
-  background: var(--panel-solid);
-}
+
 
 .tess-scene-layout {
   --tess-scene-neutral: #527086;
@@ -99,46 +96,65 @@
   font-weight: 600;
 }
 
+/* Calm inline figure: use space and type, not a separate card around each control. */
+.tess-scene-editorial {
+  display: grid;
+  gap: clamp(1rem, 3cqi, 1.5rem);
+  background: var(--panel-solid);
+}
+.tess-scene-panel[data-panel-kind="inspect"] {
+  padding-inline-start: .875rem;
+  border-inline-start: 1px solid var(--line);
+}
+.tess-scene-transport { display: grid; gap: .625rem; min-width: 0; }
+.tess-scene-guide {
+  display: grid;
+  gap: .875rem;
+  padding-top: 1.125rem;
+  border-top: 1px solid var(--line);
+}
 .tess-scene-steps {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.3rem), 1fr));
-  gap: .45rem;
+  gap: .625rem .875rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .tess-scene-step {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
   height: 100%;
   min-height: 44px;
-  gap: .45rem;
-  padding: .4rem .5rem;
-  border: 1px solid var(--line);
-  background: var(--panel-solid);
-  border-radius: .55rem;
+  gap: .5rem;
+  padding: .4rem .125rem;
   text-align: start;
-  font-size: .8125rem;
-  line-height: 1.35;
+  font-size: .875rem;
+  line-height: 1.45;
 }
 .tess-scene-step-number {
   display: grid;
   place-items: center;
-  flex: 0 0 1.45rem;
+  flex: 0 0 1.5rem;
   aspect-ratio: 1;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-strong, var(--line));
   border-radius: 50%;
-  font-weight: 700;
-}
-.tess-scene-step[aria-current="step"] {
-  border-color: var(--color-accent-500);
-  background: color-mix(in srgb, var(--color-accent-500) 11%, var(--panel-solid));
+  font-size: .75rem;
   font-weight: 650;
 }
+.tess-scene-step:hover > span:last-child { text-decoration: underline; text-underline-offset: .2em; }
+.tess-scene-step[aria-current="step"] { font-weight: 700; }
 .tess-scene-step[aria-current="step"] .tess-scene-step-number {
   color: #fff;
   background: var(--color-accent-600, #2351b1);
   border-color: transparent;
 }
-.tess-scene-step:focus-visible { outline: 2px solid var(--color-accent-500); outline-offset: 2px; }
+.tess-scene-step:focus-visible { outline: 2px solid var(--color-accent-500); outline-offset: 2px; border-radius: .25rem; }
+.tess-scene-caption {
+  margin: .125rem 0 0;
+  max-width: 67ch;
+  border-inline-start: 2px solid var(--color-accent-500);
+  padding: .125rem 0 .125rem .875rem;
+  line-height: 1.65;
+}
