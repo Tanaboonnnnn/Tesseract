@@ -475,6 +475,8 @@ List/get tools return compact summaries by default; `detail: true` for full data
 
 ## 11. Tesseract foundation and Classroom draft contract
 
+Classroom owns the layout: topic navigation, stable Learn / Lab / Check tabs, a narrower reading column and wider embedded visuals. Learn displays the objective, source-derived outline, authored blocks in their original order, prediction and recap when available, then Lab / Check actions and sources. New v2 lessons may supply `guidance: {question, takeaways}` (one to four plain-text takeaways); validation requires an explanatory text block first and does not accept guidance in v1. The author chooses the order of explanations and what visuals help, not the page layout. Existing lesson IDs, revisions and answer records are not changed.
+
 This fork keeps existing Projects, Goals, Learning, Skills, Notes, Quizzes, Activity, Calendar, themes, Windows launcher, phone pairing, local MCP and legacy remote MCP. New installations have no sample courses; fixtures are private to tests. Host settings, tokens and service credentials are isolated under `~/.tesseract/`; the fork never automatically reads or moves upstream credentials.
 
 ### Classroom data (v1)

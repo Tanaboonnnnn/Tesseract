@@ -2,9 +2,15 @@ import { lazy, Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { api, type CourseDetail, type CourseProgress, type CourseRevision } from "../lib/api.ts";
-import { Button, Card, ErrorNote, Loading, PageHeader, inputClass } from "../components/ui.tsx";
+import { Button, Card, ErrorNote, Loading, inputClass } from "../components/ui.tsx";
 import { lessonLabels, isThaiLesson } from "../lib/lesson-language.ts";
 import { Markdown } from "../components/Markdown.tsx";
+import { chapterWindow, classroomOutline, classroomTitle } from "../lib/classroom-layout.ts";
+import classroomMark from "./classroom-mark.svg";
+import "@fontsource/ibm-plex-sans-thai/400.css";
+import "@fontsource/ibm-plex-sans-thai/600.css";
+import "@fontsource/ibm-plex-sans-thai/700.css";
+import "./classroom-reading.css";
 const Visual = lazy(() => import("../components/visuals/Visual.tsx").then(m => ({ default: m.Visual })));
 
 const limit = 256 * 1024;
@@ -145,111 +151,132 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
   const saved = new Map(progress.data?.filter(a=>a.lesson_id===lesson.id).map(a=>[a.question_id,a]));
   const path = draft ? "/learning/drafts/" + id : "/learning/classroom/" + id;
   const lessonLink = (topic: string, panel = tab) => path + (panel === "learn" ? "" : "?tab=" + panel) + "#" + topic;
-  const sections = [{id:"learn", label:label.learn}, {id:"lab",label:label.lab}, {id:"check",label:label.check}] as const;
+  const sections = [{id:"learn", label:label.learn}, {id:"lab",label:thai?"แล็บ":label.lab}, {id:"check",label:thai?"แบบทดสอบ":label.check}] as const;
   const sources = d.bundle.sources.filter(s => lesson.source_ids.includes(s.id));
   const downloads = sources.filter(s => /[.](pcap|pcapng)(?:$|[?#])/i.test(s.url));
   const dayBased = d.bundle.lessons.every(l => /^day-[0-9]+$/.test(l.id));
   const dayLabel = (i: number) => (dayBased ? label.day : label.lesson) + " " + (i + 1);
-  return <div className="space-y-5">
-    <Link to="/learning" className="underline">{label.back}</Link>
-    <PageHeader title={d.title}/>
-    {draft && <Card className="p-4 space-y-2">
-      <p className="font-semibold">{d.published ? "Current version" : d.previously_published ? "Version history preview" : "Draft preview"}</p>
-      <p className="text-sm muted">Updating replaces the current version, not the course. Unchanged questions keep their answers.</p>
-      <div className="flex flex-wrap gap-2">
-        {d.latest && !d.previously_published && <Button disabled={action.isPending} onClick={()=>{if(confirm("Make this reviewed draft the current course version?")) action.mutate("publish");}}>Update current course</Button>}
-        {d.previously_published && !d.published && <Button disabled={action.isPending} onClick={()=>{if(confirm("Restore this previously published revision?")) action.mutate("restore");}}>Restore this version</Button>}
-        {d.published && <Link className="underline" to={"/learning/classroom/" + d.course_id}>Open in Learning</Link>}
-      </div><ErrorNote error={action.error}/>
-    </Card>}
-    <nav aria-label={label.lessonDays}>
-      <label className="block sm:hidden">{dayLabel(selected)} {label.of} {d.bundle.lessons.length}
-        <select className={inputClass} value={lesson.id} onChange={e => nav(lessonLink(e.target.value,"learn"))}>
-          {d.bundle.lessons.map((l,i) => <option key={l.id} value={l.id}>{dayLabel(i)}: {l.title}</option>)}
-        </select>
-      </label>
-      <div className="hidden flex-wrap gap-2 sm:flex">
-        {d.bundle.lessons.map((l,i)=><Link key={l.id} to={lessonLink(l.id,"learn")} title={l.title}
-          aria-current={l.id===lesson.id?"step":undefined}
-          className={l.id===lesson.id?"rounded-lg bg-accent-600 px-3 py-2 text-sm font-semibold text-white":"rounded-lg border border-slate-500/25 px-3 py-2 text-sm hover:bg-[var(--panel-solid)]"}>
-          {dayLabel(i)}
-        </Link>)}
-      </div>
-    </nav>
-    <section key={lesson.id} id={lesson.id} className="min-w-0 space-y-4 scroll-mt-5" lang={thai?"th":undefined}>
-      <div><p className="muted text-xs uppercase tracking-wide">{dayLabel(selected)} / {d.bundle.lessons.length}</p><h2 className="text-xl font-semibold">{lesson.title}</h2></div>
-      <nav aria-label={label.sections} className="flex flex-wrap gap-2 border-b border-slate-500/25">
-        {sections.map(p=><Link key={p.id} to={lessonLink(lesson.id,p.id)} aria-current={p.id===tab?"page":undefined}
-          className={p.id===tab?"border-b-2 border-accent-500 px-4 py-2 font-semibold":"px-4 py-2 muted hover:underline"}>
-          {p.label}
-        </Link>)}
-      </nav>
-      {tab === "learn" && <div className="space-y-4">
-        <p className="max-w-[68ch] text-base leading-relaxed muted">{lesson.objective}</p>
-      {(lesson.layout==="inline" || lesson.blocks.some(b=>b.type==="visual" && (b.visual.type==="scene" || b.visual.type==="iso"))) ? (
-        <article aria-label={label.content} className="space-y-5">
-          {lesson.blocks.length>2 && <nav aria-label={label.outline} className="flex max-w-[52rem] flex-wrap gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-3">
-            {lesson.blocks.map((b,i)=> {
-              const heading=b.type==="text"?b.markdown.match(/^#{1,6} +([^\r\n]+)$/m)?.[1]:b.visual.title;
-              return heading && <a className="rounded-full border border-[var(--line)] px-3 py-1 text-sm hover:bg-[var(--lane)]" key={i} href={"#"+lesson.id} onClick={e=>{e.preventDefault();document.getElementById(lesson.id+"-part-"+(i+1))?.scrollIntoView({block:"start"});}}>{i+1}. {heading}</a>;
+  const outline=classroomOutline(lesson.blocks,lesson.id);
+  const topic=classroomTitle(lesson.title);
+  const allChapters=thai?"ทุกบท":"All chapters";
+  const chapterNumber=(i:number)=>String(i+1).padStart(2,"0");
+  const toTop=()=>document.getElementById(lesson.id)?.scrollIntoView({block:"start"});
+  const options=d.bundle.lessons.map((l,i)=><option key={l.id} value={l.id}>{chapterNumber(i)} · {classroomTitle(l.title)}</option>);
+  const prompt=lesson.guidance?.question ?? lesson.questions[0]?.prompt;
+  return <div className="classroom-reading" lang={thai?"th":undefined}>
+    <header className="classroom-reading__bar">
+      <Link to="/learning" aria-label={label.back}>
+        <span className="classroom-reading__mark"><img src={classroomMark} alt="" width="20" height="20"/></span>
+        <span className="classroom-reading__wordmark">TESSERACT</span><span className="classroom-reading__back">{label.back}</span>
+      </Link>
+      <p className="classroom-reading__course">{d.title}</p>
+    </header>
+    <div className="classroom-reading__page">
+      {draft && <Card className="p-4 space-y-2 mb-5">
+        <p className="font-semibold">{d.published ? "Current version" : d.previously_published ? "Version history preview" : "Draft preview"}</p>
+        <p className="text-sm muted">Updating replaces the current version, not the course. Unchanged questions keep their answers.</p>
+        <div className="flex flex-wrap gap-2">
+          {d.latest && !d.previously_published && <Button disabled={action.isPending} onClick={()=>{if(confirm("Make this reviewed draft the current course version?")) action.mutate("publish");}}>Update current course</Button>}
+          {d.previously_published && !d.published && <Button disabled={action.isPending} onClick={()=>{if(confirm("Restore this previously published revision?")) action.mutate("restore");}}>Restore this version</Button>}
+          {d.published && <Link className="underline" to={"/learning/classroom/" + d.course_id}>Open in Learning</Link>}
+        </div><ErrorNote error={action.error}/>
+      </Card>}
+      <section key={lesson.id} id={lesson.id} className="classroom-reading__lesson">
+        <div className="classroom-reading__hero">
+          <p className="classroom-reading__kicker">{d.title} / {thai?"ห้องเรียน":"Classroom"}</p>
+          <h1>{topic}</h1>
+          <p className="classroom-reading__meta">{label.lesson} {chapterNumber(selected)} {label.of} {d.bundle.lessons.length}{dayBased?<> · {thai?"แผนอ่าน":"Study plan"} {dayLabel(selected)}</>:null}</p>
+        </div>
+        <nav aria-label={label.lessonDays} className="classroom-reading__picker">
+          <div className="classroom-reading__chips">
+            {chapterWindow(d.bundle.lessons.length,selected).map(i=>{
+              const l=d.bundle.lessons[i]!;
+              return <Link key={l.id} to={lessonLink(l.id,"learn")} title={classroomTitle(l.title)}
+                aria-current={l.id===lesson.id?"step":undefined}>{chapterNumber(i)} · {classroomTitle(l.title)}</Link>;
             })}
-          </nav>}
-          {lesson.blocks.map((b,i) => b.type==="text" ? (
-            <div key={i} id={lesson.id+"-part-"+(i+1)} className="max-w-[52rem] scroll-mt-5 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] px-4 py-3 sm:px-6 sm:py-4"><div className="max-w-[68ch] leading-relaxed"><Markdown text={b.markdown}/></div></div>
-          ) : (
-            <section key={i} id={lesson.id+"-part-"+(i+1)} aria-label={b.visual.title} className="max-w-[52rem] min-w-0 scroll-mt-5 space-y-2">
-              <h3 className="text-sm font-semibold">{b.visual.title}</h3>
-              <Suspense fallback={<Loading/>}><Visual visual={b.visual} language={d.bundle.language}/></Suspense>
-              <details className="text-sm muted"><summary>{label.steps}</summary><p>{b.fallback}</p></details>
-            </section>
-          ))}
-        </article>
-      ) : <>
-      {lesson.blocks.some(b=>b.type==="visual") && <section aria-label={label.visual} className="space-y-3">
-        <h3 className="font-semibold">{label.visual}</h3>
-        {lesson.blocks.flatMap((b,i)=> b.type==="visual" ? [<Card key={i} className="space-y-2 p-3 sm:p-4">
-          <h4 className="font-semibold">{b.visual.title}</h4>
-          <Suspense fallback={<Loading/>}><Visual visual={b.visual} language={d.bundle.language}/></Suspense>
-          <details className="text-sm muted"><summary>{label.steps}</summary><p>{b.fallback}</p></details>
-        </Card>] : [])}
-      </section>}
-      <details className="rounded-lg border border-slate-500/25 p-3" open>
-        <summary className="font-semibold">{label.notes}</summary>
-        {lesson.blocks.map((b,i) => b.type==="text" ? <Markdown key={i} text={b.markdown}/> : null)}
-      </details>
-      </>}
-      </div>}
-      {tab === "lab" && <div className="space-y-4">
-        {!lesson.labs.length && <Card className="p-4"><p>{label.noLab}</p><p className="muted text-sm">{thai?"เลือกบทอื่นหรือไปทบทวนความเข้าใจได้":"Choose another day or check your understanding here."}</p></Card>}
-        {downloads.length > 0 && <Card className="space-y-2 p-4">
-          <h3 className="font-semibold">Practice files</h3>
-          {downloads.map(s=><a key={s.id} href={s.url} className="block underline break-words" target="_blank" rel="noreferrer">{s.title}</a>)}
-        </Card>}
-        {lesson.labs.map((lab,i)=><details key={i} className="rounded-lg border border-slate-500/25 p-4" open={i===0}>
-          <summary className="font-semibold">{lab.prerequisites[0] ?? "Lab " + (i+1)}</summary>
-          <div className="mt-3 space-y-3">
-            <p className="text-sm muted">{lab.platform === "both" ? "Windows and Linux" : lab.platform} · {lab.environment}</p>
-            {lab.prerequisites.length>1 && <p>{lab.prerequisites.slice(1).join(" · ")}</p>}
-            <ol className="ml-5 list-decimal space-y-2">{lab.steps.map((x,j)=><li className="whitespace-pre-wrap break-words" key={j}>{x}</li>)}</ol>
-            <p><strong>Expected:</strong> {lab.expected}</p>{lab.cleanup && <p><strong>Cleanup:</strong> {lab.cleanup}</p>}
           </div>
-        </details>)}
-      </div>}
-      {tab === "check" && <div className="space-y-4">
-        <h3 className="font-semibold">{label.knowledge}</h3>
-        {!draft && lesson.questions.length>0 && (progress.error ? <ErrorNote error={progress.error}/> :
-          progress.isPending ? <Loading/> : <p className="text-sm muted">{saved.size} {label.saved}</p>)}
-        {lesson.questions.length===0 && <p>{label.noQuestions}</p>}
-        {lesson.questions.map(q=>draft ? <details key={q.id} className="rounded-lg border border-slate-500/25 p-4"><summary>{q.prompt}</summary>{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> :
-          <><ul className="list-disc ml-5">{q.choices.map((choice,i)=><li key={i}>{choice}{q.correct.includes(i) ? " (correct)" : ""}</li>)}</ul><p>{q.explanation}</p></>}</details> :
-          progress.isSuccess ? <Answer key={d.revision_id+":"+lesson.id+":"+q.id} course={d} lesson={lesson.id} q={q} saved={saved.get(q.id)}/> : null)}
-      </div>}
-      {tab !== "check" && sources.length>0 && <details className="text-sm muted">
-        <summary>{label.sources}</summary>
-        <ul className="mt-2 space-y-1">{sources.map(s=><li key={s.id}><a href={s.url} className="underline break-words" target="_blank" rel="noreferrer">{s.title}</a></li>)}</ul>
-      </details>}
-    </section>
-    {!draft && <RelatedTasks id={d.course_id}/>}
+          <select className="classroom-reading__compact" aria-label={label.lessonDays} value={lesson.id}
+            onChange={e=>nav(lessonLink(e.target.value,"learn"))}>{options}</select>
+          <select className="classroom-reading__all" aria-label={allChapters} value="" onChange={e=>{if(e.target.value)nav(lessonLink(e.target.value,"learn"));}}>
+            <option value="" disabled>{allChapters}</option>{options}
+          </select>
+        </nav>
+        <nav aria-label={label.sections} className="classroom-reading__tabs">
+          {sections.map(p=><Link key={p.id} to={lessonLink(lesson.id,p.id)} aria-current={p.id===tab?"page":undefined}>{p.label}</Link>)}
+        </nav>
+        {tab==="learn" && <>
+          <div className="classroom-reading__objective classroom-reading__measure">
+            <p className="classroom-reading__kicker">{thai?"ก่อนเริ่ม":"Before you start"}</p>
+            <h2>{thai?"หลังจบบทนี้":"By the end of this lesson"}</h2>
+            <p>{lesson.objective}</p>
+          </div>
+          {outline.length>0&&<nav aria-label={label.outline} className="classroom-reading__outline">
+            <h2 className="font-semibold">{label.outline}</h2>
+            <ul>{outline.map((item,i)=><li key={item.id}><a href={"#"+item.id} onClick={e=>{
+              e.preventDefault();const target=document.getElementById(item.id);
+              target?.focus({preventScroll:true});target?.scrollIntoView({block:"start"});
+            }}>{chapterNumber(i)} {item.title}</a></li>)}</ul>
+          </nav>}
+          <article aria-label={label.content} className="classroom-reading__article">
+            {lesson.blocks.map((b,i) => b.type==="text" ? (
+              <div key={i} id={lesson.id+"-part-"+(i+1)} tabIndex={-1} className="classroom-reading__text"><Markdown text={b.markdown}/></div>
+            ):(
+              <section key={i} id={lesson.id+"-part-"+(i+1)} aria-label={b.visual.title} className="classroom-reading__visual">
+                <h3>{b.visual.title}</h3>
+                <Suspense fallback={<Loading/>}><Visual visual={b.visual} language={d.bundle.language}/></Suspense>
+                <details><summary>{label.steps}</summary><p>{b.fallback}</p></details>
+              </section>
+            ))}
+          </article>
+          {(prompt||lesson.labs.length>0||lesson.questions.length>0)&&<section className="classroom-reading__after">
+            {prompt&&<div className="classroom-reading__measure">
+              <p className="classroom-reading__kicker">{thai?"ลองตอบ":"Try it first"}</p>
+              <h2 className="classroom-reading__section-title">{thai?"ลองทำนายก่อนเปิดเฉลย":"Make a prediction"}</h2>
+              <p className="muted">{prompt}</p>
+            </div>}
+            {lesson.guidance&&<div className="classroom-reading__recap classroom-reading__measure">
+              <h3 className="font-semibold">{thai?"สรุปที่ควรจำ":"Key takeaways"}</h3>
+              <ul>{lesson.guidance.takeaways.map((t,i)=><li key={i}>{t}</li>)}</ul>
+            </div>}
+            <div className="classroom-reading__next">
+              {lesson.labs.length>0&&<Link to={lessonLink(lesson.id,"lab")} onClick={toTop}>{thai?"ไปแล็บ":"Open lab"}</Link>}
+              {lesson.questions.length>0&&<Link to={lessonLink(lesson.id,"check")} onClick={toTop}>{thai?"ไปแบบทดสอบ":"Open check"}</Link>}
+            </div>
+          </section>}
+        </>}
+        {tab === "lab" && <div className="classroom-reading__panel-stack">
+          <h2 className="classroom-reading__section-title">{thai?"แล็บประจำบท":"Practice lab"}</h2>
+          {!lesson.labs.length && <div className="classroom-reading__panel"><p>{label.noLab}</p><p className="muted text-sm">{thai?"เลือกบทอื่นหรือไปทบทวนความเข้าใจได้":"Choose another lesson or check your understanding here."}</p></div>}
+          {downloads.length > 0 && <div className="classroom-reading__panel">
+            <h3 className="font-semibold">{thai?"ไฟล์ฝึก":"Practice files"}</h3>
+            {downloads.map(s=><a key={s.id} href={s.url} className="block underline break-words" target="_blank" rel="noreferrer">{s.title}</a>)}
+          </div>}
+          {lesson.labs.map((lab,i)=><details key={i} className="classroom-reading__panel" open={i===0}>
+            <summary>{lab.prerequisites[0] ?? "Lab " + (i+1)}</summary>
+            <div className="mt-3 space-y-3">
+              <p className="text-sm muted">{lab.platform === "both" ? "Windows and Linux" : lab.platform} · {lab.environment}</p>
+              {lab.prerequisites.length>1 && <p>{lab.prerequisites.slice(1).join(" · ")}</p>}
+              <ol className="ml-5 list-decimal space-y-2">{lab.steps.map((x,j)=><li className="whitespace-pre-wrap break-words" key={j}>{x}</li>)}</ol>
+              <p><strong>{thai?"ผลที่ควรเห็น":"Expected"}:</strong> {lab.expected}</p>{lab.cleanup && <p><strong>{thai?"เก็บงาน":"Cleanup"}:</strong> {lab.cleanup}</p>}
+            </div>
+          </details>)}
+        </div>}
+        {tab === "check" && <div className="classroom-reading__panel-stack classroom-reading__measure">
+          <h2 className="classroom-reading__section-title">{label.knowledge}</h2>
+          {!draft && lesson.questions.length>0 && (progress.error ? <ErrorNote error={progress.error}/> :
+            progress.isPending ? <Loading/> : <p className="text-sm muted">{saved.size} {label.saved}</p>)}
+          {lesson.questions.length===0 && <p>{label.noQuestions}</p>}
+          {lesson.questions.map(q=>draft ? <details key={q.id} className="classroom-reading__panel"><summary>{q.prompt}</summary>{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> :
+            <><ul className="list-disc ml-5">{q.choices.map((choice,i)=><li key={i}>{choice}{q.correct.includes(i) ? " (correct)" : ""}</li>)}</ul><p>{q.explanation}</p></>}</details> :
+            progress.isSuccess ? <Answer key={d.revision_id+":"+lesson.id+":"+q.id} course={d} lesson={lesson.id} q={q} saved={saved.get(q.id)}/> : null)}
+        </div>}
+        {tab !== "check" && sources.length>0 && <details className="classroom-reading__sources">
+          <summary>{label.sources}</summary>
+          <ul className="mt-2 space-y-1">{sources.map(s=><li key={s.id}><a href={s.url} className="underline break-words" target="_blank" rel="noreferrer">{s.title}</a></li>)}</ul>
+        </details>}
+      </section>
+      {!draft && <RelatedTasks id={d.course_id}/>}
+    </div>
   </div>;
 }
 
@@ -264,12 +291,12 @@ function Answer({course,lesson,q,saved}:{course:CourseDetail;lesson:string;q:Bun
   }),onSuccess:()=>{void qc.invalidateQueries({queryKey:["classroom-progress",course.course_id,course.revision_id]});}});
   const submitted=!!saved||save.isSuccess;
   const selectedChoices: number[]=saved&&q.type!=="explain"?JSON.parse(saved.answer):choices;
-  return <Card className="p-3 space-y-2">
+  return <div className="classroom-reading__panel space-y-2">
     <p className="font-semibold">{q.prompt}</p>
     {q.type==="explain" ? <textarea aria-label={label.entry} className={inputClass} maxLength={4000} disabled={submitted||save.isPending} value={saved?.answer??written} onChange={e=>write(e.target.value)}/> :
-      q.choices.map((s,i)=><label className="block" key={i}><input type={q.type==="single"?"radio":"checkbox"} name={attempt} disabled={submitted||save.isPending} checked={selectedChoices.includes(i)} onChange={()=>choose(xs=>q.type==="single"?[i]:xs.includes(i)?xs.filter(x=>x!==i):[...xs,i])}/> {s}</label>)}
+      q.choices.map((s,i)=><label className="classroom-reading__choice" key={i}><input type={q.type==="single"?"radio":"checkbox"} name={attempt} disabled={submitted||save.isPending} checked={selectedChoices.includes(i)} onChange={()=>choose(xs=>q.type==="single"?[i]:xs.includes(i)?xs.filter(x=>x!==i):[...xs,i])}/> {s}</label>)}
     <ErrorNote error={save.error}/>
-    {!submitted && <Button disabled={save.isPending || (q.type==="explain"?!written.trim():!choices.length)} onClick={()=>save.mutate()}>{label.submit}</Button>}
+    {!submitted && <Button className="classroom-reading__action" disabled={save.isPending || (q.type==="explain"?!written.trim():!choices.length)} onClick={()=>save.mutate()}>{label.submit}</Button>}
     {submitted && <div aria-live="polite">{q.type==="explain" ? <><p>{q.model_answer}</p><ul className="list-disc ml-5">{q.rubric.map((r,i)=><li key={i}>{r}</li>)}</ul></> : <p>{(saved?.score??save.data?.score)===1?label.correct:label.incorrect}{q.explanation}</p>}</div>}
-  </Card>;
+  </div>;
 }

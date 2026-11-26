@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { ClassroomStore } from "../src/classroom.ts";
+import { ClassroomBundleSchema, ClassroomStore } from "../src/classroom.ts";
+import { isoFormat } from "../src/iso.ts";
 
 const bundle = (title = "Synthetic fixture") => ({
   schema_version: 1, course_id: "synthetic-only", title, language: "th",
@@ -19,6 +20,21 @@ beforeEach(() => {
   store = new ClassroomStore(dir);
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+it("keeps old bundles readable while validating structured v2 lessons and their opening order", () => {
+  const old=bundle();
+  expect(ClassroomBundleSchema.safeParse(old).success).toBe(true);
+  const lesson={...old.lessons[0]!, guidance:{question:"Predict the result.", takeaways:["Explain the cause."]}};
+  expect(ClassroomBundleSchema.safeParse({...old,schema_version:2,lessons:[lesson]}).success).toBe(true);
+  expect(ClassroomBundleSchema.safeParse({...old,lessons:[lesson]}).success).toBe(false);
+  expect(ClassroomBundleSchema.safeParse({...old,schema_version:2,lessons:[{...lesson,guidance:{question:"Predict the result.",takeaways:[]}}]}).success).toBe(false);
+  const figure={type:"visual",visual:{id:"starter-figure",...isoFormat("network").example!},fallback:"A first."};
+  expect(ClassroomBundleSchema.safeParse({...old,schema_version:2,lessons:[{...lesson,blocks:[...lesson.blocks,figure]}]}).success).toBe(true);
+  const starter={...lesson,blocks:[figure,...lesson.blocks]};
+  const order=ClassroomBundleSchema.safeParse({...old,schema_version:2,lessons:[starter]});
+  expect(order.success).toBe(false);
+  if(!order.success) expect(order.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({path:["lessons",0,"blocks",0]})]));
+});
 
 it("starts empty and reads do not create a persistent database", () => {
   expect(store.listPublished()).toEqual([]);

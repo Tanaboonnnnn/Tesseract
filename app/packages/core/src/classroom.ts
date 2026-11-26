@@ -52,12 +52,17 @@ const lab = z.strictObject({
   platform: z.enum(["windows", "linux", "both"]), environment: z.enum(["offline", "online"]), prerequisites: z.array(text()).max(10),
   steps: z.array(text(1500)).min(1).max(16), expected: text(1500), cleanup: text(1500).optional(),
 });
+const guidance = z.strictObject({
+  question: text(500).refine(noEmbeddedContent,"Use plain text without embeds"),
+  takeaways: z.array(text(240).refine(noEmbeddedContent,"Use plain text without embeds")).min(1).max(4),
+});
 export const ClassroomBundleSchema = z.strictObject({
   schema_version: z.literal([1,2]), course_id: id, title: text(120), language: z.enum(["th", "en"]),
   sources: z.array(source).min(1).max(48),
   lessons: z.array(z.strictObject({
     id, title: text(120), objective: text(1000), layout: z.literal("inline").optional(), source_ids: z.array(id).min(1).max(16),
     blocks: z.array(block).min(1).max(24), questions: z.array(question).max(30).default([]), labs: z.array(lab).max(8).default([]),
+    guidance: guidance.optional(),
   })).min(1).max(24),
 }).superRefine((bundle, ctx) => {
   const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: "custom", path, message });
@@ -65,6 +70,10 @@ export const ClassroomBundleSchema = z.strictObject({
   if (sourceIds.size !== bundle.sources.length) issue(["sources"], "Source IDs must be unique");
   if (new Set(bundle.lessons.map((l) => l.id)).size !== bundle.lessons.length) issue(["lessons"], "Lesson IDs must be unique");
   bundle.lessons.forEach((l, i) => {
+    if(l.guidance&&bundle.schema_version===1)
+      issue(["lessons",i,"guidance"],"Guided lessons use schema_version 2; omit guidance for v1 compatibility.");
+    if(l.guidance&&l.blocks[0]?.type!=="text")
+      issue(["lessons",i,"blocks",0],"Begin a guided lesson with an explanatory text block; put visuals after the related explanation.");
     if(bundle.schema_version===1)l.blocks.forEach((b,j)=>{
       if(b.type==="visual"&&b.visual.type==="iso")
         ctx.addIssue({code:"custom",path:["lessons",i,"blocks",j,"visual","type"],message:"ISO is not part of Classroom bundle v1.",params:{rule:"classroom-version",fix:"Use schema_version 2 on a compatible host, or use a v1 visual type."}});
