@@ -9,7 +9,7 @@ const property = z.enum(["x", "y", "z", "opacity"]);
 const panel = z.discriminatedUnion("kind", [
   z.strictObject({ id, kind: z.literal("diagram"), label, projection: z.enum(["flat","isometric"]).optional() }),
   z.strictObject({ id, kind: z.literal("plot"), label, x_label: label, y_label: label }),
-  z.strictObject({ id, kind: z.literal("mesh"), label, stage: z.enum(["upright","tabletop"]).optional() }),
+  z.strictObject({ id, kind: z.literal("mesh"), label, stage: z.enum(["upright","tabletop","explainer"]).optional() }),
   z.strictObject({ id, kind: z.literal("inspect"), label, tex:z.string().min(1).max(400).optional() }),
 ]);
 const entity = z.strictObject({
@@ -20,7 +20,8 @@ const entity = z.strictObject({
   points: z.array(z.union([z.tuple([coordinate,coordinate]),z.tuple([coordinate,coordinate,coordinate])])).min(2).max(100).optional(),
   tone: z.enum(["neutral","primary","secondary","caution"]).optional(),
   opacity: coordinate.optional(),
-  appearance: z.enum(["equipment-rack","display"]).optional(),
+  appearance: z.enum(["equipment-rack","display","splitter","slab"]).optional(),
+  label_offset: z.tuple([z.number().finite().min(-120).max(120),z.number().finite().min(-120).max(120)]).optional(),
 });
 export const SceneSchema = z.strictObject({
   schema_version: z.literal(1), style: z.literal("minimal-technical"),
@@ -28,7 +29,7 @@ export const SceneSchema = z.strictObject({
   duration_ms: time.min(1), loop: z.boolean().optional(),
   panels: z.array(panel).min(1).max(6),
   entities: z.array(entity).min(1).max(100),
-  beats: z.array(z.strictObject({ id, at_ms: time, label, text: description, focus: z.array(id).max(12).optional() })).min(1).max(30),
+  beats: z.array(z.strictObject({ id, at_ms: time, label, text: description, focus: z.array(id).max(12).optional(), fault: id.optional() })).min(1).max(30),
   tracks: z.array(z.strictObject({
     entity: id, property, easing: z.enum(["linear","ease-in-out","step"]).optional(),
     frames: z.array(z.strictObject({ at_ms: time, value: coordinate })).min(1).max(100),
@@ -51,6 +52,12 @@ export const SceneSchema = z.strictObject({
   }
   const panels = new Map(s.panels.map(p => [p.id,p.kind]));
   const entities = new Map(s.entities.map(e => [e.id, e]));
+  const explainer = s.panels.find(p=>p.kind==="mesh" && p.stage==="explainer");
+  if (explainer) {
+    if (s.panels.length!==1) issue(["panels"], "An isometric explainer has one stage");
+    if (s.entities.filter(e=>e.kind==="box"||e.kind==="circle").length>8) issue(["entities"], "Use at most eight labeled objects");
+    if (s.entities.length>36) issue(["entities"], "Use at most 36 stage elements");
+  }
   s.entities.forEach((e,i) => {
     const target = panels.get(e.panel);
     if (!target || target === "inspect") issue(["entities",i,"panel"], "Choose a diagram, plot or mesh panel");
@@ -58,6 +65,8 @@ export const SceneSchema = z.strictObject({
     if (target !== "mesh" && (e.z !== undefined || e.depth !== undefined)) issue(["entities",i,"z"], "Depth is available only in mesh panels");
     if(target!=="mesh" && e.points?.some(point=>point.length===3)) issue(["entities",i,"points"], "3D path points require a mesh panel");
     if(e.appearance && e.kind!=="box") issue(["entities",i,"appearance"], "Equipment appearance is only for boxes");
+    if (!explainer && (e.label_offset || e.appearance==="splitter" || e.appearance==="slab")) issue(["entities",i],"This detail requires an explainer stage");
+    if (explainer && e.kind==="box" && (!e.width || !e.depth || !e.height)) issue(["entities",i],"Supply positive width, depth and height in grid units");
     if (e.kind === "path" && !e.points) issue(["entities",i,"points"], "A path needs points");
   });
   const checkOrder = (current: number, previous: number|undefined, path: (string|number)[]) => {
@@ -67,6 +76,7 @@ export const SceneSchema = z.strictObject({
   s.beats.forEach((b,i) => {
     checkOrder(b.at_ms,s.beats[i-1]?.at_ms,["beats",i,"at_ms"]);
     if (b.focus?.some(target => !entities.has(target))) issue(["beats",i,"focus"], "Unknown focus target");
+    if (b.fault && (!explainer || !["box","circle"].includes(entities.get(b.fault)?.kind??""))) issue(["beats",i,"fault"], "An explainer fault needs an existing solid object");
   });
   const destinations = new Set<string>();
   const checkTarget = (target:string, prop:string, path:(string|number)[]) => {

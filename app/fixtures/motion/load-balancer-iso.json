@@ -1,0 +1,687 @@
+{
+  "schema_version": 1,
+  "style": "minimal-technical",
+  "duration_ms": 9000,
+  "panels": [
+    {
+      "id": "stage",
+      "kind": "mesh",
+      "label": "ตามเส้นทางคำขอ",
+      "stage": "explainer"
+    }
+  ],
+  "entities": [
+    {
+      "id": "client",
+      "panel": "stage",
+      "label": "ผู้ใช้",
+      "kind": "box",
+      "x": 0,
+      "y": 4,
+      "z": 0,
+      "width": 2,
+      "depth": 1.5,
+      "height": 1.2,
+      "appearance": "display",
+      "label_offset": [
+        -88,
+        18
+      ]
+    },
+    {
+      "id": "balancer",
+      "panel": "stage",
+      "label": "ตัวกระจายงาน",
+      "kind": "box",
+      "x": 4,
+      "y": 4,
+      "z": 0,
+      "width": 2,
+      "depth": 2,
+      "height": 1,
+      "appearance": "splitter",
+      "label_offset": [
+        0,
+        -44
+      ]
+    },
+    {
+      "id": "server-a",
+      "panel": "stage",
+      "label": "เครื่อง A",
+      "kind": "box",
+      "x": 7.5,
+      "y": 0.5,
+      "z": 0,
+      "width": 2,
+      "depth": 3,
+      "height": 1.2,
+      "appearance": "equipment-rack",
+      "label_offset": [
+        100,
+        -30
+      ]
+    },
+    {
+      "id": "server-b",
+      "panel": "stage",
+      "label": "เครื่อง B",
+      "kind": "box",
+      "x": 11,
+      "y": 5,
+      "z": 0,
+      "width": 2,
+      "depth": 3,
+      "height": 1.2,
+      "appearance": "equipment-rack",
+      "label_offset": [
+        100,
+        -30
+      ]
+    },
+    {
+      "id": "server-c",
+      "panel": "stage",
+      "label": "เครื่อง C",
+      "kind": "box",
+      "x": 14.5,
+      "y": 9.5,
+      "z": 0,
+      "width": 2,
+      "depth": 3,
+      "height": 1.2,
+      "appearance": "equipment-rack",
+      "label_offset": [
+        100,
+        -30
+      ]
+    },
+    {
+      "id": "trunk",
+      "panel": "stage",
+      "label": "ทางจากผู้ใช้",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "points": [
+        [
+          2,
+          4.5,
+          0.5
+        ],
+        [
+          4,
+          4.5,
+          0.5
+        ],
+        [
+          4,
+          5,
+          0.5
+        ],
+        [
+          6,
+          5,
+          0.5
+        ]
+      ]
+    },
+    {
+      "id": "route-a",
+      "panel": "stage",
+      "label": "ทางไป A",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "points": [
+        [
+          6,
+          5,
+          0.5
+        ],
+        [
+          7,
+          5,
+          0.5
+        ],
+        [
+          7,
+          3,
+          0.5
+        ],
+        [
+          7.5,
+          3,
+          0.5
+        ]
+      ]
+    },
+    {
+      "id": "route-b",
+      "panel": "stage",
+      "label": "ทางไป B",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "points": [
+        [
+          6,
+          5,
+          0.5
+        ],
+        [
+          11,
+          5,
+          0.5
+        ]
+      ]
+    },
+    {
+      "id": "route-c",
+      "panel": "stage",
+      "label": "ทางไป C",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "points": [
+        [
+          6,
+          5,
+          0.5
+        ],
+        [
+          8,
+          5,
+          0.5
+        ],
+        [
+          8,
+          10.5,
+          0.5
+        ],
+        [
+          14.5,
+          10.5,
+          0.5
+        ]
+      ]
+    },
+    {
+      "id": "packet",
+      "panel": "stage",
+      "kind": "point",
+      "label": "คำขอ",
+      "x": 2,
+      "y": 4.5,
+      "z": 0.5,
+      "opacity": 0,
+      "tone": "primary"
+    }
+  ],
+  "beats": [
+    {
+      "id": "overview",
+      "at_ms": 0,
+      "label": "ดูเส้นทาง",
+      "text": "ผู้ใช้ส่งผ่านที่อยู่เดียว แล้วตัวกระจายงานเลือกเครื่องปลายทาง"
+    },
+    {
+      "id": "go-a",
+      "at_ms": 1500,
+      "label": "ไป A",
+      "text": "คำขอที่ 1 ไปเครื่อง A",
+      "focus": [
+        "trunk",
+        "route-a"
+      ]
+    },
+    {
+      "id": "go-b",
+      "at_ms": 3000,
+      "label": "ไป B",
+      "text": "คำขอที่ 2 ไปเครื่อง B ตามลำดับคิว",
+      "focus": [
+        "trunk",
+        "route-b"
+      ]
+    },
+    {
+      "id": "go-c",
+      "at_ms": 4500,
+      "label": "ไป C",
+      "text": "คำขอที่ 3 ไปเครื่อง C ก่อนวนกลับไปต้นคิว",
+      "focus": [
+        "trunk",
+        "route-c"
+      ]
+    },
+    {
+      "id": "fault",
+      "at_ms": 6000,
+      "label": "C ไม่พร้อม",
+      "text": "ระบบตรวจสุขภาพพบว่า C ไม่พร้อม จึงหยุดส่งงานให้ C",
+      "fault": "server-c"
+    },
+    {
+      "id": "reroute",
+      "at_ms": 7500,
+      "label": "ข้าม C",
+      "text": "เมื่อถึงคิวของ C ระบบข้ามเครื่องที่ไม่พร้อม แล้วส่งให้ A",
+      "focus": [
+        "trunk",
+        "route-a"
+      ],
+      "fault": "server-c"
+    }
+  ],
+  "tracks": [
+    {
+      "entity": "packet",
+      "property": "x",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 2
+        },
+        {
+          "at_ms": 1500,
+          "value": 2
+        },
+        {
+          "at_ms": 1738,
+          "value": 4
+        },
+        {
+          "at_ms": 1797,
+          "value": 4
+        },
+        {
+          "at_ms": 2034,
+          "value": 6
+        },
+        {
+          "at_ms": 2153,
+          "value": 7
+        },
+        {
+          "at_ms": 2391,
+          "value": 7
+        },
+        {
+          "at_ms": 2450,
+          "value": 7.5
+        },
+        {
+          "at_ms": 2999,
+          "value": 2
+        },
+        {
+          "at_ms": 3000,
+          "value": 2
+        },
+        {
+          "at_ms": 3200,
+          "value": 4
+        },
+        {
+          "at_ms": 3250,
+          "value": 4
+        },
+        {
+          "at_ms": 3450,
+          "value": 6
+        },
+        {
+          "at_ms": 3950,
+          "value": 11
+        },
+        {
+          "at_ms": 4499,
+          "value": 2
+        },
+        {
+          "at_ms": 4500,
+          "value": 2
+        },
+        {
+          "at_ms": 4603,
+          "value": 4
+        },
+        {
+          "at_ms": 4628,
+          "value": 4
+        },
+        {
+          "at_ms": 4731,
+          "value": 6
+        },
+        {
+          "at_ms": 4834,
+          "value": 8
+        },
+        {
+          "at_ms": 5116,
+          "value": 8
+        },
+        {
+          "at_ms": 5450,
+          "value": 14.5
+        },
+        {
+          "at_ms": 7499,
+          "value": 2
+        },
+        {
+          "at_ms": 7500,
+          "value": 2
+        },
+        {
+          "at_ms": 7738,
+          "value": 4
+        },
+        {
+          "at_ms": 7797,
+          "value": 4
+        },
+        {
+          "at_ms": 8034,
+          "value": 6
+        },
+        {
+          "at_ms": 8153,
+          "value": 7
+        },
+        {
+          "at_ms": 8391,
+          "value": 7
+        },
+        {
+          "at_ms": 8450,
+          "value": 7.5
+        }
+      ]
+    },
+    {
+      "entity": "packet",
+      "property": "y",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 4.5
+        },
+        {
+          "at_ms": 1500,
+          "value": 4.5
+        },
+        {
+          "at_ms": 1738,
+          "value": 4.5
+        },
+        {
+          "at_ms": 1797,
+          "value": 5
+        },
+        {
+          "at_ms": 2034,
+          "value": 5
+        },
+        {
+          "at_ms": 2153,
+          "value": 5
+        },
+        {
+          "at_ms": 2391,
+          "value": 3
+        },
+        {
+          "at_ms": 2450,
+          "value": 3
+        },
+        {
+          "at_ms": 2999,
+          "value": 4.5
+        },
+        {
+          "at_ms": 3000,
+          "value": 4.5
+        },
+        {
+          "at_ms": 3200,
+          "value": 4.5
+        },
+        {
+          "at_ms": 3250,
+          "value": 5
+        },
+        {
+          "at_ms": 3450,
+          "value": 5
+        },
+        {
+          "at_ms": 3950,
+          "value": 5
+        },
+        {
+          "at_ms": 4499,
+          "value": 4.5
+        },
+        {
+          "at_ms": 4500,
+          "value": 4.5
+        },
+        {
+          "at_ms": 4603,
+          "value": 4.5
+        },
+        {
+          "at_ms": 4628,
+          "value": 5
+        },
+        {
+          "at_ms": 4731,
+          "value": 5
+        },
+        {
+          "at_ms": 4834,
+          "value": 5
+        },
+        {
+          "at_ms": 5116,
+          "value": 10.5
+        },
+        {
+          "at_ms": 5450,
+          "value": 10.5
+        },
+        {
+          "at_ms": 7499,
+          "value": 4.5
+        },
+        {
+          "at_ms": 7500,
+          "value": 4.5
+        },
+        {
+          "at_ms": 7738,
+          "value": 4.5
+        },
+        {
+          "at_ms": 7797,
+          "value": 5
+        },
+        {
+          "at_ms": 8034,
+          "value": 5
+        },
+        {
+          "at_ms": 8153,
+          "value": 5
+        },
+        {
+          "at_ms": 8391,
+          "value": 3
+        },
+        {
+          "at_ms": 8450,
+          "value": 3
+        }
+      ]
+    },
+    {
+      "entity": "packet",
+      "property": "z",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 0.5
+        },
+        {
+          "at_ms": 1500,
+          "value": 0.5
+        },
+        {
+          "at_ms": 1738,
+          "value": 0.5
+        },
+        {
+          "at_ms": 1797,
+          "value": 0.5
+        },
+        {
+          "at_ms": 2034,
+          "value": 0.5
+        },
+        {
+          "at_ms": 2153,
+          "value": 0.5
+        },
+        {
+          "at_ms": 2391,
+          "value": 0.5
+        },
+        {
+          "at_ms": 2450,
+          "value": 0.5
+        },
+        {
+          "at_ms": 2999,
+          "value": 0.5
+        },
+        {
+          "at_ms": 3000,
+          "value": 0.5
+        },
+        {
+          "at_ms": 3200,
+          "value": 0.5
+        },
+        {
+          "at_ms": 3250,
+          "value": 0.5
+        },
+        {
+          "at_ms": 3450,
+          "value": 0.5
+        },
+        {
+          "at_ms": 3950,
+          "value": 0.5
+        },
+        {
+          "at_ms": 4499,
+          "value": 0.5
+        },
+        {
+          "at_ms": 4500,
+          "value": 0.5
+        },
+        {
+          "at_ms": 4603,
+          "value": 0.5
+        },
+        {
+          "at_ms": 4628,
+          "value": 0.5
+        },
+        {
+          "at_ms": 4731,
+          "value": 0.5
+        },
+        {
+          "at_ms": 4834,
+          "value": 0.5
+        },
+        {
+          "at_ms": 5116,
+          "value": 0.5
+        },
+        {
+          "at_ms": 5450,
+          "value": 0.5
+        },
+        {
+          "at_ms": 7499,
+          "value": 0.5
+        },
+        {
+          "at_ms": 7500,
+          "value": 0.5
+        },
+        {
+          "at_ms": 7738,
+          "value": 0.5
+        },
+        {
+          "at_ms": 7797,
+          "value": 0.5
+        },
+        {
+          "at_ms": 8034,
+          "value": 0.5
+        },
+        {
+          "at_ms": 8153,
+          "value": 0.5
+        },
+        {
+          "at_ms": 8391,
+          "value": 0.5
+        },
+        {
+          "at_ms": 8450,
+          "value": 0.5
+        }
+      ]
+    },
+    {
+      "entity": "packet",
+      "property": "opacity",
+      "easing": "step",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 0
+        },
+        {
+          "at_ms": 1500,
+          "value": 100
+        },
+        {
+          "at_ms": 6000,
+          "value": 0
+        },
+        {
+          "at_ms": 7500,
+          "value": 100
+        }
+      ]
+    }
+  ]
+}

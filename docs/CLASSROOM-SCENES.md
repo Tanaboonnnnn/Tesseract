@@ -30,3 +30,26 @@ A mesh panel may use `path` with the same bounded XY points as a diagram; use it
 The shared 3D presentation follows the user's Smooth Explainer reference: stable readable framing, purposeful short motion, softly settling camera, clear objects and paths, and progress explained in the nearby lesson. The Load Balancing and depth-marker fixtures deliberately use different shapes and subject matter. In a mesh panel, the third coordinate of an optional XYZ path point is absolute at a path entity z of 50; changing the path's z moves the whole path. The 2D fallback projects XY only. The camera is presentation state and does not move model entities or change the lesson timeline.
 
 For a mesh, optional stage tabletop places the illustration on a world-space plane with a camera-relative grid, suitable for systems, machines or layouts. Keep upright (the default) where vertical or oblique spatial motion is the teaching point. Both stages retain document-localized controls and one narrator caption; avoid saturated whole-object flashes or stacking extra cards around playback.
+# Native orthographic explainer
+
+Use the existing validated course scene, timeline and Learning page rather than
+importing the demo HTML. `mesh.stage: "explainer"` is an opt-in illustration
+variant; existing scenes and actual workspace course revisions are unchanged.
+Orthographic projection and the shared light/dark palette are fixed. A team can
+change the objects, their positions, routes, captions and steps with data alone.
+
+For this stage, `x`, `y`, `z` are world units; boxes have width on X, depth on Y,
+and height on Z. Treat the origin of a box as its lower back corner. Prefer
+whole or half grid positions. A path's points are relative to its origin.
+A `point` draws a traveling token; `circle` is a cylinder with a centered
+origin and width as its diameter. The existing `tracks` animate the position.
+Keep every animated token on its route by reusing all route corners in its
+position keyframes. Use `focus` to activate a path; `fault` names one solid.
+`label_offset` shifts the leader endpoint from its anchor in viewBox pixels.
+Keep label nouns short and avoid overlap. The fixture pair exercises the same
+drawing code with contrasting subjects; they are not shipped as user courses.
+
+Verification: validate both fixtures with the exact runtime schema; reject
+pre-existing executable content and invalid fault targets. Use the isolated
+Learning preview fixture to inspect actual route/packet motion, the fault and
+reroute, light/dark and narrow behavior. Run typecheck, tests, and desktop build.

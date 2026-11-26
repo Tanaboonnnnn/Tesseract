@@ -143,3 +143,18 @@ test("story points on the guided rail share the animation's sampling clock", () 
     if(i>0)assert.equal(sampleScene(scene,b.at_ms-1).beat.id,scene.beats[i-1]?.id);
   }
 });
+
+test("orthographic classroom explainer is declarative and supports two unrelated subjects", async () => {
+  const {readFileSync} = await import("node:fs");
+  for (const name of ["load-balancer-iso", "lift-iso"]) {
+    const fixture = JSON.parse(readFileSync(new URL("../../../fixtures/motion/" + name + ".json", import.meta.url), "utf8"));
+    const result = SceneSchema.safeParse(fixture);
+    assert.equal(result.success,true,JSON.stringify(result.error?.issues));
+    assert.equal(fixture.panels[0].stage,"explainer");
+    assert.ok(fixture.beats.some((b: {fault?:string})=>b.fault));
+    assert.equal(SceneSchema.safeParse({...fixture,html:"<script></script>"}).success,false);
+    const bad = structuredClone(fixture);
+    bad.beats[0].fault = "no-such-object";
+    assert.equal(SceneSchema.safeParse(bad).success,false);
+  }
+});

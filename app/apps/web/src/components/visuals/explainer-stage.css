@@ -1,0 +1,19 @@
+.tess-iso-stage {
+  --iso-bg:#f4ebe0; --iso-ink:#2a2118; --iso-ink-soft:#6b5d4d;
+  --iso-top:#fbf6ec; --iso-left:#e6dac4; --iso-right:#d3c4a8;
+  --iso-accent:#e8742a; --iso-accent-2:#2f7fd1; --iso-good:#3a9b5c; --iso-bad:#d64545;
+  display:block; width:100%; height:auto; max-height:36rem;
+  margin-block:.75rem 0; border-radius:.375rem; background:var(--iso-bg);
+}
+.dark .tess-iso-stage {
+  --iso-bg:#0b1020; --iso-ink:#e8ecf8; --iso-ink-soft:#a2adc8;
+  --iso-top:#27304f; --iso-left:#1b2340; --iso-right:#141b33;
+  --iso-accent:#ffb454; --iso-accent-2:#5ab0ff;
+}
+.tess-iso-stage .iso-edge { stroke:var(--iso-ink); stroke-width:1.5; stroke-linejoin:round; }
+.tess-iso-stage .iso-detail { stroke:var(--iso-ink); stroke-width:1; stroke-linecap:round; fill:none; }
+.tess-iso-stage .iso-shadow { opacity:.12; filter:blur(1.5px); }
+.tess-iso-stage .iso-wire { stroke:var(--iso-ink-soft); stroke-width:3; opacity:.48; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+.tess-iso-stage .iso-wire-active { stroke:var(--iso-accent); opacity:1; }
+.tess-iso-stage .iso-label { fill:var(--iso-ink); font:600 13px system-ui,sans-serif; paint-order:stroke; stroke:var(--iso-bg); stroke-width:4; stroke-linejoin:round; }
+@container (max-width: 550px) { .tess-iso-stage .iso-label { font-size:21px; } }

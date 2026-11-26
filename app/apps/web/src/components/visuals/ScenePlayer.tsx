@@ -1,4 +1,5 @@
 import "./scene-layout.css";
+import { ExplainerStage } from "./ExplainerStage.tsx";
 import { lessonLabels } from "../../lib/lesson-language.ts";
 import { FormulaBlock } from "./Lesson.tsx";
 import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from "react";
@@ -37,6 +38,8 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
   const id = useId();
   const root = useRef<HTMLElement>(null);
   const clock = useRef(0);
+  const stopAt=useRef<number|null>(null);
+  const explainer=scene.panels.some(p=>p.kind==="mesh" && p.stage==="explainer");
   const priority = useRef(0);
   const [time,setTime] = useState(0);
   const [active,setActive] = useState(false);
@@ -59,11 +62,20 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
   useEffect(() => {
     const q = window.matchMedia("(prefers-reduced-motion: reduce)");
     const visibility = () => setVisible(!document.hidden);
-    const change = () => { setReduced(q.matches); if (q.matches) setMode("pause"); };
+    const change = () => {
+      setReduced(q.matches);
+      if (q.matches) {
+        setMode("pause");
+        if (explainer) {
+          const end=(scene.beats.find(b=>b.at_ms>clock.current)?.at_ms??scene.duration_ms+1)-1;
+          stopAt.current=null;clock.current=end;setTime(end);
+        }
+      }
+    };
     document.addEventListener("visibilitychange",visibility);
     q.addEventListener("change",change);
     return () => { document.removeEventListener("visibilitychange",visibility); q.removeEventListener("change",change); };
-  },[]);
+  },[explainer,scene]);
 
   useEffect(() => {
     const element=root.current!;
@@ -84,9 +96,11 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
     const animate=(now:number)=>{
       const next=clock.current + Math.min(100,now-(previous ?? now))*speed;
       previous=now;
-      clock.current = scene.loop ? next % scene.duration_ms : Math.min(next,scene.duration_ms);
+      const max=stopAt.current??scene.duration_ms;
+      const loop=stopAt.current===null&&scene.loop;
+      clock.current = loop ? next % scene.duration_ms : Math.min(next,max);
       setTime(clock.current);
-      if (scene.loop || next<scene.duration_ms) frame=requestAnimationFrame(animate);
+      if (loop || next<max) frame=requestAnimationFrame(animate);
       else setMode("pause");
     };
     frame=requestAnimationFrame(animate);
@@ -100,14 +114,19 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
   const selected = new Set(link?.target_ids ?? []);
   const formulaShowsExplanation = scene.panels.some(p=>p.kind==="inspect" && p.id===link?.panel && p.tex);
   const layout = scene.panels.length===1 ? "single" : scene.panels.length===2 && scene.panels.filter(p=>p.kind==="inspect").length===1 ? "compact-inspect" : "grid";
-  const seek=(ms:number)=>{setMode("pause"); clock.current=ms; setTime(ms);};
-  const play=()=>{priority.current=++playSequence; if (clock.current>=scene.duration_ms) { clock.current=0; setTime(0); } setMode("play");};
+  const seek=(ms:number)=>{setMode("pause"); stopAt.current=null; clock.current=ms; setTime(ms);};
+  const play=()=>{stopAt.current=null;priority.current=++playSequence; if (clock.current>=scene.duration_ms) { clock.current=0; setTime(0); } setMode("play");};
+  const selectBeat=(index:number)=>{
+    const start=scene.beats[index]!.at_ms, end=(scene.beats[index+1]?.at_ms??scene.duration_ms+1)-1;
+    if(!explainer || reduced || start>=end){seek(explainer?end:start);return;}
+    priority.current=++playSequence;stopAt.current=end;clock.current=start;setTime(start);setMode("play");
+  };
   const step=scene.beats.indexOf(beat);
   const linkClass=(key:string)=>link?.id===key?" tess-scene-linked-chip":"";
   const button="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--lane)] disabled:opacity-40";
   const toggle = (key:string)=>setPinned(old=>old===key ? null : key);
 
-  return <section ref={root} aria-label={title} className="tess-scene-layout tess-scene-editorial my-4 min-w-0 rounded-xl border border-[var(--line)] p-4 sm:p-6" onKeyDown={e=>{if(e.key==="Escape"){setPinned(null);setHover(null);setFocus(null);}}}>
+  return <section ref={root} aria-label={title} data-explainer={explainer||undefined} className="tess-scene-layout tess-scene-editorial my-4 min-w-0 rounded-xl border border-[var(--line)] p-4 sm:p-6" onKeyDown={e=>{if(e.key==="Escape"){setPinned(null);setHover(null);setFocus(null);}}}>
     <div className="tess-scene-panels min-w-0 gap-3" data-layout={layout}>
       {scene.panels.map(panel=><section key={panel.id} data-panel-kind={panel.kind} className="tess-scene-panel min-w-0">
         <h4 className="break-words text-sm font-semibold">{panel.label}</h4>
@@ -116,7 +135,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
           connected={{active:link?.id??null,pinned,onHover:setHover,onFocus:setFocus,onSelect:toggle,enabled:key=>(scene.bindings??[]).some(b=>b.id===key && b.target_ids.some(t=>shown.has(t)))}} />
         </div> : panel.kind==="inspect" ? <div className="mt-2 flex flex-wrap gap-2">{scene.bindings?.filter(b=>b.panel===panel.id).map(b=><button key={b.id} type="button" className={button+" break-words "+linkClass(b.id)} aria-pressed={pinned===b.id} disabled={!b.target_ids.some(t=>shown.has(t))} onPointerEnter={e=>{if(e.pointerType!=="touch")setHover(b.id);}} onPointerLeave={()=>setHover(null)} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{b.term}</button>)}</div> :
           <>
-          {(() => {
+          {panel.kind==="mesh" && panel.stage==="explainer" ? <ExplainerStage scene={scene} entities={entities} beat={beat} time={time} reduced={reduced} panel={panel.id}/> : (() => {
             const drawing = <svg className="tess-scene-canvas mt-2 h-auto w-full" data-projection={panel.kind==="diagram"?panel.projection:panel.kind==="mesh"?"isometric":undefined} viewBox="0 0 420 214" aria-label={panel.label}>
             {panel.kind==="plot" && <g fill="none" stroke="currentColor" opacity=".45"><path d="M25 18 V180 H395" /><path d="M25 140 H395 M25 100 H395 M25 60 H395" opacity=".3" /></g>}
             {panel.kind==="plot" && <><text x="25" y="14" fontSize="11" fill="currentColor">{panel.y_label}</text><text x="395" y="207" fontSize="11" textAnchor="end" fill="currentColor">{panel.x_label}</text></>}
@@ -146,7 +165,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
               </g>;
             })}
           </svg>;
-            return panel.kind==="mesh" ? <OptionalMesh label={panel.label} language={language} stage={panel.stage} fallback={drawing}
+            return panel.kind==="mesh" && panel.stage!=="explainer" ? <OptionalMesh label={panel.label} language={language} stage={panel.stage} fallback={drawing}
               entities={entities.filter(e=>e.panel===panel.id)} highlighted={new Set([...selected,...(beat.focus??[])])}
               onSelect={entity=>{const binding=(scene.bindings??[]).find(b=>b.target_ids.includes(entity));if(binding)toggle(binding.id);}}/> : drawing;
           })()}
@@ -164,8 +183,10 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
     {link && !formulaShowsExplanation && <p className="break-words text-sm"><strong>{link.term}:</strong> {link.explanation}</p>}
     <div className="tess-scene-transport">
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={button+" min-h-11 bg-accent-600 font-semibold text-white hover:bg-accent-700"} onClick={playing?()=>setMode("pause"):play}>{playing?labels.pause:labels.play}</button>
-        <button type="button" className={button+" min-h-11"} onClick={()=>{clock.current=0;setTime(0);play();}}>{labels.replay}</button>
+        {!(explainer&&reduced)&&<><button type="button" className={button+" min-h-11 bg-accent-600 font-semibold text-white hover:bg-accent-700"} onClick={playing?()=>setMode("pause"):play}>{playing?labels.pause:labels.play}</button>
+        <button type="button" className={button+" min-h-11"} onClick={()=>{clock.current=0;setTime(0);play();}}>{labels.replay}</button></>}
+        {explainer&&<><button type="button" aria-label={language?.startsWith("th")?"ขั้นก่อนหน้า":"Previous step"} className={button+" min-h-11 min-w-11"} disabled={step===0} onClick={()=>selectBeat(step-1)}>←</button>
+        <button type="button" aria-label={language?.startsWith("th")?"ขั้นถัดไป":"Next step"} className={button+" min-h-11 min-w-11"} disabled={step===scene.beats.length-1} onClick={()=>selectBeat(step+1)}>→</button></>}
         <span className="ml-auto text-sm muted">{labels.step} {step+1} / {scene.beats.length}</span>
       </div>
       <label className="block text-sm">{labels.timeline} <input className="block min-h-8 w-full" type="range" min={0} max={scene.duration_ms} step={1} list={id+"-markers"} value={Math.round(time)} onChange={e=>seek(Number(e.target.value))} /></label>
@@ -181,7 +202,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
       <h5 className="text-sm font-semibold">{labels.guide}</h5>
       <ol className="tess-scene-steps">
         {scene.beats.map((b,i)=><li key={b.id}>
-          <button type="button" className="tess-scene-step" aria-current={b===beat?"step":undefined} onClick={()=>seek(b.at_ms)}>
+          <button type="button" className="tess-scene-step" aria-current={b===beat?"step":undefined} onClick={()=>selectBeat(i)}>
             <span className="tess-scene-step-number" aria-hidden="true">{i+1}</span>
             <span className="min-w-0 break-words">{b.label}</span>
           </button>

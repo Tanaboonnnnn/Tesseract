@@ -329,7 +329,7 @@ updated: 2026-11-24
   (K-map loops). Cell ids are `r<row>c<col>`.
 - **tree** — `orientation down|right`, `root {id, label, note?, gate? and|or, children}` (≤ 80 nodes, depth ≤ 7).
 - Validation: unique element ids, every reference resolves (states, lanes, group cells, step ids, topic), size ≤ 64 KB.
-- **scene**: optional course-safe v1 declarative timelines, multiple typed panels, bounded tracks and cross-panel bindings; optional primitive 3D and 2D fallback; no executable code or external URLs. Older visuals remain valid.
+- **scene**: optional course-safe v1 declarative timelines, multiple typed panels, bounded tracks and cross-panel bindings; optional primitive 3D and 2D fallback; no executable code or external URLs. Optional mesh stage `explainer` is fixed orthographic React + SVG on a 30° grid, uses world-space XYZ and dimensions, optional label offsets in projected pixels, at most eight labeled solids and 36 elements, and a beat-level fault on a solid. Older visuals remain valid.
 - Token-aware MCP: the tool list carries no per-type schema; `visual_formats(type)` returns fields + an example on demand.
 - Rendering: hand-written SVG, same look as the maps; steps only toggle opacity/glow (CSS transitions), nothing runs at rest.
 - **Round 2 (Phase 7b):** three more types.

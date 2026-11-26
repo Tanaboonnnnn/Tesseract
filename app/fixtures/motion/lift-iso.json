@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "style": "minimal-technical",
+  "duration_ms": 4500,
+  "panels": [
+    {
+      "id": "stage",
+      "kind": "mesh",
+      "label": "ลิฟต์ยกของ: แท่นและของขึ้นพร้อมกัน",
+      "stage": "explainer"
+    }
+  ],
+  "entities": [
+    {
+      "id": "frame",
+      "panel": "stage",
+      "label": "โครงยก",
+      "kind": "box",
+      "x": 5,
+      "y": 5,
+      "z": 0,
+      "width": 2,
+      "depth": 1,
+      "height": 4,
+      "appearance": "equipment-rack",
+      "label_offset": [
+        52,
+        -20
+      ]
+    },
+    {
+      "id": "deck",
+      "panel": "stage",
+      "label": "แท่นยก",
+      "kind": "box",
+      "x": 3,
+      "y": 4,
+      "z": 0,
+      "width": 2,
+      "depth": 2,
+      "height": 0.5,
+      "appearance": "slab",
+      "label_offset": [
+        -60,
+        14
+      ]
+    },
+    {
+      "id": "load",
+      "panel": "stage",
+      "label": "กล่อง",
+      "kind": "box",
+      "x": 3.5,
+      "y": 4.5,
+      "z": 0.5,
+      "width": 1,
+      "depth": 1,
+      "height": 1,
+      "label_offset": [
+        -58,
+        -28
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "ready",
+      "at_ms": 0,
+      "label": "ตั้งต้น",
+      "text": "กล่องวางอยู่บนแท่นยกที่อยู่ระดับล่าง"
+    },
+    {
+      "id": "raise",
+      "at_ms": 1500,
+      "label": "ยกขึ้น",
+      "text": "แท่นและกล่องขยับขึ้นเท่ากัน กล่องจึงไม่ลอยออกจากแท่น",
+      "focus": [
+        "deck"
+      ]
+    },
+    {
+      "id": "fault",
+      "at_ms": 3000,
+      "label": "ระบบหยุด",
+      "text": "ถ้าตรวจพบว่าโครงยกไม่พร้อม ระบบหยุดการยกไว้ที่ระดับเดิม",
+      "fault": "frame"
+    }
+  ],
+  "tracks": [
+    {
+      "entity": "deck",
+      "property": "x",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 3
+        },
+        {
+          "at_ms": 1500,
+          "value": 3
+        },
+        {
+          "at_ms": 2450,
+          "value": 3
+        }
+      ]
+    },
+    {
+      "entity": "deck",
+      "property": "y",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 4
+        },
+        {
+          "at_ms": 1500,
+          "value": 4
+        },
+        {
+          "at_ms": 2450,
+          "value": 4
+        }
+      ]
+    },
+    {
+      "entity": "deck",
+      "property": "z",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 0
+        },
+        {
+          "at_ms": 1500,
+          "value": 0
+        },
+        {
+          "at_ms": 2450,
+          "value": 2
+        }
+      ]
+    },
+    {
+      "entity": "load",
+      "property": "x",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 3.5
+        },
+        {
+          "at_ms": 1500,
+          "value": 3.5
+        },
+        {
+          "at_ms": 2450,
+          "value": 3.5
+        }
+      ]
+    },
+    {
+      "entity": "load",
+      "property": "y",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 4.5
+        },
+        {
+          "at_ms": 1500,
+          "value": 4.5
+        },
+        {
+          "at_ms": 2450,
+          "value": 4.5
+        }
+      ]
+    },
+    {
+      "entity": "load",
+      "property": "z",
+      "easing": "linear",
+      "frames": [
+        {
+          "at_ms": 1499,
+          "value": 0.5
+        },
+        {
+          "at_ms": 1500,
+          "value": 0.5
+        },
+        {
+          "at_ms": 2450,
+          "value": 2.5
+        }
+      ]
+    }
+  ]
+}
