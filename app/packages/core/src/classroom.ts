@@ -6,6 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import { BrainError } from "./errors.ts";
 import { VisualSchema } from "./visuals.ts";
+import { validateIso } from "./iso.ts";
 
 const id = z.string().max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const text = (max = 500) => z.string().trim().min(1).max(max);
@@ -18,6 +19,14 @@ const source = z.strictObject({
 const visual = z.unknown().transform((input, ctx) => {
   try {
     const required = (input ?? {}) as Record<string, unknown>;
+    if(required.type==="iso"){
+      const {author:_a,created:_c,updated:_u,...isoInput}=required;
+      const result=validateIso(isoInput);
+      if(!result.ok){
+        for(const i of result.issues)ctx.addIssue({code:"custom",path:i.path?i.path.split("."):[],message:i.message,params:{rule:i.rule,fix:i.fix}});
+        return z.NEVER;
+      }
+    }
     const parsed = VisualSchema.safeParse({ ...required, author: "classroom", created: "2026-01-01", updated: "2026-01-01" });
     if (!parsed.success || parsed.data.type === "html" ||
       (parsed.data.type === "lesson" && parsed.data.data.blocks.some((b) => b.kind === "html" || b.kind === "visual" || (b.kind === "text" && !noEmbeddedContent(b.md))))) {
@@ -44,7 +53,7 @@ const lab = z.strictObject({
   steps: z.array(text(1500)).min(1).max(16), expected: text(1500), cleanup: text(1500).optional(),
 });
 export const ClassroomBundleSchema = z.strictObject({
-  schema_version: z.literal(1), course_id: id, title: text(120), language: z.enum(["th", "en"]),
+  schema_version: z.literal([1,2]), course_id: id, title: text(120), language: z.enum(["th", "en"]),
   sources: z.array(source).min(1).max(48),
   lessons: z.array(z.strictObject({
     id, title: text(120), objective: text(1000), layout: z.literal("inline").optional(), source_ids: z.array(id).min(1).max(16),
@@ -56,6 +65,10 @@ export const ClassroomBundleSchema = z.strictObject({
   if (sourceIds.size !== bundle.sources.length) issue(["sources"], "Source IDs must be unique");
   if (new Set(bundle.lessons.map((l) => l.id)).size !== bundle.lessons.length) issue(["lessons"], "Lesson IDs must be unique");
   bundle.lessons.forEach((l, i) => {
+    if(bundle.schema_version===1)l.blocks.forEach((b,j)=>{
+      if(b.type==="visual"&&b.visual.type==="iso")
+        ctx.addIssue({code:"custom",path:["lessons",i,"blocks",j,"visual","type"],message:"ISO is not part of Classroom bundle v1.",params:{rule:"classroom-version",fix:"Use schema_version 2 on a compatible host, or use a v1 visual type."}});
+    });
     if (l.source_ids.some((s) => !sourceIds.has(s))) issue(["lessons", i, "source_ids"], "Unknown source ID");
     if (new Set(l.questions.map((q) => q.id)).size !== l.questions.length) issue(["lessons", i, "questions"], "Question IDs must be unique within a lesson");
     l.questions.forEach((q, qi) => {
@@ -71,7 +84,21 @@ export const ClassroomSubmitSchema = z.strictObject({
   base_revision: z.uuid().optional(),
   bundle: z.unknown(),
 });
-export type ClassroomIssue = { code: string; path: string; message: string };
+export type ClassroomIssue = { code:string; path:string; message:string; rule?:string; fix?:string };
+const bundleIssue=(i:z.core.$ZodIssue):ClassroomIssue=>{
+  const detail=i.code==="custom"?i.params:undefined;
+  return {code:"VALIDATION",path:["bundle",...i.path].join("."),message:i.message,
+    ...(typeof detail?.rule==="string"&&typeof detail.fix==="string"?{rule:detail.rule,fix:detail.fix}:{})};
+};
+function storedBundle(body:string):ClassroomBundle{
+  let value:unknown;
+  try { value=JSON.parse(body); } catch { throw new BrainError("VALIDATION","This stored course revision is unreadable."); }
+  if(!value||typeof value!=="object"||!("schema_version" in value)||
+    (value.schema_version!==1&&value.schema_version!==2)) throw new BrainError("VALIDATION","This Classroom bundle version is unsupported. Open it with a compatible Tesseract version.");
+  const result=ClassroomBundleSchema.safeParse(value);
+  if(!result.success)throw new BrainError("VALIDATION","This stored course revision did not pass validation.");
+  return result.data;
+}
 type Receipt = { ok: true; status: "staged"; course_id: string; revision_id: string } | { ok: false; issues: ClassroomIssue[] };
 type RevisionSummary = { revision_id: string; course_id: string; title: string; created_at: string; published: boolean; previously_published: boolean; latest: boolean };
 type RevisionRow = RevisionSummary & { body: string; sequence: number };
@@ -126,7 +153,7 @@ export class ClassroomStore {
     const header = ClassroomSubmitSchema.safeParse(input);
     if (!header.success) return { ok: false, issues: header.error.issues.map((i) => ({ code: "VALIDATION", path: i.path.join("."), message: i.message })) };
     const parsed = ClassroomBundleSchema.safeParse(header.data.bundle);
-    if (!parsed.success) return { ok: false, issues: parsed.error.issues.slice(0, 20).map((i) => ({ code: "VALIDATION", path: ["bundle", ...i.path].join("."), message: i.message })) };
+    if (!parsed.success) return { ok: false, issues: parsed.error.issues.slice(0, 20).map(bundleIssue) };
     const { request_id, base_revision } = header.data;
     const { course_id, title } = parsed.data;
     const digest = hash(bytes);
@@ -186,7 +213,7 @@ export class ClassroomStore {
 
   private unpack(row: RevisionRow | undefined) {
     if (!row) return null;
-    return { revision_id: row.revision_id, course_id: row.course_id, title: row.title, created_at: row.created_at, bundle: JSON.parse(row.body) as ClassroomBundle };
+    return { revision_id: row.revision_id, course_id: row.course_id, title: row.title, created_at: row.created_at, bundle: storedBundle(row.body) };
   }
   getRevision(revisionId: string) {
     return this.use<ReturnType<ClassroomStore["unpack"]>>(false, null, (db) =>
@@ -200,8 +227,9 @@ export class ClassroomStore {
   private makeCurrent(revisionId: string, restore: boolean) {
     if (!existsSync(this.path)) throw new BrainError("NOT_FOUND", "Unknown revision");
     return this.use(true, { revision_id: revisionId }, (db) => {
-      const row = db.prepare("SELECT course_id, sequence FROM revisions WHERE revision_id = ?").get(revisionId);
+      const row = db.prepare("SELECT course_id, sequence, body FROM revisions WHERE revision_id = ?").get(revisionId);
       if (!row) throw new BrainError("NOT_FOUND", "Unknown revision");
+      storedBundle(String(row.body));
       if (restore) {
         if (!db.prepare("SELECT 1 FROM history WHERE revision_id = ?").get(revisionId)) throw new BrainError("RULE", "Only a previously published revision can be restored");
       } else {

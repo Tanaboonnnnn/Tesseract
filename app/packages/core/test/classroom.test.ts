@@ -1,5 +1,6 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { ClassroomStore } from "../src/classroom.ts";
@@ -67,4 +68,33 @@ it("accepts explicit inline layout without changing courses that omit it", () =>
   store.publish(added.revision_id);
   expect(store.getPublished("inline-example")?.bundle.lessons[0]?.layout).toBe("inline");
   expect(store.submit({request_id:"classic-layout",bundle:original})).toMatchObject({ok:true});
+});
+
+it("keeps v1 unchanged across an ISO v2 publish/restore and rejects unsupported stored revisions without switching",async()=>{
+  const {isoFormat}=await import("../src/iso.ts");
+  const a=store.submit({request_id:"iso-v1-original",bundle:bundle()});
+  if(!a.ok)throw new Error(JSON.stringify(a.issues));
+  store.publish(a.revision_id);
+  const original=store.getRevision(a.revision_id);
+  store.recordAttempt({attempt_id:"iso-v1-attempt",revision_id:a.revision_id,lesson_id:"lesson-one",question_id:"question-one",answer:"Original answer"});
+  const raw=bundle("New ISO lesson");
+  const v2={...raw,schema_version:2,lessons:raw.lessons.map(l=>({...l,blocks:[...l.blocks,{
+    type:"visual",visual:{...isoFormat("network").example,id:"route"},fallback:"The request goes to the server.",
+  }]}))};
+  const b=store.submit({request_id:"iso-v2-revision",base_revision:a.revision_id,bundle:v2});
+  if(!b.ok)throw new Error(JSON.stringify(b.issues));
+  store.publish(b.revision_id);
+  expect(store.getPublished(v2.course_id)?.bundle.schema_version).toBe(2);
+  expect(store.getRevision(a.revision_id)).toEqual(original);
+  store.restore(a.revision_id);
+  expect(store.getPublished(v2.course_id)).toEqual(original);
+  expect(store.listAttempts(a.revision_id)).toHaveLength(1);
+  expect(store.listAttempts(b.revision_id)).toHaveLength(0);
+
+  const db=new DatabaseSync(join(dir,".classroom","classroom.sqlite"));
+  try {db.prepare("UPDATE revisions SET body = ? WHERE revision_id = ?").run(JSON.stringify({...v2,schema_version:99}),b.revision_id);}
+  finally {db.close();}
+  expect(()=>store.getRevision(b.revision_id)).toThrow(/unsupported/i);
+  expect(()=>store.restore(b.revision_id)).toThrow(/unsupported/i);
+  expect(store.getPublished(v2.course_id)).toEqual(original);
 });

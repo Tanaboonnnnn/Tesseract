@@ -6,7 +6,9 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./pure": "./src/pure.ts"
+    "./pure": "./src/pure.ts",
+    "./iso": "./src/iso.ts",
+    "./iso-catalog": "./src/iso-catalog.ts"
   },
   "scripts": {
     "test": "vitest run",

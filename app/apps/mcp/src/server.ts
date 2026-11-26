@@ -38,6 +38,7 @@ import {
   scheduleItems,
   search,
   type Store,
+  type VisualInput,
   visualFormat,
   isoFormat,
 } from "@tesseract/core";
@@ -71,7 +72,7 @@ function run(fn: () => unknown): CallToolResult {
   try {
     return ok(fn());
   } catch (e) {
-    if (e instanceof BrainError) return { isError: true, content: [{ type: "text", text: `[${e.code}] ${e.message}` }] };
+    if (e instanceof BrainError) return { isError: true, content: [{ type: "text", text: e.details ? JSON.stringify({code:e.code,message:e.message,issues:e.details}) : `[${e.code}] ${e.message}` }] };
     throw e;
   }
 }
@@ -197,9 +198,15 @@ function classroomServer(store: Store): McpServer {
   return server;
 }
 
+function classIsoFormat(pack:string) {
+  const {examples:_examples,...format}=isoFormat(pack);
+  return {...format,requires_schema_version:2};
+}
 function registerDraftTools(server: McpServer, store: Store) {
   const c = new ClassroomStore(store.dataDir);
-  server.registerTool("classroom_format", { description: "Course bundle example, constraints and optional validator-derived input JSON Schema.", inputSchema: { include_schema: z.boolean().optional(), include_scene_schema: z.boolean().optional() }, annotations: READ }, ({ include_schema, include_scene_schema }) => ok({
+  server.registerTool("classroom_format", { description: "Course bundle example, constraints and optional validator-derived input JSON Schema.", inputSchema: { include_schema: z.boolean().optional(), include_scene_schema: z.boolean().optional(), iso_pack:z.string().max(64).optional() }, annotations: READ }, ({ include_schema, include_scene_schema, iso_pack }) => ok({
+    supported_versions:[1,2],
+    ...(iso_pack!==undefined?{iso: classIsoFormat(iso_pack)}:{}),
     ...(include_schema ? { schema: z.toJSONSchema(ClassroomBundleSchema, { io: "input", unrepresentable: "any" }) } : {}),
     ...(include_scene_schema ? {scene_schema: z.toJSONSchema(SceneSchema, { io:"input" }), scene_example: SCENE_EXAMPLES.scene.example} : {}),
     scene: "Optional scene visual, v1. Use one focus per beat and a text fallback. Combine diagram, plot, inspect and optional mesh panels without subject-specific templates. Use a single mesh panel with stage=explainer for orthographic SVG; supply world X/Y/Z, positive solid dimensions, optional label offsets, and separate a fault beat from its reaction. Request include_scene_schema for the full contract; validate_course_visual checks only scene data, without storing it.",
@@ -513,7 +520,7 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
     {
       description:
         "Study visual types and, for one type, its fields + a full example. Best for teaching: lesson (text, formula, step-by-step trace, native motion, plot, simulation, self-check). Also plot, state, gantt, grid, tree, html. Call before save_visual.",
-      inputSchema: { type: z.enum([...VISUAL_TYPES, "iso"]).optional(), pack: z.string().max(64).optional() },
+      inputSchema: { type: z.enum(VISUAL_TYPES).optional(), pack: z.string().max(64).optional() },
       annotations: READ,
     },
     ({ type, pack }) => run(() => {
@@ -523,7 +530,7 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
       }
       if (pack !== undefined) throw new BrainError("VALIDATION", "Use pack only with visual_formats type iso.");
       const format = visualFormat(type);
-      return type ? format : { ...format, previews: ["iso"] };
+      return format;
     }),
   );
 
@@ -539,14 +546,14 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
         topic: z.string().nullable().optional().describe("Topic id in this learning item"),
         type: z.enum(VISUAL_TYPES),
         data: z.record(z.string(), z.unknown()),
-        steps: z.array(z.object({ text: z.string(), highlight: z.array(z.string()).optional() })).optional(),
+        steps: z.array(z.record(z.string(),z.unknown())).optional(),
         step_mode: z.enum(["highlight", "build"]).optional(),
       },
       annotations: WRITE,
     },
     ({ learning, ...input }) =>
       run(() => {
-        const v = store.saveVisual(learning, input);
+        const v = store.saveVisual(learning, input as VisualInput);
         return { saved: `learning/${learning}/visuals/${v.id}`, title: v.title, type: v.type, topic: v.topic, steps: v.steps.length };
       }),
   );

@@ -106,7 +106,7 @@ describe("visuals", () => {
   it("guides the AI to the format, saves, lists and reports precise errors", async () => {
     const { call } = await connect();
     const guide = await call("visual_formats", {});
-    expect(Object.keys(guide.types)).toEqual(["state", "gantt", "chart", "grid", "tree", "plot", "lesson", "html", "scene"]);
+    expect(Object.keys(guide.types)).toEqual(["state", "gantt", "chart", "grid", "tree", "plot", "lesson", "html", "scene", "iso"]);
     const { example } = await call("visual_formats", { type: "chart" });
 
     const saved = await call("save_visual", { learning: "kubernetes", topic: "pods", ...example });
@@ -520,27 +520,82 @@ it("advertises and validates cross-subject scenes without creating a draft", asy
   }
 });
 
-it("exposes compact ISO authoring preview without adding a remote write or Classroom v1 type", async () => {
+it("exposes compact ISO authoring without adding a remote tool or Classroom v1 type", async () => {
   const { client, call, store } = await connect("iso-preview-test", {profile:"remote"});
   const tools=(await client.listTools()).tools;
   expect(tools.map(t=>t.name).sort()).toEqual([...REMOTE_TOOLS].sort());
   expect(JSON.stringify(tools)).not.toContain("load-balancer");
   const generic=await call("visual_formats");
-  expect(generic.previews).toEqual(["iso"]);
+  expect(generic.types.iso).toMatch(/Isometric/);
   const menu=await call("visual_formats",{type:"iso"});
   expect(menu.packs).toEqual(["network","physics"]);
   expect(menu.components).toBeUndefined();
   const f=await call("visual_formats",{type:"iso",pack:"network"});
-  expect(f).toMatchObject({availability:"preview-only",example:{type:"iso",data:{pack:"network"}}});
+  expect(f).toMatchObject({availability:"ready",example:{type:"iso",data:{pack:"network"}}});
   expect(f.examples).toBeUndefined();
   expect(f.components.map((c:{component:string})=>c.component)).not.toContain("lamp");
   expect(f.components.find((c:{component:string})=>c.component==="client").anchors).toEqual({out:"out"});
   expect((await call("visual_formats",{type:"iso",pack:"biology"})).issue?.fix).toMatch(/network or physics/);
   const before=store.listActivity().length;
-  expect((await call("save_visual",{learning:"intro-to-rust",...f.example})).error).toMatch(/iso|type/);
+  expect((await call("save_visual",{learning:"unused-iso-learning",...f.example})).error).toMatch(/NOT_FOUND/);
   const {example}=await call("classroom_format");
   example.lessons[0]!.blocks.push({type:"visual",visual:{id:"iso-demo",...f.example},fallback:"Text fallback."});
   expect(await call("submit_course_draft",{request_id:"iso-frozen-v1",bundle:example})).toMatchObject({ok:false});
   expect(store.listActivity().length).toBe(before);
   expect(new ClassroomStore(store.dataDir).listDrafts()).toHaveLength(0);
+});
+
+it("authors ISO through only format output and stores a safe undoable visual",async()=>{
+  const { call, store }=await connect("remote-iso",{profile:"remote"});
+  const course=store.listLearning()[0]!;
+  expect(course).toBeDefined();
+  const before=store.listActivity().length;
+  for(const pack of ["network","physics"]){
+    const f=await call("visual_formats",{type:"iso",pack});
+    expect(f.availability).toBe("ready");
+    const scene={...f.example,id:"test-iso-"+pack};
+    const bad=structuredClone(scene);
+    bad.data.connections[0].from.anchor="wrong-port";
+    const reject=await call("save_visual",{learning:course.id,...bad});
+    expect(reject.error).toMatch(/anchors-exist/);
+    expect(reject.error).toMatch(/data.connections.0.from/);
+    const saved=await call("save_visual",{learning:course.id,...scene});
+    expect(saved).toMatchObject({type:"iso"});
+    expect(await call("get_visuals",{learning:course.id,id:scene.id})).toMatchObject({type:"iso",data:{pack}});
+  }
+  const format=await call("visual_formats",{type:"iso",pack:"network"});
+  const cache=structuredClone(format.example);
+  cache.id="test-iso-cache";cache.title="How a cached lookup reaches a cache";
+  const target=cache.data.objects.at(-1);
+  const catalogCache=format.components.find((part:{component:string})=>part.component==="cache");
+  expect(catalogCache.anchors).toHaveProperty("in");
+  target.component=catalogCache.component;target.label="Cache";
+  cache.steps[1].text="The balancer routes the lookup to the cache.";
+  expect(await call("save_visual",{learning:course.id,...cache})).toMatchObject({type:"iso",title:cache.title});
+  expect(store.listActivity().length).toBe(before+3);
+  const mismatch=await call("save_visual",{learning:course.id,id:"test-iso-network",title:"Accidental overwrite",type:"html",data:{html:"<p>no</p>"}});
+  expect(mismatch.error).toMatch(/different type|retain its existing type/i);
+  const latest=store.listActivity()[0]!;
+  store.undo(latest.id);
+  expect(()=>store.getVisual(course.id,"test-iso-cache")).toThrow(/not found/i);
+  expect(store.getVisual(course.id,"test-iso-network").type).toBe("iso");
+});
+
+it("stages validated Classroom ISO only in explicit v2 and never publishes from MCP",async()=>{
+  const {client,call,store}=await connect("remote-iso-course",{profile:"remote"});
+  const authoring=await call("classroom_format",{iso_pack:"physics"});
+  expect(authoring.supported_versions).toEqual([1,2]);
+  const bundle={...authoring.example, schema_version:2};
+  bundle.lessons[0].blocks.push({type:"visual",fallback:"The switch opens the circuit.",visual:{id:"circuit",...authoring.iso.example}});
+  const malformed=structuredClone(bundle);
+  malformed.lessons[0].blocks.at(-1).visual.data.objects[0].at[0]=.25;
+  expect(await call("submit_course_draft",{request_id:"bad-iso-v2",bundle:malformed})).toMatchObject({ok:false,issues:expect.arrayContaining([expect.objectContaining({rule:"grid-aligned",fix:expect.any(String)})])});
+  const v1={...bundle,schema_version:1};
+  expect(await call("submit_course_draft",{request_id:"iso-not-v1",bundle:v1})).toMatchObject({ok:false});
+  const ok=await call("submit_course_draft",{request_id:"valid-iso-v2",bundle});
+  expect(ok).toMatchObject({ok:true,status:"staged"});
+  expect(await call("list_published_courses")).toEqual([]);
+  expect((await client.listTools()).tools.map(t=>t.name)).not.toContain("publish_course");
+  const db=new ClassroomStore(store.dataDir);
+  expect(db.getRevision(ok.revision_id)?.bundle).toMatchObject({schema_version:2});
 });

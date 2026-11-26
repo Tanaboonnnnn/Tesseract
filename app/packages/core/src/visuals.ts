@@ -6,9 +6,11 @@
 import { z } from "zod";
 import { checkExpr } from "./expr.ts";
 import { SceneSchema } from "./scene.ts";
+import { IsoInputShape, isoFormat, validateIso } from "./iso.ts";
+import type { IsoState } from "./iso.ts";
 import { Id, IsoDate } from "./schemas.ts";
 
-export const VISUAL_TYPES = ["state", "gantt", "chart", "grid", "tree", "plot", "lesson", "html", "scene"] as const;
+export const VISUAL_TYPES = ["state", "gantt", "chart", "grid", "tree", "plot", "lesson", "html", "scene", "iso"] as const;
 export type VisualType = (typeof VISUAL_TYPES)[number];
 
 const Label = z.string().trim().min(1).max(80);
@@ -258,8 +260,15 @@ export const VisualSchema = z
     z.object({ ...common, type: z.literal("lesson"), data: LessonDataSchema }),
     z.object({ ...common, type: z.literal("html"), data: HtmlDataSchema }),
     z.object({ ...common, type: z.literal("scene"), data: SceneSchema }),
+    IsoInputShape.extend({id:Id,topic:Id.nullable().default(null),author:common.author,created:IsoDate,updated:IsoDate}),
   ])
   .superRefine((v, ctx) => {
+    if(v.type==="iso"){
+      const {author:_a,created:_c,updated:_u,...input}=v;
+      const result=validateIso(input);
+      if(!result.ok)for(const i of result.issues)ctx.addIssue({code:"custom",path:i.path?i.path.split("."):[],message:i.message,params:{rule:i.rule,fix:i.fix}});
+      return;
+    }
     const issue = (message: string) => ctx.addIssue({ code: "custom", message });
     const ids = new Set<string>();
     const add = (id: string) => {
@@ -373,13 +382,14 @@ export interface VisualInput {
   type: VisualType;
   topic?: string | null;
   data: unknown;
-  steps?: { text: string; highlight?: string[] }[];
+  steps?: { text: string; highlight?: string[]; states?:Record<string,IsoState>; cutaway?:string|null }[];
   step_mode?: "highlight" | "build";
 }
 
 /* ---------- examples: served to AI by visual_formats, and used as test fixtures ---------- */
 
 export const VISUAL_EXAMPLES: Record<VisualType, { use_for: string; ids: string; example: VisualInput }> = {
+  get iso() {return {use_for:"Isometric explainers drawn from a fixed catalog",ids:"Ask visual_formats for an ISO pack.",example:isoFormat("network").example!};},
   scene: {
     use_for: "One timed, interactive scene composed of typed visual panels",
     ids: "Entity IDs link beats, tracks, controls and inspect terms",

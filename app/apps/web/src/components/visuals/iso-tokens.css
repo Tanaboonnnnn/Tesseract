@@ -1,0 +1,10 @@
+.iso-scene {
+  --iso-bg:#f4ebe0; --iso-ink:#2a2118; --iso-soft:#6b5d4d;
+  --iso-top:#fbf6ec; --iso-left:#e6dac4; --iso-right:#d3c4a8;
+  --iso-accent:#e8742a; --iso-secondary:#2f7fd1; --iso-good:#3a9b5c; --iso-bad:#d64545; --iso-warn:#e5a93a;
+}
+.dark .iso-scene[data-iso-theme="auto"], .iso-scene[data-iso-theme="dark"] {
+  --iso-bg:#0b1020; --iso-ink:#e8ecf8; --iso-soft:#a2adc8;
+  --iso-top:#27304f; --iso-left:#1b2340; --iso-right:#141b33;
+  --iso-accent:#ffb454; --iso-secondary:#5ab0ff;
+}

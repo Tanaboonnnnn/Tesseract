@@ -114,7 +114,7 @@ const FEATURES: Record<string, Feature> = {
     example:
       "type: gantt        # state|gantt|chart|grid|tree\ntopic: process-scheduling\ndata:\n  lanes: [{ id: p1, label: P1 }]\n  bars: [{ id: b1, lane: p1, start: 0, end: 2 }]\nsteps:\n  - text: P1 runs for one quantum\n    highlight: [b1]",
     see: "▶ Review → a lesson page: real math, step-by-step state, live graphs and simulations",
-    rule: "Lesson blocks include text, formulas, traces, Flow / Reveal / Compare motion, plots, simulations and self-checks. Simulations reflect the inputs and assumptions you choose.",
+    rule: "Learning includes ISO explainers with a fixed component style. Lesson blocks include text, formulas, traces, motion, plots, simulations and self-checks. Simulations reflect the inputs and assumptions you choose.",
   },
   chatgpt: {
     say: "In ChatGPT on the phone: “What should I review today?”",

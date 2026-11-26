@@ -216,29 +216,30 @@ function checkSteps(value:Iso,refs:ReturnType<typeof checkObjects>,frames:IsoFra
   });
   checkFaults(value,frames,report);
 }
-const project=(p:Vec)=>[(p[0]-p[1])*Math.sqrt(3)/2*40,(p[0]+p[1])*20-p[2]*40] as const;
+export const isoProject=(p:Vec)=>[(p[0]-p[1])*Math.sqrt(3)/2*40,(p[0]+p[1])*20-p[2]*40] as const;
 function geometry(value:Iso,routes:Record<string,Vec[]>) {
   let l=Infinity,t=Infinity,r=-Infinity,b=-Infinity;
   const use=(x:number,y:number)=>{l=Math.min(x,l);t=Math.min(y,t);r=Math.max(r,x);b=Math.max(b,y);};
   for(const o of value.data.objects){
     const [w,d,h]=o.size??getIsoPart(value.data.pack,o.component)?.size??ZERO;
     for(const x of [0,w])for(const y of [0,d])for(const z of [0,h]){
-      const [px,py]=project(add(o.at,[x,y,z]));use(px-2,py-2);use(px+8,py+7);
+      const [px,py]=isoProject(add(o.at,[x,y,z]));use(px-2,py-2);use(px+8,py+7);
     }
     if(o.label){
-      const [x,y]=project(add(o.at,[w/2,d/2,h]));
+      const [x,y]=isoProject(add(o.at,[w/2,d/2,h]));
       const reserve=count(o.label)*8;
       use(x-reserve,y-46);use(x+reserve,y+4);
     }
   }
   for(const points of Object.values(routes))for(const p of points){
-    const [x,y]=project(p);use(x-24,y-24);use(x+24,y+24);
+    const [x,y]=isoProject(p);use(x-24,y-24);use(x+24,y+24);
   }
   const dx=Math.max(12,(r-l)/8),dy=Math.max(12,(b-t)/8);
   const painted=value.data.objects.slice().sort((a,b)=>a.at.reduce((n,v)=>n+v,0)-b.at.reduce((n,v)=>n+v,0)||ord(a.id,b.id)).map(o=>o.id);
   return {routes,painted,contentBounds:[l,t,r,b] as Bounds,viewBox:[l-dx,t-dy,r-l+2*dx,b-t+2*dy] as Bounds};
 }
-type IsoResult={ok:true;value:Iso;geometry:ReturnType<typeof geometry>}|{ok:false;issues:IsoIssue[]};
+export type ValidIso={ok:true;value:Iso;geometry:ReturnType<typeof geometry>};
+type IsoResult=ValidIso|{ok:false;issues:IsoIssue[]};
 export function validateIso(raw:unknown):IsoResult {
   if(!fitsPayload(raw))return {ok:false,issues:[{rule:"payload-size",path:"",message:"ISO exceeds the JSON byte or structure budget.",fix:"Send a bounded, plain JSON scene under 64,000 UTF-8 bytes; shorten or split it."}]};
   const parsed=IsoInputShape.safeParse(raw);
@@ -287,7 +288,7 @@ const physics=(part:"switch"|"breaker"):IsoInput=>({
   ],connections:[
     {id:"lead-a",kind:"wire",from:{object:"source",anchor:"b"},to:{object:"control",anchor:"a"}},
     {id:"lead-b",kind:"wire",from:{object:"control",anchor:"b"},to:{object:"load",anchor:"a"}},
-    {id:"return",kind:"wire",from:{object:"load",anchor:"b"},to:{object:"source",anchor:"a"},via:[[10,3,.5],[-1,3,.5]]},
+    {id:"return",kind:"wire",from:{object:"load",anchor:"b"},to:{object:"source",anchor:"a"},via:[[9.5,1,0],[9.5,3.5,0],[0,3.5,0],[0,.5,0]]},
   ]},steps:part==="switch" ? [
     {text:"With the switch open, the circuit is incomplete.",highlight:["control"]},
     {text:"Closing the switch completes the path and lights the lamp.",highlight:["control"],states:{control:"idle",load:"active"}},
@@ -306,10 +307,10 @@ const RULES=[
   "Use 2–8 steps of up to 120 characters, up to eight labels of 24 characters, and at most three effective changes per step.",
   "State persists between steps. Omit cutaway to keep it, or use null to close it. Use one active accent target and introduce at most one fault.",
 ];
-type Format={type:"iso";availability:"preview-only";packs:string[];shape?:typeof SHAPE;rules?:string[];components?:unknown[];connections?:readonly string[];example?:IsoInput;examples?:IsoInput[];issue?:IsoIssue;next?:string};
+type Format={type:"iso";availability:"ready";packs:string[];shape?:typeof SHAPE;rules?:string[];components?:unknown[];connections?:readonly string[];example?:IsoInput;examples?:IsoInput[];issue?:IsoIssue;next?:string};
 export function isoFormat(pack?:string):Format{
-  const root={type:"iso",availability:"preview-only",packs:Object.keys(ISO_PACKS)} as const;
-  if(!pack)return {...root,next:"Request visual_formats with type iso and pack network or physics. Do not save iso in this build."};
+  const root={type:"iso",availability:"ready",packs:Object.keys(ISO_PACKS)} as const;
+  if(!pack)return {...root,next:"Request visual_formats with type iso and pack network or physics. Then send a checked scene to save_visual."};
   const manifest=getIsoPack(pack);
   if(!manifest)return {...root,issue:{rule:"known-pack",path:"pack",message:"Unknown ISO pack.",fix:"Request network or physics. Other packs are not installed."}};
   const examples=pack==="network"?[net("server"),net("cache")]:[physics("switch"),physics("breaker")];

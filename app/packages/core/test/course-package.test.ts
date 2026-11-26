@@ -27,3 +27,16 @@ it("rejects invalid package member names, excessive output, CRC mismatch, and fu
   expect(()=>readCoursePackage(broken,"zip")).toThrow();
   expect(()=>readCoursePackage(Buffer.from('{"schema_version":2}'),"json")).toThrow();
 });
+
+it("ISO pack import accepts explicit v2 in JSON and ZIP, not v1 or an unknown version", async()=>{
+  const {isoFormat}=await import("../src/iso.ts");
+  const raw=JSON.parse(course.toString("utf8"));
+  raw.lessons[0].blocks.push({type:"visual",visual:{...isoFormat("physics").example,id:"switch"},fallback:"An open switch interrupts the circuit."});
+  expect(()=>readCoursePackage(Buffer.from(JSON.stringify(raw)),"json")).toThrow(/ISO|v1/);
+  raw.schema_version=2;
+  const bytes=Buffer.from(JSON.stringify(raw));
+  expect(readCoursePackage(bytes,"json")).toMatchObject({schema_version:2});
+  expect(readCoursePackage(zip(bytes),"zip")).toEqual(readCoursePackage(bytes,"json"));
+  raw.schema_version=3;
+  expect(()=>readCoursePackage(Buffer.from(JSON.stringify(raw)),"json")).toThrow(/schema_version/);
+});

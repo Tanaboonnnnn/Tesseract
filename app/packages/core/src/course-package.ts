@@ -4,7 +4,7 @@ import { ClassroomBundleSchema } from "./classroom.ts";
 
 export const COURSE_BYTES_LIMIT = 256 * 1024;
 const name = Buffer.from("course.json");
-const invalid = (): never => { throw new BrainError("VALIDATION", "Use a version 1 course.json or a ZIP containing only course.json at its root."); };
+const invalid = (): never => { throw new BrainError("VALIDATION", "Use a version 1 or 2 course.json or a ZIP containing only course.json at its root."); };
 
 /** One regular member, no filename traversal or filesystem extraction, bounded output. */
 export function readCoursePackage(bytes: Buffer, format: "zip" | "json") {

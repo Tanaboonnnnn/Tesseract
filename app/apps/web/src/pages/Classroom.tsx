@@ -180,7 +180,7 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
       </nav>
       {tab === "learn" && <div className="space-y-4">
         <p className="max-w-[68ch] text-base leading-relaxed muted">{lesson.objective}</p>
-      {(lesson.layout==="inline" || lesson.blocks.some(b=>b.type==="visual" && b.visual.type==="scene")) ? (
+      {(lesson.layout==="inline" || lesson.blocks.some(b=>b.type==="visual" && (b.visual.type==="scene" || b.visual.type==="iso"))) ? (
         <article aria-label={label.content} className="space-y-5">
           {lesson.blocks.length>2 && <nav aria-label={label.outline} className="flex max-w-[52rem] flex-wrap gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-3">
             {lesson.blocks.map((b,i)=> {

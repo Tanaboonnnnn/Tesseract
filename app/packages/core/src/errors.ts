@@ -6,9 +6,11 @@ export type BrainErrorCode =
 
 export class BrainError extends Error {
   readonly code: BrainErrorCode;
-  constructor(code: BrainErrorCode, message: string) {
+  readonly details: readonly {rule:string;path:string;message:string;fix:string}[]|undefined;
+  constructor(code: BrainErrorCode, message: string, details?: readonly {rule:string;path:string;message:string;fix:string}[]) {
     super(message);
     this.name = "BrainError";
     this.code = code;
+    this.details = details;
   }
 }

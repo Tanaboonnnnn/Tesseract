@@ -24,6 +24,7 @@ import {
 import { resolveDataDir } from "./config.ts";
 import { BrainError } from "./errors.ts";
 import { type Visual, type VisualInput, VisualSchema, type VisualSummary } from "./visuals.ts";
+import { ISO_BYTES, validateIso } from "./iso.ts";
 import {
   fileInfo,
   listFiles,
@@ -1171,13 +1172,21 @@ export class Store {
     const taken = new Set(listFiles(this.#abs(dir), ".yaml"));
     const id = input.id ? checkId(input.id, "visual") : uniqueId(slugify(input.title ?? "").slice(0, 40).replace(/-+$/, ""), taken);
     const rel = `${dir}/${id}.yaml`;
-    const existing = this.#exists(rel) ? this.#tryRead(() => this.getVisual(learning.id, id))[0] : undefined;
+    const exists=this.#exists(rel);
+    const existing = exists ? this.#tryRead(() => this.getVisual(learning.id, id))[0] : undefined;
+    if((existing && existing.type!==input.type && (existing.type==="iso"||input.type==="iso"))||(input.type==="iso"&&exists&&!existing))
+      throw new BrainError("CONFLICT","An ISO visual ID must retain its existing type. Choose a new ID.");
     const topic = input.topic ?? null;
     if (topic !== null && !learning.topics.some((t) => t.id === topic)) {
       throw new BrainError("VALIDATION", `Topic "${topic}" is not in ${learning.id} (topics: ${learning.topics.map((t) => t.id).join(", ") || "none"})`);
     }
     const today = this.today();
-    const visual = validate(VisualSchema, { ...defined(input), id, topic, author: this.agent, created: existing?.created ?? today, updated: today }, "visual");
+    const draft={...defined(input),id,topic};
+    const iso=input.type==="iso"?validateIso(draft):undefined;
+    if(iso&&!iso.ok)throw new BrainError("VALIDATION","Invalid ISO illustration.",iso.issues);
+    const visual:Visual=iso?.ok
+      ? {...iso.value,id,topic,author:this.agent,created:existing?.created??today,updated:today}
+      : validate(VisualSchema, { ...draft, author: this.agent, created: existing?.created ?? today, updated: today }, "visual");
     if (visual.type === "lesson") {
       for (const b of visual.data.blocks) {
         if (b.kind !== "visual") continue;
@@ -1187,6 +1196,8 @@ export class Store {
     }
     const yaml = toYaml(visual);
     const max = MAX_VISUAL_BYTES[visual.type] ?? MAX_VISUAL_DEFAULT;
+    if(visual.type==="iso"&&Buffer.byteLength(yaml)>ISO_BYTES)
+      throw new BrainError("VALIDATION","Stored ISO illustration is too large.",[{rule:"payload-size",path:"data",message:"Serialized scene exceeds 64,000 UTF-8 bytes.",fix:"Split this scene or remove objects and waypoints."}]);
     if (yaml.length > max) throw new BrainError("VALIDATION", `Visual is too big (${yaml.length} > ${max} characters); split it into smaller visuals`);
     this.#commit(existing ? "update" : "create", `learning/${learning.id}`, `${existing ? "update" : "add"} ${visual.type} visual "${visual.title}"`, { [rel]: yaml });
     return visual;

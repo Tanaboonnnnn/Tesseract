@@ -12,4 +12,5 @@ export const VISUAL_META: Record<VisualSummary["type"], { label: string; icon: t
   lesson: { label: "Lesson", icon: BookOpenText },
   html: { label: "HTML", icon: Code },
   scene: { label: "Interactive scene", icon: Workflow },
+  iso: { label: "Isometric illustration", icon: Workflow },
 };

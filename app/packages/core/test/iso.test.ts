@@ -21,7 +21,7 @@ describe("iso authoring contract", () => {
     expect(guide.components?.length).toBeGreaterThanOrEqual(6);
     expect(guide.examples?.length).toBe(2);
     for (const input of guide.examples ?? []) expect(validateIso(input)).toMatchObject({ok:true});
-    expect(guide.availability).toBe("preview-only");
+    expect(guide.availability).toBe("ready");
   });
   test("pack metadata is opt-in", () => {
     const guide = isoFormat();

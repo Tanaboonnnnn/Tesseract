@@ -1,0 +1,19 @@
+.iso-shell {container-type:inline-size;margin:0;min-width:0;}
+.iso-scene {width:100%;height:auto;display:block;background:var(--iso-bg);color:var(--iso-ink);border-radius:.55rem;max-height:34rem;}
+.iso-scene .iso-edge {stroke:var(--iso-ink);stroke-width:1.5;stroke-linejoin:round;}
+.iso-scene .iso-detail {stroke:var(--iso-ink);stroke-width:1;stroke-linejoin:round;stroke-linecap:round;fill:none;}
+.iso-scene .iso-grid {stroke:var(--iso-soft);stroke-width:1;opacity:.13;fill:none;}
+.iso-scene .iso-link {stroke:var(--iso-soft);stroke-width:3;opacity:.43;stroke-linejoin:round;stroke-linecap:round;fill:none;}
+.iso-scene .iso-link[data-active] {stroke:var(--iso-accent);opacity:1;}
+.iso-scene .iso-link[data-focused]:not([data-active]) {opacity:.9;}
+.iso-scene .iso-shadow {fill:var(--iso-ink);opacity:.12;filter:blur(1.5px);}
+.iso-scene .iso-annotation[data-dim] {opacity:.78;}
+.iso-scene .iso-leader {stroke:var(--iso-soft);stroke-width:1;}
+.iso-scene .iso-label {font:600 13px system-ui,sans-serif;fill:var(--iso-ink);paint-order:stroke;stroke:var(--iso-bg);stroke-width:4;stroke-linejoin:round;}
+.iso-scene .iso-note-dot {fill:var(--iso-ink);}
+.iso-scene .iso-label[data-focus] {font-weight:750;}
+.iso-scene .iso-status {font:650 10px ui-monospace,monospace;fill:var(--iso-ink);paint-order:stroke;stroke:var(--iso-bg);stroke-width:3;}
+@container (max-width:520px) {.iso-scene .iso-label {font-size:17px;} .iso-scene .iso-status {font-size:13px;}}
+
+.iso-scene .iso-ground {opacity:.67;}
+.iso-scene .iso-ground .iso-edge {stroke:var(--iso-soft);stroke-width:1;}

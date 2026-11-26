@@ -376,6 +376,7 @@ export function useMotion(): [boolean, (on: boolean) => void] {
     on,
     (next) => {
       localStorage.setItem(KEY, next ? "on" : "off");
+      window.dispatchEvent(new Event("tesseract-motion"));
       setOn(next);
     },
   ];

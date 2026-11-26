@@ -45,6 +45,7 @@ export async function measureTokens(store: Store): Promise<TokenReport> {
       ["list_projects", {}],
       ...(mapped ? ([["get_project", { id: mapped.id }], ["get_project_map", { project: mapped.id }]] as [string, Record<string, string>][]) : []),
       ["list_learning", {}],
+      ["visual_formats", {type:"iso",pack:"network"}],
       ...(learning ? ([["get_learning", { id: learning.id }]] as [string, Record<string, string>][]) : []),
       ["get_review_queue", {}],
       ["get_schedule", {}],

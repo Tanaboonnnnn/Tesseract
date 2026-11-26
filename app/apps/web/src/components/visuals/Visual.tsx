@@ -4,7 +4,7 @@ import { ScenePlayer } from "./ScenePlayer.tsx";
  * so nothing runs at rest; autoplay is a plain timer that stops at the end, when hidden or off-screen.
  */
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { Visual as VisualData } from "../../lib/api.ts";
 import { ChartView } from "./ChartView.tsx";
 import { GanttView } from "./GanttView.tsx";
@@ -16,12 +16,19 @@ import { makeFx } from "./shared.ts";
 import { StateView } from "./StateView.tsx";
 import { TreeView } from "./TreeView.tsx";
 
+const IsoView=lazy(()=>import("./IsoView.tsx"));
+
 export function Visual({ visual, keys = false, learning = "", language }: { visual: VisualData; keys?: boolean; learning?: string; language?:string }) {
   const n = visual.steps.length;
   // -1 = overview (everything visible); build mode starts at step 0 so the picture builds up.
   const first = visual.step_mode === "build" && n ? 0 : -1;
   const [step, setStep] = useState(first);
   const [playing, setPlaying] = useState(false);
+  const iso=useMemo(()=>{
+    if(visual.type!=="iso")return null;
+    const {author:_a,created:_c,updated:_u,...input}=visual;
+    return input;
+  },[visual]);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => setStep(first), [visual.id, visual.updated, first]);
 
@@ -70,7 +77,11 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
   if (visual.type === "html") return <HtmlFrame html={visual.data.html} height={visual.data.height} title={visual.title} />;
 
   return (
-    <div ref={box}>
+    <div ref={box} onKeyDown={iso&&!keys?e=>{
+      if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight")return;
+      if((e.target as HTMLElement)?.closest("input, textarea, select"))return;
+      e.preventDefault();go(step+(e.key==="ArrowRight"?1:-1));
+    }:undefined}>
       <div className="map-stage overflow-x-auto rounded-lg p-2">
         {visual.type === "state" && <StateView v={visual} fx={fx} step={step} />}
         {visual.type === "gantt" && <GanttView v={visual} fx={fx} />}
@@ -78,6 +89,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
         {visual.type === "grid" && <GridView v={visual} fx={fx} />}
         {visual.type === "tree" && <TreeView v={visual} fx={fx} />}
         {visual.type === "plot" && <Plot data={visual.data} fx={fx} />}
+        {iso && <Suspense fallback={<p role="status">Loading illustration…</p>}><IsoView input={iso} step={step}/></Suspense>}
       </div>
 
       {n > 0 && (
