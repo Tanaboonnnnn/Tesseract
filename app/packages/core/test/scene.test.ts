@@ -127,3 +127,10 @@ test("editorial 3D paths and equipment use one bounded scene, and only boxes get
   const invalid={...scene,entities:scene.entities.map(e=>e.id==="request"?{...e,appearance:"display"}:e)};
   assert.equal(SceneSchema.safeParse(invalid).success,false);
 });
+
+test("a non-network scene uses a real 3D guide path; flat panels reject depth coordinates", () => {
+  const scene=loadFixture("sphere");
+  assert.deepEqual(scene.entities.find(e=>e.id==="depth-guide")?.points,[[75,40,52],[85,40,90]]);
+  const flat={...scene,panels:scene.panels.map(p=>p.id==="solid"?{...p,kind:"diagram"}:p)};
+  assert.equal(SceneSchema.safeParse(flat).success,false);
+});

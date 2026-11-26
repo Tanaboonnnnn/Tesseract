@@ -8,6 +8,9 @@ type Camera={yaw:number;pitch:number;zoom:number};
 type Target={id:string;position:Vec;radius:number;color:Vec};
 const initial={yaw:0.6,pitch:0.3,zoom:1};
 const colors:Record<NonNullable<Entity["tone"]>,Vec>={neutral:[.56,.67,.75],primary:[.43,.85,.98],secondary:[.45,.92,.68],caution:[.97,.69,.39]};
+const minus=(a:Vec,b:Vec):Vec=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const cross=(a:Vec,b:Vec):Vec=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const norm=(a:Vec):Vec=>{const size=Math.hypot(...a)||1;return [a[0]/size,a[1]/size,a[2]/size];};
 const dot=(a:Vec,b:Vec)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 function basis({yaw:y,pitch:p}:Camera):[Vec,Vec,Vec] {
   return [[Math.cos(y),0,-Math.sin(y)],[-Math.sin(y)*Math.sin(p),Math.cos(p),-Math.cos(y)*Math.sin(p)],[Math.sin(y)*Math.cos(p),Math.sin(p),Math.cos(y)*Math.cos(p)]];
@@ -44,6 +47,26 @@ function geometry(kind:Entity["kind"]) {
   }
   return new Float32Array(out);
 }
+function tube(points:NonNullable<Entity["points"]>) {
+  const world=points.map(([x,y,z=50])=>[(x-50)/50,(50-y)/50,(z-50)/50] as Vec);
+  const radial=(u:Vec,v:Vec,j:number):Vec=>{
+    const a=j*Math.PI/3,c=Math.cos(a),s=Math.sin(a);
+    return [u[0]*c+v[0]*s,u[1]*c+v[1]*s,u[2]*c+v[2]*s];
+  };
+  const out:number[]=[];
+  const emit=(pt:Vec,n:Vec)=>out.push(pt[0]+n[0]*.014,pt[1]+n[1]*.014,pt[2]+n[2]*.014,...n);
+  for(let i=1;i<world.length;i++){
+    const a=world[i-1]!,b=world[i]!,d=minus(b,a);
+    if(Math.hypot(...d)<.00001)continue;
+    const axis=norm(d),u=norm(cross(axis,Math.abs(axis[2])<.9?[0,0,1]:[0,1,0])),v=cross(axis,u);
+    for(let j=0;j<6;j++){
+      const n=radial(u,v,j),m=radial(u,v,j+1);
+      emit(a,n);emit(b,n);emit(b,m);emit(a,n);emit(b,m);emit(a,m);
+    }
+  }
+  return new Float32Array(out);
+}
+
 function createRenderer(canvas:HTMLCanvasElement) {
   const gl=canvas.getContext("webgl",{alpha:true,depth:true,antialias:true});
   if(!gl) throw Error("WebGL unavailable");
@@ -65,7 +88,15 @@ function createRenderer(canvas:HTMLCanvasElement) {
     const handle=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,handle);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
     return {handle,count:data.length/6};
   });
-  const pathBuffer=gl.createBuffer();
+  // The same point list is reused by every sampled frame; upload each path once.
+  const paths=new Map<NonNullable<Entity["points"]>,{handle:WebGLBuffer,count:number}>();
+  const pathFor=(points:NonNullable<Entity["points"]>)=>{
+    const existing=paths.get(points);if(existing)return existing;
+    const handle=gl.createBuffer();if(!handle)throw Error("Path unavailable");
+    const vertices=tube(points);
+    gl.bindBuffer(gl.ARRAY_BUFFER,handle);gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.STATIC_DRAW);
+    const path={handle,count:vertices.length/6};paths.set(points,path);return path;
+  };
   gl.enable(gl.DEPTH_TEST);
   return {
     draw(targets:Target[], entities:Entity[], camera:Camera,highlighted:ReadonlySet<string>) {
@@ -81,14 +112,14 @@ function createRenderer(canvas:HTMLCanvasElement) {
       gl.uniform3fv(uniforms.right!,right);gl.uniform3fv(uniforms.up!,up);gl.uniform3fv(uniforms.view!,view);
       gl.uniform2fv(uniforms.fit!,fit);
       for(const e of entities) {
-        if(e.kind!=="path" || e.opacity<=0) continue;
+        if(e.kind!=="path" || e.opacity<=0 || !e.points) continue;
         const color=highlighted.has(e.id)?colors.primary:colors[e.tone??"neutral"];
-        const vertices=new Float32Array((e.points??[]).flatMap(([x,y])=>[(x+e.x-50)/50,(50-y-e.y)/50,(e.z-50)/50,-.35,.7,.65]));
-        gl.uniform3fv(uniforms.center!,[0,0,0]);gl.uniform3fv(uniforms.scale!,[1,1,1]);gl.uniform3fv(uniforms.tint!,color);
-        gl.bindBuffer(gl.ARRAY_BUFFER,pathBuffer);gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.DYNAMIC_DRAW);
+        const path=pathFor(e.points);
+        gl.uniform3fv(uniforms.center!,[e.x/50,-e.y/50,(e.z-50)/50]);gl.uniform3fv(uniforms.scale!,[1,1,1]);gl.uniform3fv(uniforms.tint!,color);
+        gl.bindBuffer(gl.ARRAY_BUFFER,path.handle);
         gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,24,0);
         gl.enableVertexAttribArray(n);gl.vertexAttribPointer(n,3,gl.FLOAT,false,24,12);
-        gl.drawArrays(gl.LINE_STRIP,0,vertices.length/6);
+        gl.drawArrays(gl.TRIANGLES,0,path.count);
       }
       for(const t of targets){
         const e=entities.find(x=>x.id===t.id)!;
@@ -122,7 +153,7 @@ function createRenderer(canvas:HTMLCanvasElement) {
         }
       }
     },
-    dispose(){for(const b of buffers)gl.deleteBuffer(b.handle);gl.deleteBuffer(pathBuffer);gl.deleteProgram(program);},
+    dispose(){for(const b of buffers)gl.deleteBuffer(b.handle);for(const path of paths.values())gl.deleteBuffer(path.handle);paths.clear();gl.deleteProgram(program);},
   };
 }
 
@@ -131,6 +162,30 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
   const canvas=useRef<HTMLCanvasElement>(null);
   const renderer=useRef<ReturnType<typeof createRenderer>|null>(null);
   const [camera,setCamera]=useState(initial);
+  const desired=useRef(initial), rendered=useRef(initial), animation=useRef(0), last=useRef<number|null>(null);
+  const applyCamera=(value:Camera)=>{rendered.current=value;setCamera(value);};
+  const update=(to:Camera)=>{
+    desired.current=to;
+    if(window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.hidden){
+      if(animation.current)cancelAnimationFrame(animation.current);
+      animation.current=0;last.current=null;applyCamera(to);return;
+    }
+    if(animation.current)return;
+    const tick=(now:number)=>{
+      animation.current=0;
+      if(document.hidden){last.current=null;applyCamera(desired.current);return;}
+      const a=rendered.current,b=desired.current;
+      const dt=Math.min(50,last.current===null?16:now-last.current);
+      last.current=now;
+      const alpha=1-Math.exp(-dt/65);
+      const delta=Math.abs(b.yaw-a.yaw)+Math.abs(b.pitch-a.pitch)+Math.abs(b.zoom-a.zoom);
+      if(delta<.002){last.current=null;applyCamera(b);return;}
+      applyCamera({yaw:a.yaw+(b.yaw-a.yaw)*alpha,pitch:a.pitch+(b.pitch-a.pitch)*alpha,zoom:a.zoom+(b.zoom-a.zoom)*alpha});
+      animation.current=requestAnimationFrame(tick);
+    };
+    animation.current=requestAnimationFrame(tick);
+  };
+  useEffect(()=>()=>{if(animation.current)cancelAnimationFrame(animation.current);},[]);
   const [geometrySize,setGeometrySize]=useState(0);
   const drag=useRef<{x:number;y:number;yaw:number;pitch:number;pointer:number;moved:boolean}|null>(null);
   const targets=entities.filter(e=>e.kind!=="path" && e.opacity>0).map(e=>({
@@ -149,16 +204,16 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
   useEffect(()=>{
     try{renderer.current?.draw(targets,entities,camera,highlighted);}catch{onUnavailable();}
   },[targets,entities,camera,geometrySize,onUnavailable,highlighted]);
-  const orbit=(yaw:number,pitch=0)=>setCamera(c=>({...c,yaw:c.yaw+yaw,pitch:Math.max(-1.3,Math.min(1.3,c.pitch+pitch))}));
-  const zoom=(direction:number)=>setCamera(c=>({...c,zoom:Math.min(1.65,Math.max(.6,c.zoom+direction))}));
+  const orbit=(yaw:number,pitch=0)=>{const c=desired.current;update({...c,yaw:c.yaw+yaw,pitch:Math.max(-1.3,Math.min(1.3,c.pitch+pitch))});};
+  const zoom=(direction:number)=>{const c=desired.current;update({...c,zoom:Math.min(1.65,Math.max(.6,c.zoom+direction))});};
   const [right,up]=basis(camera);
   const unit=(n:number)=>Math.max(10,Math.min(90,n));
   const button="rounded-md border border-[var(--line)] px-2 py-1 text-sm";
   return <>
     <div className="tess-scene-canvas tess-scene-mesh-stage relative mt-2" data-projection="isometric">
     <canvas className="block aspect-[5/3] w-full touch-none" ref={canvas} aria-label={label+" · "+labels.scene3d}
-      onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);drag.current={x:e.clientX,y:e.clientY,pointer:e.pointerId,yaw:camera.yaw,pitch:camera.pitch,moved:false};}}
-      onPointerMove={e=>{const d=drag.current;if(!d||d.pointer!==e.pointerId)return; const dx=e.clientX-d.x,dy=e.clientY-d.y;if(!d.moved && Math.hypot(dx,dy)<5)return;d.moved=true;setCamera(c=>({...c,yaw:d.yaw-dx*.01,pitch:Math.min(1.3,Math.max(-1.3,d.pitch+dy*.01))}));}}
+      onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);drag.current={x:e.clientX,y:e.clientY,pointer:e.pointerId,yaw:rendered.current.yaw,pitch:rendered.current.pitch,moved:false};}}
+      onPointerMove={e=>{const d=drag.current;if(!d||d.pointer!==e.pointerId)return; const dx=e.clientX-d.x,dy=e.clientY-d.y;if(!d.moved && Math.hypot(dx,dy)<5)return;d.moved=true;update({...desired.current,yaw:d.yaw-dx*.01,pitch:Math.min(1.3,Math.max(-1.3,d.pitch+dy*.01))});}}
       onPointerCancel={()=>{drag.current=null;}}
       onPointerUp={e=>{
         const d=drag.current;drag.current=null;if(!d||d.moved)return;
@@ -184,7 +239,7 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
       <button className={button} type="button" onClick={()=>orbit(0,-.22)}>{labels.down}</button>
       <button className={button} type="button" onClick={()=>zoom(.15)}>{labels.closer}</button>
       <button className={button} type="button" onClick={()=>zoom(-.15)}>{labels.farther}</button>
-      <button className={button} type="button" onClick={()=>setCamera(initial)}>{labels.reset}</button>
+      <button className={button} type="button" onClick={()=>update(initial)}>{labels.reset}</button>
     </div>
   </>;
 }

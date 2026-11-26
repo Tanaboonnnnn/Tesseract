@@ -17,6 +17,28 @@
   ],
   "entities": [
     {
+      "id": "depth-guide",
+      "panel": "solid",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "z": 50,
+      "label": "แนวการเคลื่อนที่ของจุดวัด",
+      "points": [
+        [
+          75,
+          40,
+          52
+        ],
+        [
+          85,
+          40,
+          90
+        ]
+      ],
+      "tone": "secondary"
+    },
+    {
       "id": "sphere",
       "panel": "solid",
       "kind": "circle",

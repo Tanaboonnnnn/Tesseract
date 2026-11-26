@@ -17,7 +17,7 @@ const entity = z.strictObject({
   kind: z.enum(["point","circle","box","path","text"]),
   x: coordinate, y: coordinate,
   width: coordinate.optional(), height: coordinate.optional(), z: coordinate.optional(), depth: coordinate.optional(),
-  points: z.array(z.tuple([coordinate,coordinate])).min(2).max(100).optional(),
+  points: z.array(z.union([z.tuple([coordinate,coordinate]),z.tuple([coordinate,coordinate,coordinate])])).min(2).max(100).optional(),
   tone: z.enum(["neutral","primary","secondary","caution"]).optional(),
   opacity: coordinate.optional(),
   appearance: z.enum(["equipment-rack","display"]).optional(),
@@ -56,6 +56,7 @@ export const SceneSchema = z.strictObject({
     if (!target || target === "inspect") issue(["entities",i,"panel"], "Choose a diagram, plot or mesh panel");
     if (target === "mesh" && !["point","box","circle","path"].includes(e.kind)) issue(["entities",i,"kind"], "Mesh panels use points, spheres, boxes and paths");
     if (target !== "mesh" && (e.z !== undefined || e.depth !== undefined)) issue(["entities",i,"z"], "Depth is available only in mesh panels");
+    if(target!=="mesh" && e.points?.some(point=>point.length===3)) issue(["entities",i,"points"], "3D path points require a mesh panel");
     if(e.appearance && e.kind!=="box") issue(["entities",i,"appearance"], "Equipment appearance is only for boxes");
     if (e.kind === "path" && !e.points) issue(["entities",i,"points"], "A path needs points");
   });
