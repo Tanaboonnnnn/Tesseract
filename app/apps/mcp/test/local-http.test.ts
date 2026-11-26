@@ -68,6 +68,46 @@ describe("local Streamable HTTP MCP", () => {
 
   });
 
+  it("grants the same local tools with a secret URL and no header, only until stopped", async () => {
+    const store = await fixtureStore();
+    const link = await startLocalHttp(store, { token, authMode: "link" });
+    stop.push(link.close);
+    const normal = await launch();
+    const noAuth = { "Content-Type": "application/json", Accept: "application/json, text/event-stream" };
+    const post = (url: string, extra = {}) => fetch(url, { method: "POST", headers: { ...noAuth, ...extra }, body });
+    expect(new URL(link.url).hostname).toBe("127.0.0.1");
+    expect((await post(link.url)).status).toBe(200);
+    expect((await post(link.url.slice(0, -1) + (link.url.endsWith("A") ? "B" : "A"))).status).toBe(404);
+    expect((await post(link.url + "?extra")).status).toBe(404);
+    expect((await post(link.url, { Origin: new URL(link.url).origin })).status).toBe(403);
+    const forgedHost = await new Promise<number | undefined>((resolve, reject) => {
+      const req = request(link.url, { method:"POST", headers: { ...noAuth, Host:"example.invalid" } }, res => {
+        res.resume();
+        resolve(res.statusCode);
+      });
+      req.once("error", reject);
+      req.end(body);
+    });
+    expect(forgedHost).toBe(403);
+    expect((await post(normal.url)).status).toBe(401);
+    const web = new Client({name:"url-only",version:"1"});
+    const standard = new Client({name:"standard",version:"1"});
+    clients.push(web, standard);
+    await web.connect(new StreamableHTTPClientTransport(new URL(link.url)));
+    await standard.connect(new StreamableHTTPClientTransport(new URL(normal.url), { requestInit: { headers: auth } }));
+    const names = (list: Awaited<ReturnType<Client["listTools"]>>) => list.tools.map(t=>t.name).sort();
+    expect(names(await web.listTools())).toEqual(names(await standard.listTools()));
+    expect((await web.callTool({name:"classroom_format",arguments:{}})).isError).not.toBe(true);
+    await web.close();
+    await link.close();
+    stop.shift();
+    const fresh = await startLocalHttp(store, {token:randomBytes(32).toString("base64url"),authMode:"link",port:Number(new URL(link.url).port)});
+    stop.push(fresh.close);
+    expect(new URL(fresh.url).pathname).not.toBe(new URL(link.url).pathname);
+    expect((await post(link.url)).status).toBe(404);
+    expect((await post(fresh.url)).status).toBe(200);
+  });
+
   it("rejects wrong route, missing/invalid credentials, browser origins, and bad hosts", async () => {
     const { url } = await launch();
     const forgedHost = await new Promise<number | undefined>((resolve, reject) => {

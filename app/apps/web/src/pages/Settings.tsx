@@ -58,11 +58,21 @@ function LocalMcpAccess(){
   const query=useQuery({queryKey:["local-mcp"],queryFn:api.localMcp,retry:false,refetchInterval:10000});
   const qc=useQueryClient();
   const [credential,setCredential]=useState<{url:string;token:string}|null>(null);
+  const [link,setLink]=useState("");
   const [copied,setCopied]=useState("");
   const control=useMutation({mutationFn:api.localMcpSwitch,onSuccess:(data)=>{
     setCopied("");
-    if(data.available&&data.on){setCredential(data.token?{url:data.url,token:data.token}:null);qc.setQueryData(["local-mcp"],{available:true,on:true,url:data.url});}
-    else {setCredential(null);qc.setQueryData(["local-mcp"],data);}
+    setCredential(null);
+    setLink("");
+    if(data.available&&data.on){
+      if(data.mode==="link"){
+        setLink(data.url??"");
+        qc.setQueryData(["local-mcp"],{available:true,on:true,mode:"link"});
+      } else {
+        setCredential(data.token?{url:data.url,token:data.token}:null);
+        qc.setQueryData(["local-mcp"],{available:true,on:true,url:data.url});
+      }
+    } else qc.setQueryData(["local-mcp"],data);
   }});
   const copy=async(value:string,label:string)=>{
     try{await navigator.clipboard.writeText(value);setCopied(label+" copied.");}
@@ -70,10 +80,22 @@ function LocalMcpAccess(){
   };
   if(!query.data?.available)return <p className="mt-2 text-sm muted">Available in Settings on the main computer.</p>;
   const info=query.data;
-  const token=info.on&&credential?.url===info.url?credential.token:"";
+  const token=info.on&&info.mode!=="link"&&credential?.url===info.url?credential.token:"";
   return <div className="space-y-2">
     <p className="text-sm muted">Streamable HTTP for trusted clients on this computer. Runs separately from OpenAI Tunnel.</p>
-    {!info.on?<Button onClick={()=>control.mutate("start")} disabled={control.isPending}>Start Local MCP</Button>:<>
+    {!info.on?<div className="flex flex-wrap gap-2">
+      <Button onClick={()=>control.mutate("start")} disabled={control.isPending}>Start Local MCP</Button>
+      <Button onClick={()=>control.mutate("start-link")} disabled={control.isPending}>Start URL-only MCP</Button>
+    </div>:info.mode==="link"?<>
+      <p className="text-sm font-semibold">URL-only MCP is running on this computer</p>
+      <p className="text-xs muted">This link grants full local tool access. Paste it only into a trusted app on this computer. Do not share it.</p>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={()=>{control.mutate("start-link",{onSuccess:(data)=>{if(data.available&&data.on&&data.mode==="link"&&data.url)void copy(data.url,"Private URL");}});}} disabled={control.isPending}>Copy private URL</Button>
+        <Button onClick={()=>control.mutate("stop")} disabled={control.isPending}>Stop Local MCP</Button>
+      </div>
+      {link&&<label className="block text-sm">Private URL <input type="password" className="block w-full rounded border border-[var(--line)] bg-[var(--panel-solid)] p-2" readOnly value={link} onFocus={e=>e.target.select()}/></label>}
+      <p className="text-xs muted">Stopping or restarting invalidates the old link.</p>
+    </>:<>
       <p className="text-sm font-semibold">Running on this computer</p>
       <label className="block text-sm">Endpoint <input className="block w-full rounded border border-[var(--line)] bg-[var(--panel-solid)] p-2" readOnly value={info.url} onFocus={e=>e.target.select()}/></label>
       <div className="flex flex-wrap items-center gap-2">

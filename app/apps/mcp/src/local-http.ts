@@ -2,7 +2,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer as createHttpServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -57,7 +57,7 @@ async function readJson(request: IncomingMessage, response: ServerResponse): Pro
   }
 }
 
-export async function startLocalHttp(store: Store, options: { token: string; port?: number }) {
+export async function startLocalHttp(store: Store, options: { token: string; port?: number; authMode?: "header" | "link" }) {
   if (!TOKEN_FORMAT.test(options.token)) {
     throw new Error("Set BRAIN_MCP_LOCAL_TOKEN to 32 random bytes encoded as unpadded base64url.");
   }
@@ -69,6 +69,8 @@ export async function startLocalHttp(store: Store, options: { token: string; por
   // A routing identity, not a credential: safe to show in setup output.
   const instance = randomBytes(16).toString("hex");
   const endpoint = "/mcp/tesseract/" + instance;
+  const linkMode = options.authMode === "link";
+  const linkPrefix = "/mcp/tesseract/link/";
   let expectedHost = "";
   const google = googleService(store);
   const http = createHttpServer({
@@ -84,10 +86,17 @@ export async function startLocalHttp(store: Store, options: { token: string; por
       }
       // Native clients do not send Origin. No browser origin is authorized.
       if (req.headersDistinct.origin) return reject(res, 403, "Browser origins are not authorized");
-      if (req.url !== endpoint) return reject(res, 404, "Unknown endpoint");
-      const auth = /^Bearer ([A-Za-z0-9_-]{43})$/i.exec(req.headers.authorization ?? "")?.[1];
-      if (req.headersDistinct.authorization?.length !== 1 || !auth || !timingSafeEqual(expectedToken, digest(auth))) {
-        return reject(res, 401, "Missing or invalid bearer credential");
+      if (linkMode) {
+        const secret = req.url?.startsWith(linkPrefix) ? req.url.slice(linkPrefix.length) : "";
+        if (!TOKEN_FORMAT.test(secret) || !timingSafeEqual(expectedToken, digest(secret))) {
+          return reject(res, 404, "Unknown endpoint");
+        }
+      } else {
+        if (req.url !== endpoint) return reject(res, 404, "Unknown endpoint");
+        const auth = /^Bearer ([A-Za-z0-9_-]{43})$/i.exec(req.headers.authorization ?? "")?.[1];
+        if (req.headersDistinct.authorization?.length !== 1 || !auth || !timingSafeEqual(expectedToken, digest(auth))) {
+          return reject(res, 401, "Missing or invalid bearer credential");
+        }
       }
       // This endpoint has no long-lived server stream or resumable sessions.
       if (req.method !== "POST") return reject(res, 405, "Use POST for stateless MCP");
@@ -121,7 +130,7 @@ export async function startLocalHttp(store: Store, options: { token: string; por
   });
   return {
     instance,
-    url: "http://" + expectedHost + endpoint,
+    url: "http://" + expectedHost + (linkMode ? linkPrefix + options.token : endpoint),
     close: () => new Promise<void>((resolve, reject) => {
       http.close((error) => error ? reject(error) : resolve());
       http.closeAllConnections();
@@ -129,7 +138,8 @@ export async function startLocalHttp(store: Store, options: { token: string; por
   };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// The desktop bundle inlines this module; its entry point must not run this CLI.
+if (process.argv[1] && basename(process.argv[1]) === "local-http.ts" && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const { values } = parseArgs({ options: { data: { type: "string" }, port: { type: "string" }, agent: { type: "string" } } });
     const token = process.env.BRAIN_MCP_LOCAL_TOKEN ?? "";

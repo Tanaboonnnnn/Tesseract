@@ -9,6 +9,18 @@ Tesseract directly or the separate restricted tunnel for supported cloud clients
 
 On the host, open Settings, then Local MCP, and choose Start Local MCP. Copy the endpoint and Authorization header into a trusted native MCP client. The key is separate from OpenAI Tunnel and lives only for this app-host session. A fresh start generates a different URL and key. Stopping either connection leaves the other alone. The host does not idle out while either connection is enabled.
 
+## URL-only clients
+
+If your native client has only a URL field, stop the current Local MCP listener
+and select **Start URL-only MCP** instead. Paste **Copy private URL** into the
+client's **Streamable HTTP** URL field. Leave its Authorization settings empty.
+The private URL is the credential, contains a random 256-bit secret, and stays
+valid only until you stop or restart the listener. Treat it like a password:
+do not share it, paste it in a browser, or sync it to a cloud account. This mode
+grants the same full local tool profile (including writes) as the header mode.
+Use it only with a trusted native app on the same computer. Both modes stay
+on loopback; OpenAI Tunnel has its own separate controls and permissions.
+
 ## Start it from a terminal
 
 From the repository's `app/` directory, provision a separate bearer token in
@@ -33,7 +45,8 @@ uses Tesseract's normal location. The command prints a URL such as
 - **URL:** the exact URL that the command prints.
 - **Authorization header:** `Bearer <your local token>`. Use the client's secret
   field or secret store; don't put the token in the URL, command arguments, logs,
-  or project files. A client without custom-header support should use stdio.
+  or project files. For clients without custom-header support use the app's
+  separate URL-only mode or stdio.
 
 Each start gets a different instance ID and, by default, an OS-assigned port.
 Refresh the client's URL after restarting. An optional `--port` pins the TCP
@@ -54,5 +67,5 @@ uses JSON responses, and GET / DELETE are unsupported by this stateless endpoint
 
 The separation of local identities, loopback binding and authenticated calls is
 inspired by [ComGu's MCP server](https://github.com/Tanaboonnnnn/Com-gu/blob/main/src/main/mcp/server.ts);
-unlike ComGu's routing design, Tesseract keeps the bearer secret out of the URL.
+the default mode keeps the bearer secret out of the URL.
 See the [MCP transport security guidance](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning).

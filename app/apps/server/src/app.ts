@@ -479,12 +479,13 @@ export function createApp(store: Store, options: AppOptions): Hono {
     if(denied)return denied;
     const local=options.localMcp;
     const action=c.req.param("action");
-    if(!local || (action!=="start"&&action!=="stop")) return c.json({available:false},404);
+    if(!local || (action!=="start"&&action!=="start-link"&&action!=="stop")) return c.json({available:false},404);
     try {
-      const info=await (action==="start"?local.start():local.stop());
+      const info=await (action==="stop"?local.stop():local.start(action==="start-link"?"link":"header"));
+      if(!info)return c.json({error:"LOCAL_MCP",message:"Stop the current Local MCP connection before switching modes."},409);
       return c.json({available:true,...info});
     } catch {
-      return c.json({error:"LOCAL_MCP",message:"Could not "+action+" Local MCP. Try again."},503);
+      return c.json({error:"LOCAL_MCP",message:"Could not "+(action==="stop"?"stop":"start")+" Local MCP. Try again."},503);
     }
   });
 

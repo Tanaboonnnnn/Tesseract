@@ -228,6 +228,18 @@ it("keeps Local MCP independent of OpenAI Tunnel and blocks paired phones from i
     expect(remote.state().on).toBe(true);expect(children[0]!.killed).toBe(false);
     const restarted=await (await req("local-mcp/start","POST")).json();
     expect(restarted.url).not.toBe(body.url);expect(restarted.token).not.toBe(body.token);
+    await req("local-mcp/stop","POST");
+    const link=await req("local-mcp/start-link","POST");
+    expect(link.status).toBe(200);
+    const secret=await link.json();
+    expect(secret).toMatchObject({available:true,on:true,mode:"link",url:expect.stringMatching(/^http:\/\/127\.0\.0\.1:/)});
+    expect(secret).not.toHaveProperty("token");
+    expect(link.headers.get("cache-control")).toBe("no-store");
+    expect(await (await req("local-mcp")).json()).toEqual({available:true,on:true,mode:"link"});
+    expect(await (await req("local-mcp/start-link","POST")).json()).toEqual(secret);
+    expect((await req("local-mcp/start","POST")).status).toBe(409);
+    expect((await req("local-mcp/start-link","POST","192.168.1.2:4320")).status).toBe(403);
+    expect(remote.state().on).toBe(true);
     remote.stop();
     expect(await (await req("local-mcp")).json()).toMatchObject({on:true});
   } finally {await localMcp.stop();remote.dispose();}
