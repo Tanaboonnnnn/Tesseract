@@ -10,12 +10,42 @@ const sources = [
 ];
 sources.push({id:"geometry",title:"Self-authored geometry illustration",url:"https://www.mathopenref.com/sphere.html",accessed_on:"2026-11-26",rights:"reference-only",summary:"Definitions only. All illustration data are synthetic."});
 sources.push({id:"round-robin",title:"NGINX load balancing guide",url:"https://nginx.org/en/docs/http/load_balancing.html",accessed_on:"2026-11-26",rights:"reference-only",summary:"Reference for the default round-robin routing policy."});
-const lessons = [["network","One packet, two networks","internet","Explain which header fields change on a routed hop."],["classifier","A moveable decision boundary","threshold","Distinguish an input feature from the threshold."],["spring","A spring’s linear response","geometry","Relate applied force and spring extension within the linear range."],["sphere","Orbit an educational sphere","geometry","Separate a viewpoint change from an object moving."],["load-balancer","How a load balancer hands out requests","round-robin","Follow three requests through a round-robin load balancer."]].map(([file,title,ref,objective])=>({
-  id:file,title,objective,source_ids:[ref],blocks:[
-    ...(file==="load-balancer"?[{type:"text",markdown:"### What should happen to the next request?\n\nImagine one client opening a page three times. We have three healthy servers. A round-robin load balancer walks through the server list in order. Watch where each request goes below."}]:[]),{
-    type:"visual",fallback:objective,visual:{id:file,title,type:"scene",data:JSON.parse(readFileSync(new URL(file+".json",import.meta.url),"utf8"))},
-  },...(file==="load-balancer"?[{type:"text",markdown:"### What the animation shows\n\nThe order was **A → B → C**, then back to A. Round robin distributes requests across the servers, but it does not choose the server with the most free CPU. Equal request counts do not guarantee equal work."}]:[])],
+const lessonText = {
+  setup: [
+    "### เว็บเดียว แต่มี 3 เครื่อง ไหนจะรับงาน?",
+    "",
+    "สมมติเราดูแลเว็บลงทะเบียนเรียน ช่วงเปิดลงทะเบียน นักศึกษากดเข้าเว็บพร้อมกัน แต่ทุกคนรู้จักแค่ URL เดียว ถ้าคำขอทั้งหมดไป Server B อีกสองเครื่องที่ว่างก็ช่วยอะไรไม่ได้",
+    "",
+    "**Load balancer** เป็นประตูหน้าที่รับ request แล้วเลือก backend ให้ มองภาพนี้เป็นสามส่วน: Client ส่งคำขอ, balancer ตัดสินใจ, server รับงานไปตอบ",
+    "",
+    "### ลองทำนายก่อนกด Play",
+    "",
+    "มี A, B, C ที่พร้อมใช้ทั้งหมด และเราเริ่มที่ A ถ้าคำขอแรกไป A แล้ว คำขอที่ 2, 3 และ 4 ควรไปเครื่องไหน? กด Play แล้วตามจุดบนเส้นจาก Client ผ่าน Balancer ไปยัง Server",
+  ].join("\n"),
+  explanation: [
+    "### เฉลย: A → B → C → A",
+    "",
+    "นี่คือ **round robin**: วนไปยังเครื่องถัดไปในรายการ backend ที่พร้อมใช้งาน จุดหนึ่งแทน request หนึ่งรายการ ส่วนเส้นที่เด่นแสดงทางที่คำขอนั้นจะไป",
+    "",
+    "### จำนวนคำขอเท่ากัน ไม่ได้แปลว่างานเท่ากัน",
+    "",
+    "สมมติ A ได้งานอัปโหลดที่ค้าง 10 วินาที ส่วน B กับ C ได้งานเปิดหน้าเว็บที่จบใน 100 มิลลิวินาที ทั้งสามเครื่องได้อย่างละหนึ่ง request แต่ A ยังยุ่งอยู่ นี่คือเหตุผลที่บางระบบเลือก **least connections** เพื่อให้เครื่องที่มีการเชื่อมต่อค้างน้อยกว่ารับงานใหม่ วิธีนี้ก็ไม่ได้วัด CPU โดยตรงเหมือนกัน",
+    "",
+    "### ลองเอง: ถ้า B ไม่พร้อม?",
+    "",
+    "สมมติ health check ตัด B ออกจากรายชื่อเครื่องที่พร้อมแล้ว และรอบใหม่เริ่มที่ A คำขอ 4 รายการถัดไปจะไปไหน? เขียนลำดับก่อนเปิดแท็บ Check ฉากด้านบนยังเป็นกรณีที่ทั้งสามเครื่องพร้อม ไม่ได้จำลองเครื่องล่ม",
+    "",
+    "**จำให้ขึ้นใจ:** Health check ช่วยตัดสินว่า *เครื่องไหนมีสิทธิ์รับงาน* ส่วน round robin ตัดสินว่า *ให้ใครรับ request ถัดไป*",
+  ].join("\n"),
+};
+const lessons = [["network","One packet, two networks","internet","Explain which header fields change on a routed hop."],["classifier","A moveable decision boundary","threshold","Distinguish an input feature from the threshold."],["spring","A spring’s linear response","geometry","Relate applied force and spring extension within the linear range."],["sphere","Orbit an educational sphere","geometry","Separate a viewpoint change from an object moving."],["load-balancer","Load Balancing: หนึ่ง URL หลายเซิร์ฟเวอร์","round-robin","ทำนายเส้นทางของ request และอธิบายข้อจำกัดของ round robin ได้"]].map(([file,title,ref,objective])=>({
+  id:file,title,objective,source_ids:[ref],
+  ...(file==="load-balancer"?{questions:[{id:"skip-unhealthy",type:"explain",prompt:"ถ้า health check เอา Server B ออกจากรายการ แล้วเริ่มรอบใหม่ที่ A, request 1–4 ไปไหน และเพราะอะไร?",rubric:["เรียง A → C → A → C","อธิบายว่า B ไม่อยู่ในกลุ่ม backend ที่พร้อมรับงาน"],model_answer:"A → C → A → C เพราะกลุ่ม backend ที่พร้อมเหลือ A กับ C เท่านั้น จากนั้น round robin วนตามลำดับในกลุ่มนี้"}]}:{}),
+  blocks:[
+    ...(file==="load-balancer"?[{type:"text",markdown:lessonText.setup}]:[]),{
+    type:"visual",fallback:objective,visual:{id:file,title:file==="load-balancer"?"ตามเส้นทางของ request":title,type:"scene",data:JSON.parse(readFileSync(new URL(file+".json",import.meta.url),"utf8"))},
+  },...(file==="load-balancer"?[{type:"text",markdown:lessonText.explanation}]:[])],
 }));
-const result=store.submit({request_id:"motion-preview-1",bundle:{schema_version:1,course_id:"universal-motion-fixture",title:"Universal Motion Preview",language:"en",sources,lessons}});
+const result=store.submit({request_id:"motion-preview-1",bundle:{schema_version:1,course_id:"universal-motion-fixture",title:"Universal Motion Preview",language:"th",sources,lessons}});
 if(!result.ok) throw new Error(JSON.stringify(result));
 store.publish(result.revision_id);

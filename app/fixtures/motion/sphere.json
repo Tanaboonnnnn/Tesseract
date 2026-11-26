@@ -52,8 +52,8 @@
     {
       "id": "orbit",
       "at_ms": 3200,
-      "label": "Change the viewpoint",
-      "text": "Rotate the diagram. Changing the viewpoint does not move the sphere or the marker in space.",
+      "label": "Watch the marker move in depth",
+      "text": "Play to move the outside marker through depth; rotate separately to see that changing the viewpoint does not move either object.",
       "focus": [
         "marker"
       ]
@@ -77,6 +77,55 @@
         "marker"
       ],
       "explanation": "Distance from the sphere’s center to the outside marker."
+    }
+  ],
+  "loop": true,
+  "tracks": [
+    {
+      "entity": "marker",
+      "property": "x",
+      "easing": "ease-in-out",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 75
+        },
+        {
+          "at_ms": 3200,
+          "value": 75
+        },
+        {
+          "at_ms": 5600,
+          "value": 85
+        },
+        {
+          "at_ms": 8000,
+          "value": 75
+        }
+      ]
+    },
+    {
+      "entity": "marker",
+      "property": "z",
+      "easing": "ease-in-out",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 52
+        },
+        {
+          "at_ms": 3200,
+          "value": 52
+        },
+        {
+          "at_ms": 5600,
+          "value": 90
+        },
+        {
+          "at_ms": 8000,
+          "value": 52
+        }
+      ]
     }
   ]
 }

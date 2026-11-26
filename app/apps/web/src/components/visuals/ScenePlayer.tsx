@@ -96,10 +96,11 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
   const link = scene.bindings?.find(b=>b.id===(hover ?? focus ?? pinned) && b.target_ids.some(e=>shown.has(e)));
   const selected = new Set(link?.target_ids ?? []);
   const formulaShowsExplanation = scene.panels.some(p=>p.kind==="inspect" && p.id===link?.panel && p.tex);
-  const layout = scene.panels.length===2 && scene.panels.filter(p=>p.kind==="inspect").length===1 ? "compact-inspect" : "grid";
+  const layout = scene.panels.length===1 ? "single" : scene.panels.length===2 && scene.panels.filter(p=>p.kind==="inspect").length===1 ? "compact-inspect" : "grid";
   const seek=(ms:number)=>{setMode("pause"); clock.current=ms; setTime(ms);};
   const play=()=>{priority.current=++playSequence; if (clock.current>=scene.duration_ms) { clock.current=0; setTime(0); } setMode("play");};
   const step=scene.beats.indexOf(beat);
+  const linkClass=(key:string)=>link?.id===key?" tess-scene-linked-chip":"";
   const button="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--lane)] disabled:opacity-40";
   const toggle = (key:string)=>setPinned(old=>old===key ? null : key);
 
@@ -110,27 +111,31 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
         {panel.kind==="inspect" && panel.tex ? <div className="mt-2">
         <FormulaBlock b={{kind:"formula",tex:panel.tex,where:[],terms:(scene.bindings??[]).filter(b=>b.panel===panel.id).map(b=>({id:b.id,label:b.term,note:b.explanation}))}}
           connected={{active:link?.id??null,pinned,onHover:setHover,onFocus:setFocus,onSelect:toggle,enabled:key=>(scene.bindings??[]).some(b=>b.id===key && b.target_ids.some(t=>shown.has(t)))}} />
-        </div> : panel.kind==="inspect" ? <div className="mt-2 flex flex-wrap gap-2">{scene.bindings?.filter(b=>b.panel===panel.id).map(b=><button key={b.id} type="button" className={button+" break-words "+(link?.id===b.id?"font-bold underline":"")} aria-pressed={pinned===b.id} disabled={!b.target_ids.some(t=>shown.has(t))} onPointerEnter={e=>{if(e.pointerType!=="touch")setHover(b.id);}} onPointerLeave={()=>setHover(null)} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{b.term}</button>)}</div> :
+        </div> : panel.kind==="inspect" ? <div className="mt-2 flex flex-wrap gap-2">{scene.bindings?.filter(b=>b.panel===panel.id).map(b=><button key={b.id} type="button" className={button+" break-words "+linkClass(b.id)} aria-pressed={pinned===b.id} disabled={!b.target_ids.some(t=>shown.has(t))} onPointerEnter={e=>{if(e.pointerType!=="touch")setHover(b.id);}} onPointerLeave={()=>setHover(null)} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{b.term}</button>)}</div> :
           <>
           {(() => {
-            const drawing = <svg className="mt-1 h-auto w-full" viewBox="0 0 420 214" aria-label={panel.label}>
+            const drawing = <svg className="tess-scene-canvas mt-2 h-auto w-full" data-projection={panel.kind==="diagram"?panel.projection:undefined} viewBox="0 0 420 214" aria-label={panel.label}>
             {panel.kind==="plot" && <g fill="none" stroke="currentColor" opacity=".45"><path d="M25 18 V180 H395" /><path d="M25 140 H395 M25 100 H395 M25 60 H395" opacity=".3" /></g>}
             {panel.kind==="plot" && <><text x="25" y="14" fontSize="11" fill="currentColor">{panel.y_label}</text><text x="395" y="207" fontSize="11" textAnchor="end" fill="currentColor">{panel.x_label}</text></>}
             {entities.filter(e=>e.panel===panel.id && e.opacity>0).map(e=>{
               const matches = scene.bindings?.filter(b=>b.target_ids.includes(e.id)) ?? [];
               const matching = matches.find(b=>b.id===link?.id) ?? matches[0];
-              const highlighted = selected.has(e.id) || beat.focus?.includes(e.id);
-              const color=TONE[e.tone ?? "neutral"];
+              const linked = selected.has(e.id);
+              const highlighted = linked || beat.focus?.includes(e.id);
+              const color=linked ? "var(--tess-scene-focus)" : TONE[e.tone ?? "neutral"];
               const x=sx(e.x), y=sy(e.y), w=e.width ?? 14, h=e.height ?? 24;
               const iso = panel.kind==="diagram" && panel.projection==="isometric";
-              return <g key={e.id} opacity={e.opacity/100} strokeWidth={highlighted?3:1.5} stroke={color} fill="none"
+              return <g key={e.id} data-scene-entity={e.id} data-linked={linked||undefined} opacity={e.opacity/100} strokeWidth={highlighted?3:1.5} stroke={color} fill="none"
                 onPointerEnter={matching?event=>{if(event.pointerType!=="touch")setHover(matching.id);}:undefined} onPointerLeave={matching?()=>setHover(null):undefined}
-                onClick={matching?()=>toggle(matching.id):undefined} className={matching?"cursor-pointer":undefined}>
+                onClick={matching?()=>toggle(matching.id):undefined} className={matching?"tess-scene-target cursor-pointer":undefined} data-kind={e.kind}>
                 <title>{e.label}</title>
                 {e.kind==="path" ? <><polyline points={e.points!.map(([px,py])=>sx(px+e.x)+","+sy(py+e.y)).join(" ")} strokeLinecap="round" strokeLinejoin="round" /><polyline points={e.points!.map(([px,py])=>sx(px+e.x)+","+sy(py+e.y)).join(" ")} stroke="transparent" strokeWidth="14" /></> :
-                 e.kind==="box" ? <>{iso && <path d={"M"+(x-w/2)+" "+(y-h/2)+" l10 -7 h"+w+" l-10 7 M"+(x+w/2)+" "+(y-h/2)+" l10 -7 v"+h+" l-10 7"} opacity=".6" />}<rect x={x-w/2} y={y-h/2} width={w} height={h} rx="4" fill="var(--panel-solid)" /></> :
+                 e.kind==="box" ? <>{iso && <g className="tess-scene-solid" style={{color}}>
+                   <path className="tess-scene-solid-top" d={"M"+(x-w/2)+" "+(y-h/2)+" l10 -7 h"+w+" l-10 7 Z"} />
+                   <path className="tess-scene-solid-side" d={"M"+(x+w/2)+" "+(y-h/2)+" l10 -7 v"+h+" l-10 7 Z"} />
+                 </g>}<rect x={x-w/2} y={y-h/2} width={w} height={h} rx={iso?0:4} className={iso?"tess-scene-solid-front":undefined} style={iso?{color}:undefined} fill={linked?"var(--tess-scene-focus-bg)":"var(--panel-solid)"} /></> :
                  (e.kind==="circle" || e.kind==="point") ? <circle cx={x} cy={y} r={e.kind==="point"? (highlighted?8:5):w/2} fill={e.kind==="point"?color:"none"} /> : null}
-                {e.kind!=="path" && <text stroke="none" fill="currentColor" fontSize="12" fontWeight={highlighted?700:400} x={x} y={y+(e.kind==="box"?h/2+16:e.kind==="circle"?w/2+16:e.kind==="point"?20:0)} textAnchor="middle">{e.label}</text>}
+                {e.kind!=="path" && <text stroke="none" fill="currentColor" fontSize="12" className={linked?"tess-scene-linked-label":undefined} fontWeight={highlighted?700:400} x={x} y={y+(e.kind==="box"?h/2+16:e.kind==="circle"?w/2+16:e.kind==="point"?20:0)} textAnchor="middle">{e.label}</text>}
               </g>;
             })}
           </svg>;
@@ -140,7 +145,7 @@ export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
           })()}
           {!!scene.bindings?.some(b=>b.target_ids.some(key=>entities.some(e=>e.id===key && e.panel===panel.id && shown.has(key)))) && <div className="flex flex-wrap gap-2">
             {entities.filter(e=>e.panel===panel.id && shown.has(e.id)).flatMap(e=>(scene.bindings??[]).filter(b=>b.target_ids.includes(e.id)).map(b=>
-              <button key={e.id+":"+b.id} type="button" className={button+(link?.id===b.id?" font-bold underline":"")} aria-pressed={pinned===b.id} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{e.label}</button>))}
+              <button key={e.id+":"+b.id} type="button" className={button+linkClass(b.id)} aria-pressed={pinned===b.id} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{e.label}</button>))}
           </div>}
           </>
         }

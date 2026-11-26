@@ -1,7 +1,7 @@
 .tess-scene-layout { container-type: inline-size; }
 .tess-scene-panels { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
 @container (min-width: 52rem) {
-  .tess-scene-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tess-scene-panels:not([data-layout="single"]) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container (min-width: 36rem) {
   .tess-scene-panels[data-layout="compact-inspect"] {
@@ -11,3 +11,53 @@
     order: 1;
   }
 }
+
+.tess-scene-layout {
+  --tess-scene-focus: #93500d;
+  --tess-scene-focus-bg: #fff0c6;
+}
+.dark .tess-scene-layout {
+  --tess-scene-focus: #ffd27d;
+  --tess-scene-focus-bg: #513815;
+}
+.tess-scene-linked-chip {
+  color: var(--tess-scene-focus);
+  background: var(--tess-scene-focus-bg);
+  box-shadow: inset 0 0 0 1px var(--tess-scene-focus);
+}
+.tess-scene-target[data-linked] {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--tess-scene-focus) 45%, transparent));
+}
+.tess-scene-linked-label {
+  fill: var(--tess-scene-focus);
+  stroke: var(--tess-scene-focus-bg);
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+/* An editorial canvas: ink-like edges, readable objects and a quiet grid. */
+.tess-scene-canvas[data-projection="isometric"] {
+  --scene-paper: #faf5ea;
+  --scene-grid: #665b4415;
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+  background-color: var(--scene-paper);
+  background-image:
+    repeating-linear-gradient(30deg, transparent 0 12px, var(--scene-grid) 12px 13px),
+    repeating-linear-gradient(-30deg, transparent 0 12px, var(--scene-grid) 12px 13px);
+}
+.dark .tess-scene-canvas[data-projection="isometric"] {
+  --scene-paper: #1e2229;
+  --scene-grid: #f6ecd116;
+}
+.tess-scene-solid-top { fill: color-mix(in srgb, currentColor 12%, var(--scene-paper)); }
+.tess-scene-solid-side { fill: color-mix(in srgb, currentColor 38%, var(--scene-paper)); }
+.tess-scene-solid-front { fill: color-mix(in srgb, currentColor 23%, var(--scene-paper)); }
+.tess-scene-target[data-linked] .tess-scene-solid-front { fill: var(--tess-scene-focus-bg); }
+.tess-scene-canvas[data-projection="isometric"] [data-kind="point"] circle {
+  stroke: var(--scene-paper);
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 0 2px currentColor);
+}
+
+.tess-scene-layout:has([data-layout="single"]) { max-width: 52rem; }

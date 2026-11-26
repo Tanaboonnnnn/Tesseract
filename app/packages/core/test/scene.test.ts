@@ -1,5 +1,6 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { SceneSchema } from "../src/scene.ts";
 import { sampleScene } from "../src/scene-model.ts";
 
@@ -71,4 +72,37 @@ test("opt-in visual easing and step changes are deterministic; linear remains th
   assert.equal(sampleScene(s,250).entities[1]?.x,10);
   assert.equal(sampleScene(s,1000).entities[1]?.x,40);
   assert.equal(sampleScene(SceneSchema.parse(b),250).entities[0]?.x,20);
+});
+
+const loadFixture = (name: string) => SceneSchema.parse(JSON.parse(
+  readFileSync(new URL(`../../../fixtures/motion/${name}.json`, import.meta.url), "utf8"),
+));
+
+test("the load balancer dot follows its rendered route and never travels backwards while visible", () => {
+  const scene=loadFixture("load-balancer");
+  for (const [i, server] of ["a","b","c"].entries()) {
+    const points=[[9,53],...scene.entities.find(e=>e.id===`route-${server}`)!.points!];
+    const at=(ms:number)=>sampleScene(scene, i*2500+ms).entities.find(e=>e.id==="request")!;
+    for(let t=0;t<2130;t+=25) {
+      const point=at(t);
+      assert.ok(point.opacity>0);
+      assert.ok(at(t+1).x>=point.x);
+      assert.ok(points.slice(1).some(([x,y],j)=>{
+        const [a,b]=points[j]!;
+        const u=(point.x-a!)/(x!-a!);
+        return u>=-1e-5 && u<=1+1e-5 && Math.abs(point.y-(b!+(y!-b!)*u))<1e-4;
+      }),`off drawn route ${server} at ${t} ms`);
+    }
+    assert.equal(at(2130).x,88);
+    assert.equal(at(2400).opacity,0);
+  }
+});
+
+test("the 3D example's marker moves in depth while the sphere stays fixed", () => {
+  const scene=loadFixture("sphere");
+  const at=(ms:number,id:string)=>sampleScene(scene,ms).entities.find(e=>e.id===id)!;
+  assert.equal(at(3200,"marker").z,52);
+  assert.equal(at(5600,"marker").z,90);
+  assert.equal(at(8000,"marker").z,52);
+  assert.deepEqual(at(3200,"sphere"),at(5600,"sphere"));
 });
