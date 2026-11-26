@@ -82,7 +82,13 @@ describe("remote profile", () => {
       expect(names).not.toContain(bad);
     }
     expect(client.getInstructions()).toMatch(/connected remotely/);
-    for (const bad of ["create_course", "publish_course", "restore_course"]) expect(names).not.toContain(bad);
+    for (const bad of ["create_course", "create_roadmap", "publish_course", "restore_course"]) expect(names).not.toContain(bad);
+    expect(client.getInstructions()).toMatch(/Do not substitute a Learning Map/);
+    for (const name of ["create_course", "create_roadmap"]) {
+      const denied = await client.callTool({name,arguments:{id:"wrong-route",title:"Wrong route",phases:["unit"]}});
+      expect(denied.isError).toBe(true);
+    }
+    expect(store.listLearning().some(l=>l.id==="wrong-route")).toBe(false);
     const payload = (await client.callTool({name:"classroom_format", arguments:{}})).content as {text:string}[];
     const {example} = JSON.parse(payload[0]!.text);
     const receipt = await client.callTool({name:"submit_course_draft", arguments:{request_id:"remote-draft-path",bundle:example}});

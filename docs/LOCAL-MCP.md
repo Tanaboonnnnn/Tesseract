@@ -17,8 +17,12 @@ client's **Streamable HTTP** URL field. Leave its Authorization settings empty.
 The private URL is the credential, contains a random 256-bit secret, and stays
 valid only until you stop or restart the listener. Treat it like a password:
 do not share it, paste it in a browser, or sync it to a cloud account. This mode
-grants the same full local tool profile (including writes) as the header mode.
-Use it only with a trusted native app on the same computer. Both modes stay
+keeps local tools, including writes, but omits the two legacy Learning Map
+creators (`create_course` and `create_roadmap`). For a teaching course the agent
+reads `classroom_format` and calls `submit_course_draft`; only the owner can
+publish in the app. Existing maps remain accessible, and the header mode and
+stdio keep their existing tools. Use this link only with a trusted native app
+on the same computer. Both modes stay
 on loopback; OpenAI Tunnel has its own separate controls and permissions.
 
 ## Start it from a terminal

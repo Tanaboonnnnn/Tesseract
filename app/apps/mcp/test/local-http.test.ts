@@ -68,7 +68,7 @@ describe("local Streamable HTTP MCP", () => {
 
   });
 
-  it("grants the same local tools with a secret URL and no header, only until stopped", async () => {
+  it("routes teaching courses to Classroom without legacy creators in URL-only mode", async () => {
     const store = await fixtureStore();
     const link = await startLocalHttp(store, { token, authMode: "link" });
     stop.push(link.close);
@@ -96,8 +96,23 @@ describe("local Streamable HTTP MCP", () => {
     await web.connect(new StreamableHTTPClientTransport(new URL(link.url)));
     await standard.connect(new StreamableHTTPClientTransport(new URL(normal.url), { requestInit: { headers: auth } }));
     const names = (list: Awaited<ReturnType<Client["listTools"]>>) => list.tools.map(t=>t.name).sort();
-    expect(names(await web.listTools())).toEqual(names(await standard.listTools()));
-    expect((await web.callTool({name:"classroom_format",arguments:{}})).isError).not.toBe(true);
+    const legacy = ["create_course","create_roadmap"];
+    const headerTools = names(await standard.listTools());
+    expect(headerTools).toEqual(expect.arrayContaining(legacy));
+    expect(names(await web.listTools())).toEqual(headerTools.filter(name=>!legacy.includes(name)));
+    expect(web.getInstructions()).toMatch(/classroom_format.*submit_course_draft/s);
+    for (const name of legacy) {
+      const denied = await web.callTool({name,arguments:{id:"wrong-route",title:"Wrong route",phases:["unit"]}});
+      expect(denied.isError).toBe(true);
+    }
+    const format = await web.callTool({name:"classroom_format",arguments:{}});
+    expect(format.isError).not.toBe(true);
+    const example=JSON.parse((format.content as {text:string}[])[0]!.text).example;
+    const draft=await web.callTool({name:"submit_course_draft",arguments:{request_id:"url-only-classroom",bundle:example}});
+    expect(draft.isError).not.toBe(true);
+    expect(JSON.parse((draft.content as {text:string}[])[0]!.text)).toMatchObject({ok:true,status:"staged"});
+    expect(store.listLearning()).toEqual([]);
+    expect((await web.listTools()).tools.some(t=>t.name==="publish_course")).toBe(false);
     await web.close();
     await link.close();
     stop.shift();

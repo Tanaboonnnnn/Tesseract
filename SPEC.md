@@ -396,6 +396,8 @@ All AI clients get full read/write; every write is logged with the agent name.
 | Schedule | `get_schedule` (default 7 days), `add_event`, `update_event`, `delete_event`, `sync_calendar` |
 | Visuals | `visual_formats` (format + example per type), `save_visual` (create/replace), `get_visuals` (list or one), `delete_visual` |
 
+**URL-only Local MCP:** This opt-in loopback transport omits the legacy Learning Map creators `create_course` and `create_roadmap` to route teaching requests to Classroom (`classroom_format` → `submit_course_draft`). It leaves other tools, existing maps, header-authenticated Local MCP, stdio, and the remote allow-list unchanged. OpenAI Tunnel already omits both legacy creators and gives the same Classroom authoring guidance without expanding its allow-list. Publishing remains an owner action in the app.
+
 **Remote profile** (`--profile remote`, Phase 8a): only these tools are registered for cloud chat through the tunnel.
 Reads: get_overview, search, list_goals, list_projects, get_project, get_project_map, list_learning, get_learning,
 get_review_queue, get_skill_profile, list_assessments, list_notes, get_note, list_quizzes, get_schedule, get_visuals,

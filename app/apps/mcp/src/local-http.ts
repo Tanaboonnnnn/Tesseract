@@ -108,7 +108,7 @@ export async function startLocalHttp(store: Store, options: { token: string; por
         sessionIdGenerator: undefined,
         enableJsonResponse: true,
       });
-      const mcp = createServer(store, { google, profile: "local" });
+      const mcp = createServer(store, { google, profile: "local", classroomFirst: linkMode });
       res.once("close", () => { void mcp.close().catch(() => {}); });
       await mcp.connect(transport);
       await transport.handleRequest(req, res, body.value);

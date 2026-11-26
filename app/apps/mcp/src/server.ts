@@ -163,6 +163,8 @@ export interface ServerOptions {
    * reads plus a few undoable, low-risk writes. No deletes, undo, bulk redraws, skill/assessment changes or inbox.
    */
   profile?: "local" | "remote" | "classroom";
+  /** Local URL-only connections author Classroom courses instead of new Learning Maps. */
+  classroomFirst?: boolean;
 }
 
 /** Least-privilege tool set for the remote profile (SPEC §5). */
@@ -180,8 +182,12 @@ export const REMOTE_TOOLS = [
 
 const REMOTE_NOTE = `
 - You are connected remotely (cloud chat through a tunnel). This is a read-mostly tool set: deleting, undoing and
-  changing skill levels or assessments are not available here; ask the user to do those in the app.
-- Read classroom_format before submit_course_draft: new Classroom drafts require v2, text first, and lesson guidance. Drafts are not published; the owner reviews them on this PC. After silence or timeout, query get_draft_status with the same request ID; never automatically resend.`;
+  changing skill levels or assessments are not available here; ask the user to do those in the app.`;
+
+const CLASSROOM_FIRST_NOTE = `
+- For a request to create or revise a teaching course, lessons, or a classroom, call classroom_format first, then submit_course_draft. This creates a Learn / Lab / Check draft for the owner to review; never publish. New drafts require v2, text first, and lesson guidance. Follow validation fixes if rejected; after an uncertain submission, call get_draft_status with the same request ID rather than retrying automatically.
+- Do not substitute a Learning Map, add_topic, or save_visual for a Classroom draft. Those only maintain existing Learning content; new Learning Maps are not created through this connection. The owner can still use the app to create or edit a separate Learning Map.`;
+const LEARNING_MAP_CREATORS = new Set(["create_course", "create_roadmap"]);
 
 const CLASSROOM_EXAMPLE = {
   schema_version: 2, course_id: "liter-water-example", title: "Reading a measuring jug", language: "en",
@@ -249,7 +255,8 @@ function registerDraftTools(server: McpServer, store: Store) {
 export function createServer(store: Store, options: ServerOptions = {}): McpServer {
   if (options.profile === "classroom") return classroomServer(store);
   const remote = options.profile === "remote";
-  const server = new McpServer({ name: "tesseract", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS + (remote ? REMOTE_NOTE : "") });
+  const classroomFirst = options.profile === "local" && options.classroomFirst;
+  const server = new McpServer({ name: "tesseract", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS + (remote ? REMOTE_NOTE : "") + (remote || classroomFirst ? CLASSROOM_FIRST_NOTE : "") });
   if (remote || options.profile === "local") registerDraftTools(server, store);
   const classrooms = new ClassroomStore(store.dataDir);
   const courseKey = (value: string) => value.startsWith("courses/") ? value.slice(8) : value;
@@ -299,7 +306,7 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
   const allowed = new Set<string>(REMOTE_TOOLS);
   const register = server.registerTool.bind(server);
   // Remote profile: tools outside the allow-list are never registered, so they can't be listed or called.
-  const tool = ((name: string, ...rest: unknown[]) => (remote && !allowed.has(name) ? undefined : (register as (...a: unknown[]) => unknown)(name, ...rest))) as typeof register;
+  const tool = ((name: string, ...rest: unknown[]) => (((remote && !allowed.has(name)) || (classroomFirst && LEARNING_MAP_CREATORS.has(name))) ? undefined : (register as (...a: unknown[]) => unknown)(name, ...rest))) as typeof register;
 
   /* ----- overview & search ----- */
 
@@ -453,7 +460,7 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
     "create_roadmap",
     {
       description:
-        "Create a learning roadmap with phases and topics in one call. Link topics to skill ids (see get_skill_profile) and to a goal.",
+        "Create a Learning Map (roadmap) with phases and topics, not a Classroom. Only use for a roadmap explicitly requested by the user. Link topics to skill ids (see get_skill_profile) and to a goal.",
       inputSchema: {
         id,
         title: z.string(),
@@ -471,7 +478,7 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
   tool(
     "create_course",
     {
-      description: "Create a university/other course with topics, schedule, assignments and exams.",
+      description: "Create a legacy Learning Map with topics, dates, assignments and exams, not a teaching course. For Classroom lessons with Learn / Lab / Check, read classroom_format and use submit_course_draft.",
       inputSchema: {
         id,
         title: z.string(),

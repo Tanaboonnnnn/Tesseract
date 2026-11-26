@@ -88,7 +88,7 @@ function LocalMcpAccess(){
       <Button onClick={()=>control.mutate("start-link")} disabled={control.isPending}>Start URL-only MCP</Button>
     </div>:info.mode==="link"?<>
       <p className="text-sm font-semibold">URL-only MCP is running on this computer</p>
-      <p className="text-xs muted">This link grants full local tool access. Paste it only into a trusted app on this computer. Do not share it.</p>
+      <p className="text-xs muted">This private link can read and write local data. New teaching courses use Classroom drafts. Paste it only into a trusted app on this computer.</p>
       <div className="flex flex-wrap gap-2">
         <Button onClick={()=>{control.mutate("start-link",{onSuccess:(data)=>{if(data.available&&data.on&&data.mode==="link"&&data.url)void copy(data.url,"Private URL");}});}} disabled={control.isPending}>Copy private URL</Button>
         <Button onClick={()=>control.mutate("stop")} disabled={control.isPending}>Stop Local MCP</Button>
