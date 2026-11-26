@@ -519,3 +519,28 @@ it("advertises and validates cross-subject scenes without creating a draft", asy
     expect(new ClassroomStore(store.dataDir).listPublished()).toEqual([]);
   }
 });
+
+it("exposes compact ISO authoring preview without adding a remote write or Classroom v1 type", async () => {
+  const { client, call, store } = await connect("iso-preview-test", {profile:"remote"});
+  const tools=(await client.listTools()).tools;
+  expect(tools.map(t=>t.name).sort()).toEqual([...REMOTE_TOOLS].sort());
+  expect(JSON.stringify(tools)).not.toContain("load-balancer");
+  const generic=await call("visual_formats");
+  expect(generic.previews).toEqual(["iso"]);
+  const menu=await call("visual_formats",{type:"iso"});
+  expect(menu.packs).toEqual(["network","physics"]);
+  expect(menu.components).toBeUndefined();
+  const f=await call("visual_formats",{type:"iso",pack:"network"});
+  expect(f).toMatchObject({availability:"preview-only",example:{type:"iso",data:{pack:"network"}}});
+  expect(f.examples).toBeUndefined();
+  expect(f.components.map((c:{component:string})=>c.component)).not.toContain("lamp");
+  expect(f.components.find((c:{component:string})=>c.component==="client").anchors).toEqual({out:"out"});
+  expect((await call("visual_formats",{type:"iso",pack:"biology"})).issue?.fix).toMatch(/network or physics/);
+  const before=store.listActivity().length;
+  expect((await call("save_visual",{learning:"intro-to-rust",...f.example})).error).toMatch(/iso|type/);
+  const {example}=await call("classroom_format");
+  example.lessons[0]!.blocks.push({type:"visual",visual:{id:"iso-demo",...f.example},fallback:"Text fallback."});
+  expect(await call("submit_course_draft",{request_id:"iso-frozen-v1",bundle:example})).toMatchObject({ok:false});
+  expect(store.listActivity().length).toBe(before);
+  expect(new ClassroomStore(store.dataDir).listDrafts()).toHaveLength(0);
+});

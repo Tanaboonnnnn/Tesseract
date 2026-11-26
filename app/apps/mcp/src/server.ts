@@ -39,6 +39,7 @@ import {
   search,
   type Store,
   visualFormat,
+  isoFormat,
 } from "@tesseract/core";
 import type { GoogleService } from "@tesseract/gcal";
 import { z } from "zod";
@@ -512,10 +513,18 @@ export function createServer(store: Store, options: ServerOptions = {}): McpServ
     {
       description:
         "Study visual types and, for one type, its fields + a full example. Best for teaching: lesson (text, formula, step-by-step trace, native motion, plot, simulation, self-check). Also plot, state, gantt, grid, tree, html. Call before save_visual.",
-      inputSchema: { type: z.enum(VISUAL_TYPES).optional() },
+      inputSchema: { type: z.enum([...VISUAL_TYPES, "iso"]).optional(), pack: z.string().max(64).optional() },
       annotations: READ,
     },
-    ({ type }) => run(() => visualFormat(type)),
+    ({ type, pack }) => run(() => {
+      if (type === "iso") {
+        const { examples: _allExamples, ...format } = isoFormat(pack);
+        return format;
+      }
+      if (pack !== undefined) throw new BrainError("VALIDATION", "Use pack only with visual_formats type iso.");
+      const format = visualFormat(type);
+      return type ? format : { ...format, previews: ["iso"] };
+    }),
   );
 
   tool(
