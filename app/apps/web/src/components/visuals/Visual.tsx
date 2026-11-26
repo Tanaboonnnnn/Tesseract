@@ -1,3 +1,4 @@
+import { ScenePlayer } from "./ScenePlayer.tsx";
 /**
  * One study visual + its step player. Steps only toggle classes (opacity / glow with a short CSS transition),
  * so nothing runs at rest; autoplay is a plain timer that stops at the end, when hidden or off-screen.
@@ -64,6 +65,7 @@ export function Visual({ visual, keys = false, learning = "" }: { visual: Visual
   const fx = makeFx(visual, step);
   const caption = step >= 0 ? visual.steps[step]?.text : null;
 
+  if (visual.type === "scene") return <ScenePlayer key={visual.id+":"+visual.updated} scene={visual.data} title={visual.title} />;
   if (visual.type === "lesson") return <Lesson visual={visual} learning={learning} />;
   if (visual.type === "html") return <HtmlFrame html={visual.data.html} height={visual.data.height} title={visual.title} />;
 

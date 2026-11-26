@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "style": "minimal-technical",
+  "duration_ms": 8000,
+  "panels": [
+    {
+      "id": "plot",
+      "kind": "plot",
+      "label": "A one-feature classifier",
+      "x_label": "Feature x (scaled)",
+      "y_label": "Class regions"
+    },
+    {
+      "id": "rule",
+      "kind": "inspect",
+      "label": "Classification rule",
+      "tex": " \\term{feature}{x} \\geq \\term{cutoff}{t} \\Rightarrow 1"
+    }
+  ],
+  "entities": [
+    {
+      "id": "threshold",
+      "panel": "plot",
+      "kind": "path",
+      "x": 54,
+      "y": 0,
+      "points": [
+        [
+          0,
+          10
+        ],
+        [
+          0,
+          88
+        ]
+      ],
+      "label": "Decision boundary",
+      "tone": "caution"
+    },
+    {
+      "id": "query",
+      "panel": "plot",
+      "kind": "point",
+      "x": 32,
+      "y": 47,
+      "label": "Example x",
+      "tone": "primary"
+    },
+    {
+      "id": "negative",
+      "panel": "plot",
+      "kind": "text",
+      "x": 23,
+      "y": 24,
+      "label": "Class 0"
+    },
+    {
+      "id": "positive",
+      "panel": "plot",
+      "kind": "text",
+      "x": 76,
+      "y": 24,
+      "label": "Class 1"
+    }
+  ],
+  "beats": [
+    {
+      "id": "look",
+      "at_ms": 0,
+      "label": "Look at x",
+      "text": "This is a teaching model with a single scaled feature.",
+      "focus": [
+        "query"
+      ]
+    },
+    {
+      "id": "move",
+      "at_ms": 3600,
+      "label": "Try a threshold",
+      "text": "Move t. If the boundary passes the point, its predicted class flips. The underlying sample does not change.",
+      "focus": [
+        "threshold"
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "id": "threshold",
+      "label": "Threshold t",
+      "min": 25,
+      "max": 75,
+      "initial": 54,
+      "target": "threshold",
+      "property": "x"
+    }
+  ],
+  "bindings": [
+    {
+      "id": "feature",
+      "panel": "rule",
+      "term": "x",
+      "target_ids": [
+        "query"
+      ],
+      "explanation": "The feature value of the fixed example."
+    },
+    {
+      "id": "cutoff",
+      "panel": "rule",
+      "term": "t",
+      "target_ids": [
+        "threshold"
+      ],
+      "explanation": "The threshold: predict class 1 if x is at least t."
+    }
+  ]
+}

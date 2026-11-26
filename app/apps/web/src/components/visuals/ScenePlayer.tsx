@@ -1,0 +1,141 @@
+import { FormulaBlock } from "./Lesson.tsx";
+import { useEffect, useId, useRef, useState } from "react";
+import type { Scene } from "@tesseract/core";
+import { sampleScene } from "@tesseract/core/pure";
+
+const AUTO_KEY = "tesseract:scene-autoplay";
+const candidates = new Map<string, { ratio:number; manual:number; setActive:(active:boolean)=>void }>();
+function choosePlayer() {
+  const selected = [...candidates].filter(([,c])=>c.ratio>=0.2)
+    .sort(([,a],[,b])=> b.manual-a.manual || b.ratio-a.ratio)[0]?.[0];
+  for (const [key, c] of candidates) c.setActive(key===selected);
+}
+let playSequence = 0;
+const TONE = {neutral:"var(--text-muted, #64748b)",primary:"var(--color-accent-500, #3478b8)",secondary:"#258477",caution:"#b4782a"};
+const sx = (x:number) => 25 + x*3.7;
+const sy = (y:number) => 18 + y*1.62;
+
+export function ScenePlayer({ scene, title }: { scene:Scene; title:string }) {
+  const id = useId();
+  const root = useRef<HTMLElement>(null);
+  const clock = useRef(0);
+  const priority = useRef(0);
+  const [time,setTime] = useState(0);
+  const [active,setActive] = useState(false);
+  const [visible,setVisible] = useState(() => !document.hidden);
+  const [reduced,setReduced] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [autoplay,setAutoplay] = useState(()=>localStorage.getItem(AUTO_KEY)!=="off");
+  useEffect(()=>{
+    const update=()=>setAutoplay(localStorage.getItem(AUTO_KEY)!=="off");
+    window.addEventListener("tesseract-scene-autoplay",update);
+    window.addEventListener("storage",update);
+    return ()=>{window.removeEventListener("tesseract-scene-autoplay",update);window.removeEventListener("storage",update);};
+  },[]);
+  const [mode,setMode] = useState<"auto"|"play"|"pause">("auto");
+  const [speed,setSpeed] = useState(1);
+  const [inputs,setInputs] = useState<Record<string,number>>({});
+  const [hover,setHover] = useState<string|null>(null);
+  const [focus,setFocus] = useState<string|null>(null);
+  const [pinned,setPinned] = useState<string|null>(null);
+
+  useEffect(() => {
+    const q = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const visibility = () => setVisible(!document.hidden);
+    const change = () => { setReduced(q.matches); if (q.matches) setMode("pause"); };
+    document.addEventListener("visibilitychange",visibility);
+    q.addEventListener("change",change);
+    return () => { document.removeEventListener("visibilitychange",visibility); q.removeEventListener("change",change); };
+  },[]);
+
+  useEffect(() => {
+    const element=root.current!;
+    if (!("IntersectionObserver" in window) || !visible || mode==="pause" || ((reduced || !autoplay) && mode==="auto")) { setActive(false); return; }
+    const observer = new IntersectionObserver(([entry])=>{
+      candidates.set(id,{ratio:entry?.intersectionRatio ?? 0,manual:mode==="play" ? priority.current : 0,setActive});
+      choosePlayer();
+    },{threshold:[0,0.2,0.4,0.6,0.8,1]});
+    observer.observe(element);
+    return ()=>{observer.disconnect(); candidates.delete(id); choosePlayer(); };
+  },[id,mode,visible,reduced,autoplay]);
+
+  const canAnimate = active && visible && mode!=="pause" && ((!reduced && autoplay) || mode==="play");
+  useEffect(()=>{
+    if (!canAnimate || (clock.current===scene.duration_ms && !scene.loop)) return;
+    let frame=0;
+    let previous:number|undefined;
+    const animate=(now:number)=>{
+      const next=clock.current + Math.min(100,now-(previous ?? now))*speed;
+      previous=now;
+      clock.current = scene.loop ? next % scene.duration_ms : Math.min(next,scene.duration_ms);
+      setTime(clock.current);
+      if (scene.loop || next<scene.duration_ms) frame=requestAnimationFrame(animate);
+      else setMode("pause");
+    };
+    frame=requestAnimationFrame(animate);
+    return ()=>cancelAnimationFrame(frame);
+  },[canAnimate,speed,scene.duration_ms,scene.loop]);
+
+  const { entities, beat } = sampleScene(scene,time,inputs);
+  const playing = canAnimate && (scene.loop || time<scene.duration_ms);
+  const shown = new Set(entities.filter(e=>e.opacity>0).map(e=>e.id));
+  const link = scene.bindings?.find(b=>b.id===(pinned ?? focus ?? hover) && b.target_ids.some(e=>shown.has(e)));
+  const selected = new Set(link?.target_ids ?? []);
+  const seek=(ms:number)=>{setMode("pause"); clock.current=ms; setTime(ms);};
+  const play=()=>{priority.current=++playSequence; if (clock.current>=scene.duration_ms) { clock.current=0; setTime(0); } setMode("play");};
+  const step=scene.beats.indexOf(beat);
+  const button="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--lane)] disabled:opacity-40";
+  const toggle = (key:string)=>setPinned(old=>old===key ? null : key);
+
+  return <section ref={root} aria-label={title} className="my-3 min-w-0 space-y-3 rounded-xl border border-[var(--line)] p-3 sm:p-4" onKeyDown={e=>{if(e.key==="Escape"){setPinned(null);setHover(null);setFocus(null);}}}>
+    <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+      {scene.panels.map(panel=><section key={panel.id} className="min-w-0 rounded-lg bg-[var(--lane)] p-3">
+        <h4 className="break-words text-sm font-semibold">{panel.label}</h4>
+        {panel.kind==="inspect" && panel.tex ? <div className="mt-2">
+        <FormulaBlock b={{kind:"formula",tex:panel.tex,where:[],terms:(scene.bindings??[]).filter(b=>b.panel===panel.id).map(b=>({id:b.id,label:b.term,note:b.explanation}))}}
+          connected={{active:link?.id??null,pinned,onHover:setHover,onFocus:setFocus,onSelect:toggle,enabled:key=>(scene.bindings??[]).some(b=>b.id===key && b.target_ids.some(t=>shown.has(t)))}} />
+        </div> : panel.kind==="inspect" ? <div className="mt-2 flex flex-wrap gap-2">{scene.bindings?.filter(b=>b.panel===panel.id).map(b=><button key={b.id} type="button" className={button+" break-words "+(link?.id===b.id?"font-bold underline":"")} aria-pressed={pinned===b.id} disabled={!b.target_ids.some(t=>shown.has(t))} onPointerEnter={()=>setHover(b.id)} onPointerLeave={()=>setHover(null)} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{b.term}</button>)}</div> :
+          <>
+          <svg className="mt-1 h-auto w-full" viewBox="0 0 420 214" aria-label={panel.label}>
+            {panel.kind==="plot" && <g fill="none" stroke="currentColor" opacity=".45"><path d="M25 18 V180 H395" /><path d="M25 140 H395 M25 100 H395 M25 60 H395" opacity=".3" /></g>}
+            {panel.kind==="plot" && <><text x="25" y="14" fontSize="11" fill="currentColor">{panel.y_label}</text><text x="395" y="207" fontSize="11" textAnchor="end" fill="currentColor">{panel.x_label}</text></>}
+            {entities.filter(e=>e.panel===panel.id && e.opacity>0).map(e=>{
+              const matches = scene.bindings?.filter(b=>b.target_ids.includes(e.id)) ?? [];
+              const matching = matches.find(b=>b.id===link?.id) ?? matches[0];
+              const highlighted = selected.has(e.id) || beat.focus?.includes(e.id);
+              const color=TONE[e.tone ?? "neutral"];
+              const x=sx(e.x), y=sy(e.y), w=e.width ?? 14, h=e.height ?? 24;
+              const iso = panel.kind==="diagram" && panel.projection==="isometric";
+              return <g key={e.id} opacity={e.opacity/100} strokeWidth={highlighted?3:1.5} stroke={color} fill="none"
+                onPointerEnter={matching?()=>setHover(matching.id):undefined} onPointerLeave={matching?()=>setHover(null):undefined}
+                onClick={matching?()=>toggle(matching.id):undefined} className={matching?"cursor-pointer":undefined}>
+                <title>{e.label}</title>
+                {e.kind==="path" ? <><polyline points={e.points!.map(([px,py])=>sx(px+e.x)+","+sy(py+e.y)).join(" ")} strokeLinecap="round" strokeLinejoin="round" /><polyline points={e.points!.map(([px,py])=>sx(px+e.x)+","+sy(py+e.y)).join(" ")} stroke="transparent" strokeWidth="14" /></> :
+                 e.kind==="box" ? <>{iso && <path d={"M"+(x-w/2)+" "+(y-h/2)+" l10 -7 h"+w+" l-10 7 M"+(x+w/2)+" "+(y-h/2)+" l10 -7 v"+h+" l-10 7"} opacity=".6" />}<rect x={x-w/2} y={y-h/2} width={w} height={h} rx="4" fill="var(--panel-solid)" /></> :
+                 (e.kind==="circle" || e.kind==="point") ? <circle cx={x} cy={y} r={e.kind==="point"? (highlighted?8:5):w/2} fill={e.kind==="point"?color:"none"} /> : null}
+                {e.kind!=="path" && <text stroke="none" fill="currentColor" fontSize="12" fontWeight={highlighted?700:400} x={x} y={y+(e.kind==="box"?h/2+16:e.kind==="circle"?w/2+16:e.kind==="point"?20:0)} textAnchor="middle">{e.label}</text>}
+              </g>;
+            })}
+          </svg>
+          {!!scene.bindings?.some(b=>b.target_ids.some(key=>entities.some(e=>e.id===key && e.panel===panel.id && shown.has(key)))) && <div className="flex flex-wrap gap-2">
+            {entities.filter(e=>e.panel===panel.id && shown.has(e.id)).flatMap(e=>(scene.bindings??[]).filter(b=>b.target_ids.includes(e.id)).map(b=>
+              <button key={e.id+":"+b.id} type="button" className={button+(link?.id===b.id?" font-bold underline":"")} aria-pressed={pinned===b.id} onFocus={()=>setFocus(b.id)} onBlur={()=>setFocus(null)} onClick={()=>toggle(b.id)}>{e.label}</button>))}
+          </div>}
+          </>
+        }
+      </section>)}
+    </div>
+    {link && <p className="break-words text-sm"><strong>{link.term}:</strong> {link.explanation}</p>}
+    <div className="rounded-lg border border-[var(--line)] p-3"><p className="font-semibold">{beat.label}</p><p className="break-words text-sm">{beat.text}</p></div>
+    <div className="flex flex-wrap items-center gap-2">
+      <button type="button" className={button} disabled={step<=0} onClick={()=>seek(scene.beats[step-1]!.at_ms)}>Previous</button>
+      <button type="button" className={button} onClick={playing?()=>setMode("pause"):play}>{playing?"Pause":"Play"}</button>
+      <button type="button" className={button} disabled={step>=scene.beats.length-1} onClick={()=>seek(scene.beats[step+1]!.at_ms)}>Next</button>
+      <button type="button" className={button} onClick={()=>{clock.current=0;setTime(0);play();}}>Replay</button>
+      <label className="text-sm"><input type="checkbox" checked={autoplay} onChange={e=>{localStorage.setItem(AUTO_KEY,e.target.checked?"on":"off");window.dispatchEvent(new Event("tesseract-scene-autoplay"));}} /> Autoplay</label>
+      <label className="text-sm">Speed <select className={button} value={speed} onChange={e=>setSpeed(Number(e.target.value))}>{[0.5,1,1.5,2].map(n=><option key={n} value={n}>{n}×</option>)}</select></label>
+    </div>
+    <label className="block text-sm">Timeline <input className="block w-full" type="range" min={0} max={scene.duration_ms} step={1} value={Math.round(time)} onChange={e=>seek(Number(e.target.value))} /></label>
+    <div className="flex flex-wrap gap-2">{scene.beats.map(b=><button type="button" key={b.id} className={button} aria-current={b===beat?"step":undefined} onClick={()=>seek(b.at_ms)}>{b.label}</button>)}</div>
+    {scene.controls?.map(c=><label key={c.id} className="block text-sm">{c.label}: {inputs[c.id] ?? c.initial}<input className="block w-full" type="range" min={c.min} max={c.max} step="any" value={inputs[c.id] ?? c.initial} onChange={e=>setInputs(old=>({...old,[c.id]:Number(e.target.value)}))}/></label>)}
+  </section>;
+}

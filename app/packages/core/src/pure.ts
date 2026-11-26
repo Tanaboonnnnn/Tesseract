@@ -4,3 +4,5 @@
  */
 export * from "./expr.ts";
 export * from "./sims.ts";
+
+export { sampleScene } from "./scene-model.ts";

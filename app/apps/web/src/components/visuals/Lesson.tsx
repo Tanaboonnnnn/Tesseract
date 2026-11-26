@@ -111,10 +111,17 @@ function Tex({ tex, display = true, className }: { tex: string; display?: boolea
   return <span className={cn("sb-math", display && "block overflow-x-auto py-1 text-xl", className)} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-function FormulaBlock({ b }: { b: Extract<LessonBlock, { kind: "formula" }> }) {
+export function FormulaBlock({ b, connected }: { b: Extract<LessonBlock, { kind: "formula" }>; connected?: {
+  active: string|null;
+  pinned: string|null;
+  onHover: (id:string|null)=>void;
+  onFocus: (id:string|null)=>void;
+  onSelect: (id:string)=>void;
+  enabled: (id:string)=>boolean;
+} }) {
   const [selected, setActive] = useState<number>(-1);
   const [pointed, setPointed] = useState<number>(-1);
-  const active = pointed >= 0 ? pointed : selected;
+  const active = connected ? b.terms.findIndex(t=>t.id===connected.active) : pointed >= 0 ? pointed : selected;
   const scope = useId();
   const color = (i: number) => PALETTE[i % PALETTE.length]!;
   const css = b.terms
@@ -131,8 +138,9 @@ function FormulaBlock({ b }: { b: Extract<LessonBlock, { kind: "formula" }> }) {
         if (event.pointerType === "touch" || !(event.target instanceof Element)) return;
         const target = event.target;
         const index = b.terms.findIndex(t => target.closest(".sb-term-" + t.id));
-        setPointed(index);
-      }} onPointerLeave={() => setPointed(-1)}>
+        if (connected) connected.onHover(b.terms[index]?.id ?? null);
+        else setPointed(index);
+      }} onPointerLeave={() => connected ? connected.onHover(null) : setPointed(-1)}>
         <Tex tex={b.tex} />
       </div>
       {b.terms.length > 0 && (
@@ -147,8 +155,11 @@ function FormulaBlock({ b }: { b: Extract<LessonBlock, { kind: "formula" }> }) {
             {b.terms.map((t, i) => (
               <button
                 key={t.id}
-                aria-pressed={selected === i}
-                onClick={() => setActive(selected === i ? -1 : i)}
+                aria-pressed={connected ? connected.pinned === t.id : selected === i}
+                disabled={connected ? !connected.enabled(t.id) : undefined}
+                onFocus={connected ? ()=>connected.onFocus(t.id) : undefined}
+                onBlur={connected ? ()=>connected.onFocus(null) : undefined}
+                onClick={() => connected ? connected.onSelect(t.id) : setActive(selected === i ? -1 : i)}
                 className={cn("rounded-full px-2.5 py-1 text-xs font-semibold ring-1 transition", active === i ? "ring-2" : "ring-[var(--line)]")}
                 style={{ color: color(i), ...(active === i ? { boxShadow: `0 0 0 2px ${color(i)}` } : {}) }}
               >

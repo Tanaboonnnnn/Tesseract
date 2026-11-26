@@ -11,4 +11,5 @@ export const VISUAL_META: Record<VisualSummary["type"], { label: string; icon: t
   plot: { label: "Plot", icon: ChartSpline },
   lesson: { label: "Lesson", icon: BookOpenText },
   html: { label: "HTML", icon: Code },
+  scene: { label: "Interactive scene", icon: Workflow },
 };

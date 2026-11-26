@@ -1,3 +1,4 @@
+import { SceneSchema, VISUAL_EXAMPLES as SCENE_EXAMPLES } from "@tesseract/core";
 /**
  * MCP server: exposes the Store to AI clients (SPEC §5).
  * Every write goes through Store, so it is validated and logged with the agent name.
@@ -171,7 +172,7 @@ export const REMOTE_TOOLS = [
   // low-risk, undoable writes
   "add_task", "update_task", "add_topic", "update_topic", "add_event", "update_event", "create_note", "create_quiz",
   "save_visual", "set_map_focus",
-  "classroom_format", "submit_course_draft", "get_draft_receipt", "get_draft_status", "list_published_courses",
+  "classroom_format", "validate_course_visual", "submit_course_draft", "get_draft_receipt", "get_draft_status", "list_published_courses",
   "get_published_course", "get_course_lesson", "get_course_visuals", "get_course_revision_anchor", "get_course_activity",
 ] as const;
 
@@ -197,13 +198,19 @@ function classroomServer(store: Store): McpServer {
 
 function registerDraftTools(server: McpServer, store: Store) {
   const c = new ClassroomStore(store.dataDir);
-  server.registerTool("classroom_format", { description: "Course bundle example, constraints and optional validator-derived input JSON Schema.", inputSchema: { include_schema: z.boolean().optional() }, annotations: READ }, ({ include_schema }) => ok({
+  server.registerTool("classroom_format", { description: "Course bundle example, constraints and optional validator-derived input JSON Schema.", inputSchema: { include_schema: z.boolean().optional(), include_scene_schema: z.boolean().optional() }, annotations: READ }, ({ include_schema, include_scene_schema }) => ok({
     ...(include_schema ? { schema: z.toJSONSchema(ClassroomBundleSchema, { io: "input", unrepresentable: "any" }) } : {}),
+    ...(include_scene_schema ? {scene_schema: z.toJSONSchema(SceneSchema, { io:"input" }), scene_example: SCENE_EXAMPLES.scene.example} : {}),
+    scene: "Optional scene visual, v1. Use one focus per beat and a text fallback. Combine diagram, plot and inspect panels without subject-specific templates. Request include_scene_schema for the full contract; validate_course_visual checks only scene data, without storing it.",
     example: CLASSROOM_EXAMPLE, limits: { max_bytes: 262144, max_lessons: 24 },
     blocks: { text: "{type, markdown}", visual: "{type, visual: typed Panya/Tesseract renderer data, fallback}" },
     questions: { single: "{id,type,prompt,choices,correct:[one zero-based index],explanation}", explain: "{id,type,prompt,rubric,model_answer}", multi: "{id,type,prompt,choices,correct,explanation}" },
     labs: "{platform,environment,prerequisites,steps,expected,cleanup?}",
   }));
+  server.registerTool("validate_course_visual", {description:"Validate declarative scene data without creating a draft.",inputSchema:{scene:z.unknown()},annotations:READ}, ({scene}) => {
+    const result=SceneSchema.safeParse(scene);
+    return ok(result.success ? {ok:true,scene_version:result.data.schema_version} : {ok:false,issues:result.error.issues.slice(0,30).map(x=>({path:x.path.join("."),message:x.message}))});
+  });
   server.registerTool("get_draft_receipt", { description: "Look up receipt by request ID without generating another draft.", inputSchema: { request_id: ClassroomSubmitSchema.shape.request_id }, annotations: READ },
     ({ request_id }) => run(() => c.getReceipt(request_id) ?? { ok: false, status: "not_found" }));
   server.registerTool("get_draft_status", { description: "Read-only status by request ID. Unknown means there is no durable receipt yet. Does not replay.", inputSchema: { request_id: ClassroomSubmitSchema.shape.request_id }, annotations: READ },

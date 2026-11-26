@@ -13,3 +13,5 @@ export * from "./backup.ts";
 export * from "./course-package.ts";
 
 export * from "./classroom-read.ts";
+
+export * from "./scene.ts";

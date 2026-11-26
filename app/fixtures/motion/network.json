@@ -1,0 +1,255 @@
+{
+  "schema_version": 1,
+  "style": "minimal-technical",
+  "duration_ms": 9500,
+  "panels": [
+    {
+      "id": "path",
+      "kind": "diagram",
+      "label": "Two local networks, one router",
+      "projection": "isometric"
+    },
+    {
+      "id": "hop",
+      "kind": "plot",
+      "label": "Remaining time to live",
+      "x_label": "Packet journey",
+      "y_label": "TTL: 64 → 63"
+    },
+    {
+      "id": "fields",
+      "kind": "inspect",
+      "label": "Which address changes?"
+    }
+  ],
+  "entities": [
+    {
+      "id": "wire",
+      "panel": "path",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "label": "Connected links",
+      "points": [
+        [
+          10,
+          54
+        ],
+        [
+          88,
+          54
+        ]
+      ]
+    },
+    {
+      "id": "pc",
+      "panel": "path",
+      "kind": "box",
+      "x": 10,
+      "y": 54,
+      "width": 29,
+      "height": 24,
+      "label": "PC"
+    },
+    {
+      "id": "switch",
+      "panel": "path",
+      "kind": "box",
+      "x": 37,
+      "y": 54,
+      "width": 29,
+      "height": 24,
+      "label": "Switch"
+    },
+    {
+      "id": "router",
+      "panel": "path",
+      "kind": "box",
+      "x": 64,
+      "y": 54,
+      "width": 29,
+      "height": 24,
+      "label": "Router"
+    },
+    {
+      "id": "host",
+      "panel": "path",
+      "kind": "box",
+      "x": 88,
+      "y": 54,
+      "width": 29,
+      "height": 24,
+      "label": "Host"
+    },
+    {
+      "id": "packet",
+      "panel": "path",
+      "kind": "point",
+      "x": 10,
+      "y": 29,
+      "tone": "primary",
+      "label": "Packet"
+    },
+    {
+      "id": "ttl-path",
+      "panel": "hop",
+      "kind": "path",
+      "x": 0,
+      "y": 0,
+      "label": "TTL at the routing boundary",
+      "points": [
+        [
+          10,
+          25
+        ],
+        [
+          64,
+          25
+        ],
+        [
+          64,
+          62
+        ],
+        [
+          88,
+          62
+        ]
+      ],
+      "tone": "secondary"
+    },
+    {
+      "id": "ttl",
+      "panel": "hop",
+      "kind": "point",
+      "x": 10,
+      "y": 25,
+      "label": "TTL",
+      "tone": "secondary"
+    }
+  ],
+  "beats": [
+    {
+      "id": "send",
+      "at_ms": 0,
+      "label": "Send",
+      "text": "The PC sends through its default gateway. The Ethernet frame names the router MAC as its local destination.",
+      "focus": [
+        "pc"
+      ]
+    },
+    {
+      "id": "switch-hops",
+      "at_ms": 2600,
+      "label": "Switch",
+      "text": "The switch forwards the Ethernet frame locally. It does not decrement the IPv4 TTL.",
+      "focus": [
+        "switch"
+      ]
+    },
+    {
+      "id": "route",
+      "at_ms": 5400,
+      "label": "Route",
+      "text": "The router decrements TTL and puts the packet in a new Ethernet frame. The destination IP remains the host’s address here because there is no NAT.",
+      "focus": [
+        "router",
+        "ttl"
+      ]
+    },
+    {
+      "id": "arrive",
+      "at_ms": 8000,
+      "label": "Receive",
+      "text": "The destination host receives the packet on the second network.",
+      "focus": [
+        "host"
+      ]
+    }
+  ],
+  "tracks": [
+    {
+      "entity": "packet",
+      "property": "x",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 10
+        },
+        {
+          "at_ms": 2600,
+          "value": 37
+        },
+        {
+          "at_ms": 5400,
+          "value": 64
+        },
+        {
+          "at_ms": 8000,
+          "value": 88
+        }
+      ]
+    },
+    {
+      "entity": "ttl",
+      "property": "x",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 10
+        },
+        {
+          "at_ms": 2600,
+          "value": 37
+        },
+        {
+          "at_ms": 5400,
+          "value": 64
+        },
+        {
+          "at_ms": 8000,
+          "value": 88
+        }
+      ]
+    },
+    {
+      "entity": "ttl",
+      "property": "y",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 25
+        },
+        {
+          "at_ms": 5399,
+          "value": 25
+        },
+        {
+          "at_ms": 5400,
+          "value": 62
+        }
+      ]
+    }
+  ],
+  "bindings": [
+    {
+      "id": "mac",
+      "panel": "fields",
+      "term": "Frame MAC",
+      "target_ids": [
+        "router",
+        "wire"
+      ],
+      "explanation": "Ethernet source and destination addresses are rewritten in a new frame at the routing boundary."
+    },
+    {
+      "id": "ttl",
+      "panel": "fields",
+      "term": "IP TTL",
+      "target_ids": [
+        "ttl",
+        "router"
+      ],
+      "explanation": "The router decrements the IPv4 Time to Live by one."
+    }
+  ]
+}

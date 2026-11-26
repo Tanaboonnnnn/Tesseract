@@ -5,9 +5,10 @@
  */
 import { z } from "zod";
 import { checkExpr } from "./expr.ts";
+import { SceneSchema } from "./scene.ts";
 import { Id, IsoDate } from "./schemas.ts";
 
-export const VISUAL_TYPES = ["state", "gantt", "chart", "grid", "tree", "plot", "lesson", "html"] as const;
+export const VISUAL_TYPES = ["state", "gantt", "chart", "grid", "tree", "plot", "lesson", "html", "scene"] as const;
 export type VisualType = (typeof VISUAL_TYPES)[number];
 
 const Label = z.string().trim().min(1).max(80);
@@ -256,6 +257,7 @@ export const VisualSchema = z
     z.object({ ...common, type: z.literal("plot"), data: PlotDataSchema }),
     z.object({ ...common, type: z.literal("lesson"), data: LessonDataSchema }),
     z.object({ ...common, type: z.literal("html"), data: HtmlDataSchema }),
+    z.object({ ...common, type: z.literal("scene"), data: SceneSchema }),
   ])
   .superRefine((v, ctx) => {
     const issue = (message: string) => ctx.addIssue({ code: "custom", message });
@@ -341,6 +343,8 @@ export const VisualSchema = z
           }
         }
       });
+    } else if (v.type === "scene") {
+      if (v.steps.length) issue("A scene defines its own beats");
     } else if (v.type === "html") {
       if (v.steps.length) issue("an html visual has no steps");
     } else {
@@ -376,6 +380,18 @@ export interface VisualInput {
 /* ---------- examples: served to AI by visual_formats, and used as test fixtures ---------- */
 
 export const VISUAL_EXAMPLES: Record<VisualType, { use_for: string; ids: string; example: VisualInput }> = {
+  scene: {
+    use_for: "One timed, interactive scene composed of typed visual panels",
+    ids: "Entity IDs link beats, tracks, controls and inspect terms",
+    example: {id:"motion-example",title:"Move a point",type:"scene",data:{
+      schema_version:1,style:"minimal-technical",duration_ms:3000,
+      panels:[{id:"model",kind:"diagram",label:"Model"},{id:"terms",kind:"inspect",label:"x = position"}],
+      entities:[{id:"dot",panel:"model",kind:"point",x:10,y:50,label:"Point",tone:"primary"}],
+      beats:[{id:"start",at_ms:0,label:"Start",text:"The point starts at the left."},{id:"end",at_ms:2300,label:"Stop",text:"The point has reached its destination."}],
+      tracks:[{entity:"dot",property:"x",frames:[{at_ms:0,value:10},{at_ms:2300,value:85}]}],
+      bindings:[{id:"position",panel:"terms",term:"x",target_ids:["dot"],explanation:"Horizontal position of the point."}]
+    }},
+  },
   state: {
     use_for: "State machines: Moore/Mealy FSM, OS process states, TCP states, protocol phases.",
     ids: "state ids and transition ids",

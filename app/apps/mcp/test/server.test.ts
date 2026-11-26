@@ -106,7 +106,7 @@ describe("visuals", () => {
   it("guides the AI to the format, saves, lists and reports precise errors", async () => {
     const { call } = await connect();
     const guide = await call("visual_formats", {});
-    expect(Object.keys(guide.types)).toEqual(["state", "gantt", "chart", "grid", "tree", "plot", "lesson", "html"]);
+    expect(Object.keys(guide.types)).toEqual(["state", "gantt", "chart", "grid", "tree", "plot", "lesson", "html", "scene"]);
     const { example } = await call("visual_formats", { type: "chart" });
 
     const saved = await call("save_visual", { learning: "kubernetes", topic: "pods", ...example });
@@ -406,7 +406,7 @@ describe("stdio process", () => {
 
 it("classroom profile stages an inert draft and cannot invoke legacy live writers", async () => {
   const { client, call, store } = await connect("classroom-synthetic-test", { profile: "classroom" });
-  expect((await client.listTools()).tools.map((t) => t.name).sort()).toEqual(["classroom_format", "get_draft_receipt", "get_draft_status", "submit_course_draft"]);
+  expect((await client.listTools()).tools.map((t) => t.name).sort()).toEqual(["classroom_format", "get_draft_receipt", "get_draft_status", "submit_course_draft", "validate_course_visual"]);
   const format = await call("classroom_format");
   const first = await call("submit_course_draft", { request_id: "synthetic-01", bundle: format.example });
   expect(first).toMatchObject({ ok: true, status: "staged" });
@@ -502,4 +502,20 @@ describe("published classroom read model", () => {
     expect(await call("get_published_course",{course_id:sample.course_id,revision_id:next.revision_id})).toMatchObject({ok:false,error:{code:"CONFLICT"}});
     expect((await client.listTools()).tools.map(t=>t.name)).not.toContain("publish_course");
   });
+});
+
+it("advertises and validates cross-subject scenes without creating a draft", async () => {
+  for (const profile of ["remote","classroom"] as const) {
+    const { call, store } = await connect("scene-test", {profile});
+    const format = await call("classroom_format", {include_scene_schema:true});
+    expect(format.scene_schema).toMatchObject({type:"object",additionalProperties:false});
+    const scene = format.scene_example.data;
+    expect(await call("validate_course_visual",{scene})).toEqual({ok:true,scene_version:1});
+    expect(await call("validate_course_visual",{scene:{...scene,tracks:[{...scene.tracks[0],entity:"missing"}]}}))
+      .toMatchObject({ok:false,issues:[{path:"tracks.0.entity"}]});
+    expect(new ClassroomStore(store.dataDir).listDrafts()).toEqual([]);
+    format.example.lessons[0].blocks.push({type:"visual",visual:format.scene_example,fallback:"A point moves from left to right."});
+    expect(await call("submit_course_draft",{request_id:"motion-fixture",bundle:format.example})).toMatchObject({ok:true,status:"staged"});
+    expect(new ClassroomStore(store.dataDir).listPublished()).toEqual([]);
+  }
 });
