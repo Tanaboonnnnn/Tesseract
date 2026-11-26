@@ -104,7 +104,7 @@ export function Schedule() {
         }
       />
 
-      <section aria-label="Calendar agenda">
+      <section aria-label="Calendar agenda" className="fk-schedule">
         <div className="seg mb-3 w-fit max-w-full flex-wrap" role="group" aria-label="Show">
           {PICKS.map((p) => (
             <button key={p.id} aria-pressed={isOn(p)} onClick={() => go(p.view, p.anchor)}>

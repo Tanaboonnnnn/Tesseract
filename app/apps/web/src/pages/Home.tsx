@@ -9,6 +9,8 @@ import { cn, dueLabel, greeting, longToday, shortDate } from "../lib/format.ts";
 import { useNow } from "../lib/now.ts";
 import { useLayout } from "../lib/theme.ts";
 import { REVIEW_REASON as REASON } from "../lib/labels.ts";
+import { FieldbookCourseHero } from "../components/FieldbookCourseHero.tsx";
+import { mostRecentFieldbookCourse } from "../lib/fieldbook-workspace.ts";
 
 const SkillRadar = lazy(() => import("../components/SkillRadar.tsx").then((m) => ({ default: m.SkillRadar })));
 
@@ -42,10 +44,31 @@ export function Home() {
 
   return (
     <>
-      {layout !== "bento" && layout !== "insights" && <Header />}
-      {isPending ? <Loading /> : error ? <ErrorNote error={error} /> : layout === "insights" ? <InsightsHome o={data} /> : <Dashboard o={data} />}
+      {layout !== "bento" && layout !== "insights" && layout !== "fieldbook" && <Header />}
+      {isPending ? <Loading /> : error ? <ErrorNote error={error} /> : layout === "insights" ? <InsightsHome o={data} /> : layout==="fieldbook"?<FieldbookHome o={data}/>:<Dashboard o={data} />}
     </>
   );
+}
+
+function FieldbookHome({o}:{o:Overview}) {
+  const courses=useQuery({queryKey:["classroom-published"],queryFn:api.publishedCourses});
+  const notes=useQuery({queryKey:["notes"],queryFn:()=>api.notes()});
+  return <div className="fk-home">
+    <PageHeader title="Your workspace" subtitle="Pick up where you left off, then plan what matters today."/>
+    <div className="fk-columns">
+      <FieldbookCourseHero course={mostRecentFieldbookCourse(courses.data??[])}/>
+      <Today o={o}/>
+    </div>
+    <div className="fk-columns">
+      <section className="fk-home-stream">
+        <SectionTitle action={<Link to="/projects">All projects</Link>}>In progress</SectionTitle>
+        {o.projects.filter(p=>p.status==="active").length? o.projects.filter(p=>p.status==="active").slice(0,4).map(p=><ProjectCard key={p.id} p={p}/>):<Empty>No active projects.</Empty>}
+        <SectionTitle action={<Link to="/notes">All notes</Link>}>Recent notes</SectionTitle>
+        {notes.data?.length?<ul className="fk-lists">{[...notes.data].sort((a,b)=>b.updated.localeCompare(a.updated)).slice(0,4).map(n=><li key={n.id}><Link to={"/notes/"+n.id}>{n.title}</Link></li>)}</ul>:<Empty>No recent notes.</Empty>}
+      </section>
+      <div className="space-y-5"><Goals o={o}/><Card><SectionTitle action={<Link to="/skills">Open Skills</Link>}>Skills</SectionTitle><p className="fk-muted">Compare skill levels and review your assessments.</p></Card></div>
+    </div>
+  </div>;
 }
 
 /** Greeting, date and a minute clock: kept current while the app stays open (re-renders once a minute). */

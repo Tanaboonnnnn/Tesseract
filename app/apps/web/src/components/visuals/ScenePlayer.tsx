@@ -6,6 +6,8 @@ import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 
 import type { ReactNode } from "react";
 import type { Scene } from "@tesseract/core";
 import { sampleScene } from "@tesseract/core/pure";
+import { usePlaybackRate } from "./playback-rate.ts";
+import { PlaybackRateControl } from "./PlaybackRateControl.tsx";
 
 const SceneMesh = lazy(()=>import("./SceneMesh.tsx"));
 type MeshProps = React.ComponentProps<typeof SceneMesh>;
@@ -53,7 +55,9 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
     return ()=>{window.removeEventListener("tesseract-scene-autoplay",update);window.removeEventListener("storage",update);};
   },[]);
   const [mode,setMode] = useState<"auto"|"play"|"pause">("auto");
-  const [speed,setSpeed] = useState(1);
+  const [speed,setSpeed] = usePlaybackRate();
+  const rateRef=useRef(speed);
+  rateRef.current=speed;
   const [inputs,setInputs] = useState<Record<string,number>>({});
   const [hover,setHover] = useState<string|null>(null);
   const [focus,setFocus] = useState<string|null>(null);
@@ -94,7 +98,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
     let frame=0;
     let previous:number|undefined;
     const animate=(now:number)=>{
-      const next=clock.current + Math.min(100,now-(previous ?? now))*speed;
+      const next=clock.current + Math.min(100,now-(previous ?? now))*rateRef.current;
       previous=now;
       const max=stopAt.current??scene.duration_ms;
       const loop=stopAt.current===null&&scene.loop;
@@ -105,7 +109,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
     };
     frame=requestAnimationFrame(animate);
     return ()=>cancelAnimationFrame(frame);
-  },[canAnimate,speed,scene.duration_ms,scene.loop]);
+  },[canAnimate,scene.duration_ms,scene.loop]);
 
   const { entities, beat } = sampleScene(scene,time,inputs);
   const playing = canAnimate && (scene.loop || time<scene.duration_ms);
@@ -184,7 +188,8 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
     <div className="tess-scene-transport">
       <div className="flex flex-wrap items-center gap-2">
         {!(explainer&&reduced)&&<><button type="button" className={button+" min-h-11 bg-accent-600 font-semibold text-white hover:bg-accent-700"} onClick={playing?()=>setMode("pause"):play}>{playing?labels.pause:labels.play}</button>
-        <button type="button" className={button+" min-h-11"} onClick={()=>{clock.current=0;setTime(0);play();}}>{labels.replay}</button></>}
+        <button type="button" className={button+" min-h-11"} onClick={()=>{clock.current=0;setTime(0);play();}}>{labels.replay}</button>
+        <PlaybackRateControl rate={speed} onChange={setSpeed} label={labels.speed}/></>}
         {explainer&&<><button type="button" aria-label={language?.startsWith("th")?"ขั้นก่อนหน้า":"Previous step"} className={button+" min-h-11 min-w-11"} disabled={step===0} onClick={()=>selectBeat(step-1)}>←</button>
         <button type="button" aria-label={language?.startsWith("th")?"ขั้นถัดไป":"Next step"} className={button+" min-h-11 min-w-11"} disabled={step===scene.beats.length-1} onClick={()=>selectBeat(step+1)}>→</button></>}
         <span className="ml-auto text-sm muted">{labels.step} {step+1} / {scene.beats.length}</span>
@@ -194,7 +199,6 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
       <details className="text-sm"><summary className="w-fit cursor-pointer muted">{labels.controls}</summary>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <label><input type="checkbox" checked={autoplay} onChange={e=>{localStorage.setItem(AUTO_KEY,e.target.checked?"on":"off");window.dispatchEvent(new Event("tesseract-scene-autoplay"));}} /> {labels.autoplay}</label>
-          <label>{labels.speed} <select className={button} value={speed} onChange={e=>setSpeed(Number(e.target.value))}>{[0.5,1,1.5,2].map(n=><option key={n} value={n}>{n}×</option>)}</select></label>
         </div>
       </details>
     </div>

@@ -168,12 +168,12 @@ export function Guide() {
   return (
     <>
       <PageHeader title="Guide" subtitle="How AI works with your data: what goes in, what comes out, and what it costs." />
-      <section aria-label="Start here" className="mb-5 grid gap-3 md:grid-cols-3">
+      <section aria-label="Start here" className="fk-guide-start mb-5 grid gap-3 md:grid-cols-3">
         <Card className="p-4"><h2 className="font-semibold">Projects</h2><p>Organize deliverables and link tasks to related lessons. Task status is separate from learning progress.</p></Card>
         <Card className="p-4"><h2 className="font-semibold">Learning</h2><p>Create a course or preview a JSON/ZIP package on the main computer. Review and publish drafts in your workspace.</p></Card>
         <Card className="p-4"><h2 className="font-semibold">ChatGPT, local AI &amp; phone</h2><p>Tunnel can discover published courses and send drafts for your review. It cannot publish or see answer keys or your attempts. QR pairing opens the app; it does not connect AI.</p></Card>
       </section>
-      <p className="mb-3 text-sm muted">Interactive Classroom scenes can pair a visual with a plot or an inspect card. Select a linked formula term or a labeled object to highlight the other. Visible scenes play one at a time; use its Autoplay checkbox to turn automatic playback off for this browser. 3D scenes also have a 2D view.</p>
+      <p className="mb-3 text-sm muted">Interactive Classroom scenes can pair a visual with a plot or an inspect card. Select a linked formula term or a labeled object to highlight the other. Visible scenes play one at a time; the Autoplay checkbox turns that off for this browser. 3D scenes also have a 2D view. Playback speed is shared by the interactive players on this device (0.5×, 1×, 1.5×, or 2×).</p>
       <p className="mb-5 text-sm muted">Workspace export v1 does not include classroom versions or answers. To back those up, stop the app and MCP and copy the whole workspace data folder, including .classroom.</p>
 
       {/* 1 */}

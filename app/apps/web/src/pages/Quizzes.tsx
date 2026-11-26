@@ -23,7 +23,7 @@ export function Quizzes() {
           <section>
             <SectionTitle>Ready</SectionTitle>
             {open.length ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="fk-index-grid grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {open.map((q) => (
                   <QuizCard key={q.id} q={q} />
                 ))}
@@ -37,7 +37,7 @@ export function Quizzes() {
           {done.length > 0 && (
             <section>
               <SectionTitle>Taken</SectionTitle>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="fk-index-grid grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {done.map((q) => (
                   <QuizCard key={q.id} q={q} />
                 ))}

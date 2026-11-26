@@ -1,6 +1,7 @@
 /** App frame: the navigation for the chosen layout (UI theme) around the shared pages. */
 import { Suspense } from "react";
-import { Outlet } from "react-router";
+import { Link, Outlet, useLocation } from "react-router";
+import { fieldbookPage } from "../lib/fieldbook-workspace.ts";
 import { Loading } from "./ui.tsx";
 import { InsightsNav } from "./InsightsNav.tsx";
 import { cn } from "../lib/format.ts";
@@ -25,9 +26,11 @@ const FRAME: Record<LayoutId, string> = {
 
 export function Layout() {
   const [layout] = useLayout();
+  const {pathname}=useLocation();
+  const page=fieldbookPage(pathname);
   return (
     <div className={cn("sb-frame min-h-dvh", FRAME[layout])}>
-      {(layout === "system" || layout === "fieldbook") && <SidebarNav />}
+      {(layout === "system" || layout === "fieldbook") && <SidebarNav fieldbook={layout==="fieldbook"}/>}
       {(layout === "minimal" || layout === "terminal") && <TopNav terminal={layout === "terminal"} />}
       {layout === "bento" && <RailNav />}
       {layout === "notebook" && <TabsNav />}
@@ -35,13 +38,18 @@ export function Layout() {
       {layout === "notion" && <WorkspaceTrail />}
       {layout === "editorial" && <EditorialNav />}
       {layout === "insights" && <InsightsNav />}
+      {layout==="fieldbook" && <header className="fk-workspace-bar">
+        <nav aria-label="Workspace"><Link to="/">Workspace</Link><span aria-hidden="true">/</span>
+          {pathname===page.to?<span aria-current="page">{page.title}</span>:<Link to={page.to}>{page.title}</Link>}
+        </nav><span className="fk-label">Fieldbook</span>
+      </header>}
 
-      <main className="sb-main mx-auto max-w-6xl px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
+      <main className="sb-main mx-auto max-w-6xl px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12" data-fieldbook-route={layout==="fieldbook"?page.to:undefined}>
         <Suspense fallback={<Loading />}><Outlet /></Suspense>
       </main>
 
       {layout === "terminal" && <StatusBar />}
-      <BottomNav />
+      <BottomNav fieldbook={layout==="fieldbook"}/>
     </div>
   );
 }

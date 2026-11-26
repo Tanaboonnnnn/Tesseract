@@ -62,7 +62,7 @@ export function Notes() {
       ) : error ? (
         <ErrorNote error={error} />
       ) : shown.length ? (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="fk-index-grid grid gap-3 sm:grid-cols-2">
           {shown.map((n) => (
             <NoteCard key={n.id} n={n} />
           ))}

@@ -1,6 +1,9 @@
 import { CircleAlert, X } from "lucide-react";
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "../lib/format.ts";
+import { useLocation } from "react-router";
+import { useLayout } from "../lib/theme.ts";
+import { fieldbookPage } from "../lib/fieldbook-workspace.ts";
 
 /** A "system window": glowing frame with corner brackets. */
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
@@ -162,9 +165,12 @@ export function Loading() {
 }
 
 export function PageHeader({ title, subtitle, action }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode }) {
+  const [layout]=useLayout();
+  const { pathname }=useLocation();
   return (
     <header className="sb-page-header mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
+        {layout==="fieldbook"&&<p className="fk-label">Fieldbook / {fieldbookPage(pathname).section}</p>}
         <h1 className="sb-page-title hud-title text-3xl">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
       </div>

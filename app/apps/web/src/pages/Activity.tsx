@@ -23,7 +23,7 @@ export function Activity() {
       ) : error ? (
         <ErrorNote error={error} />
       ) : data.length ? (
-        <Card className="p-0">
+        <Card className="fk-activity-feed p-0">
           <ul className="divide-y divide-[var(--line)]">
             {data.map((e) => (
               <Entry key={e.id} e={e} />

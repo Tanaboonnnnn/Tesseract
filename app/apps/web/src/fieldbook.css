@@ -83,3 +83,81 @@ html[data-ui="fieldbook"] .sb-bottombar { background:var(--panel-solid); border-
 .fk-chart polyline { stroke:var(--fk-accent); stroke-width:2; stroke-linejoin:round; fill:none; }
 .fk-chart circle,.fk-chart .fk-point-label { fill:var(--fk-accent); }
 .fk-chart text { fill:var(--fk-muted); font-size:9px; }
+
+
+/* Approved shell and readable route structure across the workspace. */
+.fk-workspace-bar {
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  min-height:4rem; padding:.75rem clamp(1rem,3.2vw,2.65rem);
+  background:var(--panel-solid); border-bottom:1px solid var(--line);
+  color:var(--fk-muted); font-family:var(--font-sans);
+}
+.fk-workspace-bar nav { display:flex; align-items:center; gap:.7rem; min-width:0; font-size:.9rem; }
+.fk-workspace-bar a:hover { color:var(--fk-accent); text-decoration:underline; }
+.fk-sidebar-brand { display:flex; align-items:center; gap:.65rem; padding:0 .55rem; min-height:2.4rem; font:700 1.34rem/1 Rajdhani,sans-serif; }
+.fk-sidebar-brand span { display:grid; place-items:center; width:2rem; height:2rem; border-radius:7px; background:var(--accent,var(--chart-accent)); color:var(--accent-foreground,#fff); }
+html[data-ui="fieldbook"] .sb-sidebar .fk-sidebar-brand { font-family:Rajdhani,sans-serif; text-transform:uppercase; }
+.fk-sidebar-caption,.fk-sidebar-footer { margin:1.6rem .55rem .55rem; font:700 .84rem/1.4 Rajdhani,sans-serif; color:var(--fk-muted); }
+.fk-sidebar-caption,.fk-sidebar-footer strong { text-transform:uppercase; }
+.fk-sidebar-footer { border-top:1px solid var(--line); padding-top:.7rem; }
+.fk-sidebar-footer span { display:block; font:400 .78rem/1.6 var(--font-sans); }
+html[data-ui="fieldbook"] .sb-main { padding-top:clamp(1.35rem,2.4vw,2.45rem); }
+html[data-ui="fieldbook"] :is(.sb-page-title,.sb-section-title,.hud-label,.notice-title) {
+  font-family:var(--font-sans); letter-spacing:normal; color:var(--fk-ink);
+  text-shadow:none; text-transform:none;
+}
+html[data-ui="fieldbook"] .sb-page-header h1 {
+  font-size:clamp(2rem,4vw,2.75rem); line-height:1.13; font-weight:700; margin-top:.3rem;
+}
+html[data-ui="fieldbook"] .sb-page-header h1+p { color:var(--fk-muted); font-size:1rem; margin-top:.5rem; }
+html[data-ui="fieldbook"] .sb-section-title { font-size:1.13rem; font-weight:700; }
+html[data-ui="fieldbook"] .sb-title-mark { display:none; }
+html[data-ui="fieldbook"] .tile-hover:hover { transform:none; box-shadow:0 0 0 1px var(--line-strong); }
+html[data-ui="fieldbook"] :is(.notice-title,.notice-icon,.sb-pill,.hud-number) { box-shadow:none; text-shadow:none; }
+html[data-ui="fieldbook"] .sb-bottombar a[aria-current="page"] { color:var(--fk-accent); background:var(--lane); }
+html[data-ui="fieldbook"] .sb-bottombar a.is-active { color:var(--fk-accent); background:var(--lane); }
+html[data-ui="fieldbook"][data-palette="fieldbook-paper"] :is(.sb-btn-primary,.bg-accent-600.text-white) {
+  background-color:var(--accent); color:var(--accent-foreground);
+}
+html[data-ui="fieldbook"] :is(button,input,select,textarea,a):focus-visible { outline-color:var(--fk-accent); }
+.fk-feature { border:1px solid var(--line); border-radius:9px; padding:clamp(1rem,3vw,1.65rem); background:var(--lane); }
+.fk-feature h2 { font-size:clamp(1.45rem,3vw,2rem); font-weight:700; margin:.35rem 0; }
+.fk-primary { display:inline-flex; align-items:center; min-height:2.4rem; padding:.55rem .85rem; margin-top:1rem; background:var(--accent,var(--chart-accent)); color:var(--accent-foreground,#fff); border-radius:6px; font-weight:650; }
+.fk-primary:hover { text-decoration:underline; }
+.fk-home { display:grid; gap:1.1rem; }
+.fk-home .sb-page-header { margin-bottom:.65rem; }
+.fk-home-stream { display:grid; gap:.75rem; min-width:0; }
+.fk-home-stream h2:not(:first-child) { margin-top:.5rem; }
+.fk-home-stream a:hover { text-decoration:underline; }
+.fk-lists { list-style:none; padding:0; }
+.fk-lists li { padding:.55rem 0; border-bottom:1px solid var(--line); }
+.fk-course-list { display:grid; gap:.65rem; }
+.fk-course-list .panel { border-radius:7px; }
+html[data-ui="fieldbook"] [data-fieldbook-route]:is([data-fieldbook-route="/notes"],[data-fieldbook-route="/quizzes"],[data-fieldbook-route="/projects"]) .tile { background:var(--panel-solid); }
+html[data-ui="fieldbook"] [data-fieldbook-route="/settings"] [role="radiogroup"] { gap:.75rem; }
+
+html[data-ui="fieldbook"] .classroom-reading {
+  --class-paper:var(--bg); --class-panel:var(--panel-solid); --class-ink:var(--fk-ink);
+  --class-line:var(--line); --class-wash:var(--lane); --class-brand:var(--fk-accent);
+  --class-rust:var(--fk-label); --class-muted:var(--fk-muted); --class-on-brand:var(--accent-foreground,#fff);
+  border:none;
+}
+html[data-ui="fieldbook"] .classroom-reading__bar { background:transparent; padding:0 0 .7rem; border-radius:0; }
+html[data-ui="fieldbook"] .classroom-reading__mark { display:none; }
+html[data-ui="fieldbook"] .classroom-reading__wordmark { display:none; }
+html[data-ui="fieldbook"] .classroom-reading__page { max-width:70rem; margin-inline:0; padding-inline:0; }
+html[data-ui="fieldbook"] .classroom-reading__outline { background:var(--lane); border-radius:7px; border-left-color:var(--fk-accent); padding:.7rem 1rem; }
+html[data-ui="fieldbook"] .classroom-reading__text { line-height:1.65; }
+html[data-ui="fieldbook"] .classroom-reading__visual .map-stage { border-color:var(--class-line); }
+html[data-ui="fieldbook"] .classroom-reading__after { margin-top:2rem; }
+
+html[data-ui="fieldbook"] .fk-index-grid { grid-template-columns:minmax(0,1fr); gap:.52rem; }
+html[data-ui="fieldbook"] .fk-index-grid .tile { border-radius:7px; padding:.85rem 1rem; }
+html[data-ui="fieldbook"] .fk-project-index { align-items:start; }
+html[data-ui="fieldbook"] .fk-project-index > a { padding:1.15rem; }
+html[data-ui="fieldbook"] .fk-activity-feed { max-width:58rem; }
+html[data-ui="fieldbook"] .fk-schedule [role="group"] button[aria-pressed="true"] { background:var(--lane); color:var(--fk-accent); }
+html[data-ui="fieldbook"] .fk-guide-start .panel:first-child { background:var(--lane); }
+@media(min-width:1024px) {
+  html[data-ui="fieldbook"] .fk-project-index { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}

@@ -135,12 +135,14 @@ function Grid({ground,camera}:{ground:Ground;camera:IsoCamera}){
     </g>
   </g>;
 }
-function FlowToken({points,step,enabled,flow,sequence,run,duration,parked=false}:{
-  points:XY[];step:number;enabled:boolean;flow:string;sequence?:IsoSequence;run:number;duration:number;parked?:boolean;
+function FlowToken({points,step,enabled,flow,sequence,run,duration,rate=1,parked=false}:{
+  points:XY[];step:number;enabled:boolean;flow:string;sequence?:IsoSequence;run:number;duration:number;rate?:number;parked?:boolean;
 }){
   const p=points.at(-1) || [0,0];
   const ref=useRef<SVGGElement>(null);
   const animation=useRef<Animation|null>(null);
+  const currentRate=useRef(rate);
+  currentRate.current=rate;
   const saved=useRef<{step:number;run:number;time:number}|null>(null);
   const automatic=sequence!==undefined;
   useEffect(()=>{
@@ -149,6 +151,7 @@ function FlowToken({points,step,enabled,flow,sequence,run,duration,parked=false}
     const frames=routeMotion(points);
     if(!frames.length)return;
     const a=node.animate(frames,{duration,iterations:1,easing:"linear",fill:"both"});
+    a.playbackRate=currentRate.current;
     animation.current=a;
     if(automatic&&saved.current?.step===step&&saved.current.run===run)a.currentTime=saved.current.time;
     if(sequence==="pause") a.pause();
@@ -171,6 +174,10 @@ function FlowToken({points,step,enabled,flow,sequence,run,duration,parked=false}
     if(sequence==="pause")a.pause();
     else if(sequence==="run"&&a.playState==="paused")a.play();
   },[sequence]);
+  useEffect(()=>{
+    const a=animation.current;
+    if(a && a.playbackRate!==rate) a.updatePlaybackRate(rate);
+  },[rate]);
   return <g data-iso-packet={flow} data-iso-parked={parked||undefined} ref={ref} style={{transform:`translate(${p[0]}px, ${p[1]}px)`}}>
     {automatic?<g className="iso-playback-marker" transform="scale(1.6)">{tokenGlyph()}</g>:tokenGlyph()}
   </g>;
@@ -185,8 +192,8 @@ function Body({children,fault,animate,step,id,dim}:{children:React.ReactNode;fau
   },[fault,animate,step]);
   return <g ref={ref} className="iso-body" data-id={id} data-dim={dim||undefined}>{children}</g>;
 }
-export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,sceneRef}:{
-  checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan;sequence?:IsoSequence;run?:number;sceneRef?:(svg:SVGSVGElement|null)=>void;
+export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,rate=1,sceneRef}:{
+  checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan;sequence?:IsoSequence;run?:number;rate?:number;sceneRef?:(svg:SVGSVGElement|null)=>void;
 }){
   const {value,geometry}=checked;
   const {pack,objects,theme_hint}=value.data;
@@ -242,7 +249,7 @@ export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,sc
       })}
       {movement.filter(c=>visible.has(c.id)).map(c=>
         <FlowToken key={c.id} flow={c.id} points={c.points} step={step} enabled={animate}
-          sequence={sequence} run={run} duration={automatic?isoBeatTime(flow).travel:950}/>)}
+          sequence={sequence} run={run} rate={rate} duration={automatic?isoBeatTime(flow).travel:950}/>)}
       {automatic&&animate&&flow.parked.filter(id=>visible.has(id)).map(id=>
         <FlowToken key={id} flow={id} points={routes[id]!} step={step} enabled={false} sequence={sequence} run={run} duration={0} parked/>)}
       {labeled.map(o=>{

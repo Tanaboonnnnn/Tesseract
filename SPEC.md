@@ -403,7 +403,7 @@ List/get tools return compact summaries by default; `detail: true` for full data
 
 ## 6. UI
 
-**Fieldbook** is an optional layout with a left desktop sidebar, existing mobile navigation, and a matched paper-and-ink palette in Light and Dark. Palette overrides remain independent. Skills has a dedicated Fieldbook presentation; other routes keep their existing page structure with the shared shell and palette.
+**Fieldbook** is an optional workspace layout with a left desktop sidebar, mobile navigation, a shared route header, and a matched paper-and-ink palette in Light and Dark. Palette overrides remain independent. Home features the real workspace agenda, recent work, and the last viewed published classroom chapter on this device. The Learning library highlights reviewed courses; Skills has its own progress and assessment presentation. Schedule, Projects, Quizzes, Notes, Activity, Guide and Settings retain existing operations and route-specific Fieldbook presentation. Learn fixes the order of objective, outline (if useful), authored section text with inline media, prediction/recap, and practice links where present. Playback rates 0.5×, 1×, 1.5× and 2× are shared on this device without resetting either player's playhead.
 
 - **English only, minimal text, clean.**
 - **Theme: "System window"** — holographic HUD panels (glowing frame, corner brackets), grid background, Rajdhani display font (self-hosted, OFL) for headings, Today as a notification window. Original design; no characters, logos or assets from any existing work.

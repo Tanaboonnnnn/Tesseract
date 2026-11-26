@@ -18,6 +18,8 @@ import { TreeView } from "./TreeView.tsx";
 import { isoBeatTime, isoFlowBeat } from "./iso-motion.ts";
 import type { IsoSequence } from "./iso-motion.ts";
 import { useIsoMotion } from "./iso-preferences.ts";
+import { remainingAfterPlayback, usePlaybackRate, wallTimeAtRate } from "./playback-rate.ts";
+import { PlaybackRateControl } from "./PlaybackRateControl.tsx";
 
 const IsoView=lazy(()=>import("./IsoView.tsx"));
 
@@ -33,6 +35,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
   const [autoWanted,setAutoWanted]=useState(true);
   const [inView,setInView]=useState(false);
   const motion=useIsoMotion(isIso);
+  const [rate,setRate]=usePlaybackRate();
   const playing=isIso?sequence==="run":legacyPlaying;
   const iso=useMemo(()=>{
     if(visual.type!=="iso")return null;
@@ -63,10 +66,10 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
       setPlaying(false);
       return;
     }
-    if(isIso&&(progress.current.run!==run||progress.current.step!==step)) {
+    if(progress.current.run!==run||progress.current.step!==step) {
       progress.current={step,run,remaining:beatTime};
     }
-    const duration=isIso?progress.current.remaining:2600;
+    const duration=progress.current.remaining;
     const started=performance.now();
     const t = setTimeout(() => {
       if (atEnd) {
@@ -74,12 +77,12 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
         else setPlaying(false);
       }
       else setStep((s) => s + 1);
-    }, duration);
+    }, wallTimeAtRate(duration,rate));
     return () => {
       clearTimeout(t);
-      if(isIso) progress.current.remaining=Math.max(0,duration-(performance.now()-started));
+      progress.current.remaining=remainingAfterPlayback(duration,performance.now()-started,rate);
     };
-  }, [playing, step, n, isIso, run, beatTime]);
+  }, [playing, step, n, isIso, run, beatTime,rate]);
 
   useEffect(()=>{
     const el=isoScene;
@@ -151,7 +154,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
         {visual.type === "grid" && <GridView v={visual} fx={fx} />}
         {visual.type === "tree" && <TreeView v={visual} fx={fx} />}
         {visual.type === "plot" && <Plot data={visual.data} fx={fx} />}
-        {iso && <Suspense fallback={<p role="status">Loading illustration…</p>}><IsoView input={iso} step={step} sequence={sequence} run={run} motion={motion} sceneRef={setIsoScene}/></Suspense>}
+        {iso && <Suspense fallback={<p role="status">Loading illustration…</p>}><IsoView input={iso} step={step} sequence={sequence} run={run} motion={motion} rate={rate} sceneRef={setIsoScene}/></Suspense>}
       </div>
 
       {n > 0 && (
@@ -178,6 +181,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
             <StepButton label="Next step" onClick={() => go(step + 1)} disabled={step >= n - 1}>
               <ChevronRight size={16} />
             </StepButton>
+            <PlaybackRateControl rate={rate} onChange={setRate} label={language?.startsWith("th")?"ความเร็วการเล่น":"Playback speed"}/>
           </div>
           <div className="flex max-w-full flex-wrap gap-1" aria-hidden>
             {visual.steps.map((_, i) => (

@@ -6,7 +6,7 @@
  * Settings (⚙) is reachable from every nav; small pills show when Remote / Phone access is on.
  */
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, CalendarDays, Ellipsis, FolderKanban, Hexagon, History, House, Info, ListChecks, NotebookPen, Radar, Settings } from "lucide-react";
+import { BookOpen, Box, CalendarDays, Ellipsis, FolderKanban, Hexagon, History, House, Info, ListChecks, NotebookPen, Radar, Settings } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
 import { api } from "../lib/api.ts";
 import { cn } from "../lib/format.ts";
@@ -54,10 +54,10 @@ const Brand = ({ className }: { className?: string }) => (
 );
 
 /* ---------- Solo Leveling System: the HUD sidebar ---------- */
-export function SidebarNav() {
+export function SidebarNav({fieldbook=false}:{fieldbook?:boolean}) {
   return (
     <aside className="sb-sidebar fixed inset-y-0 left-0 hidden w-60 flex-col border-r border-sky-400/20 bg-sidebar px-3 py-5 text-slate-300 shadow-[inset_-1px_0_24px_rgb(var(--glow-rgb)/0.08)] lg:flex">
-      <Brand className="mb-8 px-3" />
+      {fieldbook?<><Link to="/" className="fk-sidebar-brand"><span><Box size={19} aria-hidden="true"/></span>Tesseract</Link><p className="fk-sidebar-caption">Workspace</p></>:<Brand className="mb-8 px-3" />}
       <nav className="space-y-1">
         {[...NAV, MORE[MORE.length - 1]!].map(({ to, label, icon: Icon, end }) => (
           <NavLink
@@ -79,6 +79,7 @@ export function SidebarNav() {
         ))}
       </nav>
       <div className="mt-auto px-1">
+        {fieldbook&&<p className="fk-sidebar-footer"><strong>Fieldbook</strong><span>Local workspace</span></p>}
         <AccessPills vertical />
       </div>
     </aside>
@@ -181,13 +182,16 @@ export function StatusBar() {
 }
 
 /* ---------- phones and small tablets: bottom bar (styled per layout in layouts.css) ---------- */
-export function BottomNav() {
+export function BottomNav({fieldbook=false}:{fieldbook?:boolean}) {
   const { pathname } = useLocation();
   const inMore = pathname === "/more" || MORE.some((n) => pathname.startsWith(n.to));
   const item = "flex flex-1 flex-col items-center gap-0.5 py-2.5 font-display text-[11px] font-semibold tracking-wider uppercase";
+  const mobile=NAV.filter(n=>n.mobile);
+  const order=["/","/schedule","/learning","/projects"];
+  if(fieldbook)mobile.sort((a,b)=>order.indexOf(a.to)-order.indexOf(b.to));
   return (
     <nav aria-label="Mobile navigation" className="sb-bottombar glass-bar fixed inset-x-0 bottom-0 z-10 flex border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {NAV.filter((n) => n.mobile).map(({ to, label, icon: Icon, end }) => (
+      {mobile.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}
