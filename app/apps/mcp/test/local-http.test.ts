@@ -108,9 +108,11 @@ describe("local Streamable HTTP MCP", () => {
     const format = await web.callTool({name:"classroom_format",arguments:{}});
     expect(format.isError).not.toBe(true);
     const example=JSON.parse((format.content as {text:string}[])[0]!.text).example;
-    const draft=await web.callTool({name:"submit_course_draft",arguments:{request_id:"url-only-classroom",bundle:example}});
+    const submit=(bundle:unknown)=>web.callTool({name:"submit_course_draft",arguments:{request_id:"url-only-classroom",bundle}});
+    const draft=await submit(JSON.stringify(example));
     expect(draft.isError).not.toBe(true);
     expect(JSON.parse((draft.content as {text:string}[])[0]!.text)).toMatchObject({ok:true,status:"staged"});
+    expect(await submit(example)).toEqual(draft);
     expect(store.listLearning()).toEqual([]);
     expect((await web.listTools()).tools.some(t=>t.name==="publish_course")).toBe(false);
     await web.close();

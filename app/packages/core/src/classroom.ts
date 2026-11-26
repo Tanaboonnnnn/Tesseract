@@ -162,7 +162,7 @@ type RevisionSummary = { revision_id: string; course_id: string; title: string; 
 type RevisionRow = RevisionSummary & { body: string; sequence: number };
 type AttemptRow = { attempt_id: string; revision_id: string; lesson_id: string; question_id: string; answer: string; score: number | null; created_at: string };
 
-const MAX_REQUEST_BYTES = 256 * 1024;
+export const CLASSROOM_MAX_REQUEST_BYTES = 256 * 1024;
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const canonical = (value: unknown): string => JSON.stringify(value, (_key, v: unknown) =>
   v && typeof v === "object" && !Array.isArray(v)
@@ -223,7 +223,7 @@ export class ClassroomStore {
   submit(input: unknown, options: { requireGuidance?: boolean } = {}): Receipt {
     let bytes: string;
     try { bytes = canonical(input); } catch { return fail("VALIDATION", "", "Send JSON data only"); }
-    if (!bytes || Buffer.byteLength(bytes) > MAX_REQUEST_BYTES) return fail("VALIDATION", "", "Draft exceeds the 256 KiB limit");
+    if (!bytes || Buffer.byteLength(bytes) > CLASSROOM_MAX_REQUEST_BYTES) return fail("VALIDATION", "", "Draft exceeds the 256 KiB limit");
     const header = ClassroomSubmitSchema.safeParse(input);
     if (!header.success) return { ok: false, issues: header.error.issues.map((i) => ({ code: "VALIDATION", path: i.path.join("."), message: i.message })) };
     const parsed = ClassroomBundleSchema.safeParse(header.data.bundle);
@@ -266,6 +266,21 @@ export class ClassroomStore {
     return this.use<{ ok: true; status: "staged"; revision_id: string; course_id: string } | null>(false, null, (db) => {
       const row = db.prepare("SELECT revision_id, course_id FROM revisions WHERE request_id = ?").get(requestId);
       return row ? { ok: true, status: "staged", revision_id: String(row.revision_id), course_id: String(row.course_id) } : null;
+    });
+  }
+
+  latestDraftReceipt(): string | null {
+    return this.use(false, null as string|null, db => {
+      const row=db.prepare(`
+        SELECT r.revision_id FROM revisions r
+        WHERE ${liveCourse("r.course_id")} AND ${liveDraft("r.revision_id")}
+          AND NOT EXISTS(SELECT 1 FROM history h WHERE h.revision_id=r.revision_id)
+          AND NOT EXISTS(
+            SELECT 1 FROM revisions n WHERE n.course_id=r.course_id AND n.sequence>r.sequence AND ${liveDraft("n.revision_id")}
+          )
+        ORDER BY r.sequence DESC LIMIT 1
+      `).get();
+      return row ? String(row.revision_id) : null;
     });
   }
 

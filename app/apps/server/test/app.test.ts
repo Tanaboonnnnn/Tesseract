@@ -506,13 +506,17 @@ describe("classroom onboarding", () => {
   });
   it("lets only the host use Classroom trash and restores previous answers", async () => {
     const {req}=setup();
+    expect(await (await req("GET","/api/classroom/latest-receipt")).json()).toEqual({status:"unknown"});
     const first=(await (await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"trash-http-first"})).json()).revision_id;
     const draft=(await (await req("POST","/api/classroom/import",{...file,confirm:true,request_id:"trash-http-draft",base_revision:first})).json()).revision_id;
     const base="/api/classroom";
+    expect(await (await req("GET","/api/classroom/latest-receipt")).json()).toEqual({status:"staged",revision_id:draft});
     const draftTrash=base+"/trash/draft/"+draft;
     expect((await req("POST",draftTrash,{trashed:true})).status).toBe(200);
+    expect(await (await req("GET","/api/classroom/latest-receipt")).json()).toEqual({status:"staged",revision_id:first});
     expect((await req("GET",base+"/drafts/"+draft)).status).toBe(404);
     expect((await req("POST",base+"/drafts/"+first+"/publish",{})).status).toBe(200);
+    expect(await (await req("GET","/api/classroom/latest-receipt")).json()).toEqual({status:"unknown"});
     const course=base+"/published/course-fixture";
     expect((await req("POST",course+"/attempts",{revision_id:first,attempt_id:"trash-http-answer",lesson_id:"lesson",question_id:"q",answer:[0]})).status).toBe(201);
     const courseTrash=base+"/trash/course/course-fixture";
@@ -533,6 +537,7 @@ describe("classroom onboarding", () => {
     const {req: paired}=setup(undefined,{address:"192.168.1.9",token:"paired-fixture"});
     const auth={authorization:"Bearer paired-fixture"};
     expect((await paired("GET",base+"/trash",undefined,auth)).status).toBe(403);
+    expect((await paired("GET",base+"/latest-receipt",undefined,auth)).status).toBe(403);
     expect((await paired("POST",courseTrash,{trashed:false},auth)).status).toBe(403);
     expect((await paired("POST",draftTrash,{trashed:true},auth)).status).toBe(403);
   });

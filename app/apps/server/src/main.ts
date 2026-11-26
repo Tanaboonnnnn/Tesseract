@@ -12,13 +12,14 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, networkInterfaces } from "node:os";
 import { join, resolve } from "node:path";
+import { desktopIdentity } from "../../../scripts/desktop-identity.ts";
 import { serve } from "@hono/node-server";
 import { Store } from "@tesseract/core";
 import { googleService } from "@tesseract/gcal";
 import { createApp } from "./app.ts";
 import { windowControl } from "./window.ts";
 import { remoteControl } from "./remote.ts";
-import { localMcpControl } from "./local-mcp.ts";
+import { localMcpControl, windowsLocalMcpPersistence } from "./local-mcp.ts";
 import { phoneAddresses, phoneControl } from "./phone.ts";
 
 function arg(name: string): string | undefined {
@@ -68,7 +69,7 @@ google?.startAutoSync(15);
 const extraHosts = (arg("--allow-host") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
 // Remote access (off by default): tunnel-client child process, stopped with the server.
 const remote = preview ? undefined : remoteControl({ dataDir: store.dataDir });
-const localMcp = preview ? undefined : localMcpControl(new Store({dataDir:store.dataDir,agent:"mcp-local-http",gitCommit:process.env.BRAIN_GIT_COMMIT==="1"}));
+const localMcp = preview ? undefined : localMcpControl(new Store({dataDir:store.dataDir,agent:"mcp-local-http",gitCommit:process.env.BRAIN_GIT_COMMIT==="1"}), flag("--desktop")?windowsLocalMcpPersistence(store.dataDir):undefined);
 const windowCtl = preview ? undefined : windowControl();
 
 /** LAN mode (phone & tablet). Starts from --lan; the desktop switch changes it in-process. */
@@ -89,6 +90,10 @@ const phone = flag("--desktop")
     })
   : undefined;
 
+const webDir = resolve(import.meta.dirname, "../../web/dist");
+const desktop = !preview && flag("--desktop") && process.argv[1] && existsSync(join(webDir,"index.html"))
+  ? desktopIdentity(process.argv[1], webDir, store.dataDir) : undefined;
+
 function buildApp() {
   return createApp(store, {
     allowedHosts: [
@@ -100,7 +105,8 @@ function buildApp() {
       ...mode.addresses.map((a) => `${a}:${port}`),
       ...extraHosts,
     ],
-    webDir: resolve(import.meta.dirname, "../../web/dist"),
+    webDir,
+    desktop,
     token: mode.token,
     google,
     window: windowCtl,
@@ -146,6 +152,7 @@ function listen() {
   return s as typeof s & { closeAllConnections?: () => void };
 }
 let server = listen();
+server.once("listening", () => { void localMcp?.restore(); });
 
 /** Phone switch: rebuild the app for the new mode and listen again on the new address — no process restart. */
 function relisten(lan: boolean) {

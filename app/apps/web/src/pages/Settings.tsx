@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Smartphone } from "lucide-react";
 import { useMemo, useState } from "react";
 import { renderSVG } from "uqr";
+import { Link } from "react-router";
 import { RemoteAccess } from "../components/RemoteAccess.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import { TransparencySlider } from "../components/TransparencySlider.tsx";
@@ -44,6 +45,7 @@ export function Settings() {
       <Card className="mb-6">
         <SectionTitle>Local MCP</SectionTitle>
         <LocalMcpAccess />
+        <LatestDraftReceipt />
       </Card>
       <Card className="mb-6">
         <SectionTitle>OpenAI Tunnel</SectionTitle>
@@ -52,6 +54,21 @@ export function Settings() {
       </Card>
     </>
   );
+}
+
+function LatestDraftReceipt(){
+  const session=useQuery({queryKey:["session"],queryFn:api.session});
+  const local=session.data?.local===true;
+  const receipt=useQuery({queryKey:["classroom-latest-receipt"],queryFn:api.latestDraftReceipt,enabled:local,retry:false,refetchInterval:15_000});
+  if(!local)return null;
+  return <div className="mt-3 border-t border-[var(--line)] pt-3 text-sm">
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="font-medium">Latest draft receipt:</span>
+      <span role="status">{receipt.isPending?"Checking…":receipt.isError?"Could not check":receipt.data?.status==="staged"?"Saved":"No draft receipt found"}</span>
+      {!receipt.isError&&receipt.data?.status==="staged"&&<Link className="font-medium underline underline-offset-2" to={`/learning/drafts/${receipt.data.revision_id}`}>Open draft</Link>}
+    </p>
+    {session.data?.desktop&&<p className="mt-1 text-xs muted">Tesseract {session.data.desktop.version} · Build {session.data.desktop.build.slice(0,8)}</p>}
+  </div>;
 }
 
 function LocalMcpAccess(){
@@ -66,11 +83,13 @@ function LocalMcpAccess(){
     setLink("");
     if(data.available&&data.on){
       if(data.mode==="link"){
-        setLink(data.url??"");
-        qc.setQueryData(["local-mcp"],{available:true,on:true,mode:"link"});
+        const {url,...safe}=data;
+        setLink(url??"");
+        qc.setQueryData(["local-mcp"],safe);
       } else {
-        setCredential(data.token?{url:data.url,token:data.token}:null);
-        qc.setQueryData(["local-mcp"],{available:true,on:true,url:data.url});
+        const {token,...safe}=data;
+        setCredential(token?{url:data.url,token}:null);
+        qc.setQueryData(["local-mcp"],safe);
       }
     } else qc.setQueryData(["local-mcp"],data);
   }});
@@ -83,18 +102,29 @@ function LocalMcpAccess(){
   const token=info.on&&info.mode!=="link"&&credential?.url===info.url?credential.token:"";
   return <div className="space-y-2">
     <p className="text-sm muted">Streamable HTTP for trusted clients on this computer. Runs separately from OpenAI Tunnel.</p>
-    {!info.on?<div className="flex flex-wrap gap-2">
+    {info.canRemember&&!info.on&&!info.restoreError&&<p className="text-xs muted">A saved URL starts automatically when Tesseract next opens.</p>}
+    {!info.on?(info.restoreError?<div className="space-y-2">
+      <p role="alert" className="text-sm">{info.restoreError}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={()=>control.mutate("remember-link")} disabled={control.isPending}>Retry saved link</Button>
+        <Button onClick={()=>control.mutate("stop")} disabled={control.isPending}>Forget saved link</Button>
+      </div>
+    </div>:<div className="flex flex-wrap gap-2">
       <Button onClick={()=>control.mutate("start")} disabled={control.isPending}>Start Local MCP</Button>
       <Button onClick={()=>control.mutate("start-link")} disabled={control.isPending}>Start URL-only MCP</Button>
-    </div>:info.mode==="link"?<>
+      {info.canRemember&&<Button onClick={()=>control.mutate("remember-link")} disabled={control.isPending}>Start with a saved URL</Button>}
+    </div>):info.mode==="link"?<>
       <p className="text-sm font-semibold">URL-only MCP is running on this computer</p>
       <p className="text-xs muted">This private link can read and write local data. New teaching courses use Classroom drafts. Paste it only into a trusted app on this computer.</p>
       <div className="flex flex-wrap gap-2">
         <Button onClick={()=>{control.mutate("start-link",{onSuccess:(data)=>{if(data.available&&data.on&&data.mode==="link"&&data.url)void copy(data.url,"Private URL");}});}} disabled={control.isPending}>Copy private URL</Button>
-        <Button onClick={()=>control.mutate("stop")} disabled={control.isPending}>Stop Local MCP</Button>
+        {info.canRemember&&!info.remembered&&<Button onClick={()=>control.mutate("remember-link")} disabled={control.isPending}>Keep URL after restart</Button>}
+        <Button onClick={()=>control.mutate("stop")} disabled={control.isPending}>{info.remembered?"Stop and forget link":"Stop Local MCP"}</Button>
       </div>
       {link&&<label className="block text-sm">Private URL <input type="password" className="block w-full rounded border border-[var(--line)] bg-[var(--panel-solid)] p-2" readOnly value={link} onFocus={e=>e.target.select()}/></label>}
-      <p className="text-xs muted">Stopping or restarting invalidates the old link.</p>
+      <p className="text-xs muted">{info.remembered
+        ?"The same URL starts with Tesseract on this Windows account. Stop and forget it to revoke access."
+        :"Stopping or restarting invalidates this link."}</p>
     </>:<>
       <p className="text-sm font-semibold">Running on this computer</p>
       <label className="block text-sm">Endpoint <input className="block w-full rounded border border-[var(--line)] bg-[var(--panel-solid)] p-2" readOnly value={info.url} onFocus={e=>e.target.select()}/></label>

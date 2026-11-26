@@ -9,7 +9,7 @@ npm.cmd ci
 npm.cmd run build:desktop
 ```
 
-1. **Stop the old server, not just its window.** In the PowerShell window running the old Tesseract, press **Ctrl+C**. If you started it from a shortcut, first stop its Local MCP / OpenAI Tunnel in Settings if enabled, close its window, and let the old server exit. To stop the background server without waiting for its idle timeout, identify its PID using the commands below. End only the Node process whose command line you confirm is the old Tesseract server. Never end all Node processes.
+1. **Stop the old server, not just its window.** In the PowerShell window running the old Tesseract, press **Ctrl+C**. If you started it from a shortcut, first stop its Local MCP / OpenAI Tunnel in Settings if enabled, close its window, and let the old server exit. To stop the background server without waiting for its idle timeout, identify its PID using the commands below. End only the Node process whose command line you confirm is the old Tesseract server. Never end all Node processes. New launchers stop with a warning if an older build or another workspace is already on that port; they do not stop the other process for you.
 2. **Back up the data folder.** For an existing workspace, copy the entire folder, including the hidden `.classroom` folder, with the old server and any separately launched MCP process stopped. Use a copy if trying a new version first. The app's export alone does not include Classroom history or answers.
 3. **Start the new build from this new `app` folder.** If your migrated workspace is the `data` folder next to `app`, use the default command below. If your data lives elsewhere, use the separate custom-location instructions. Do not launch an old desktop shortcut: it may still point to the previous extracted folder.
 
@@ -40,7 +40,7 @@ if (!$data -or !(Test-Path -LiteralPath $data -PathType Container)) {
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\launch.ps1 -Data $data
 ```
 
-Open [http://127.0.0.1:4320](http://127.0.0.1:4320). If you use a custom port, add `-Port` with that port when launching and open the same port in your browser. Restart any connectors you use from Settings; Local MCP issues a fresh URL and credential.
+Open [http://127.0.0.1:4320](http://127.0.0.1:4320). If you use a custom port, add `-Port` with that port when launching and open the same port in your browser. Restart any connectors you use from Settings. If you moved `data` into this version’s folder, copy the new Local MCP link into your client. A saved Local MCP link can be reused only on the same Windows account and unchanged workspace path.
 
 **Refresh old Windows shortcuts:** If you use the default data path and port and already use Start Menu and startup shortcuts, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\desktop.ps1 install` from the new `app` folder to update both without rebuilding. This also enables launch at sign-in. For a custom data path or port, keep using a launcher with those explicit arguments rather than the default shortcuts. For a rollback, open a pre-upgrade data copy with the old version, not a workspace already updated by a newer version.
 <!-- /release-windows-install:v1 -->

@@ -15,20 +15,44 @@ $url = "http://localhost:$Port"
 $logDir = Join-Path $env:USERPROFILE ".tesseract"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
-function Test-Server {
-  try {
-    $r = Invoke-WebRequest "http://127.0.0.1:$Port/api/session" -UseBasicParsing -TimeoutSec 1
-    if ($r.StatusCode -ne 200) { return $false }
-    $state = $r.Content | ConvertFrom-Json
-    return ($state.app -ceq "tesseract") -and ($state.ok -eq $true) -and ($state.local -eq $true)
-  } catch { return $false }
+function Stop-Launch([string]$Message) {
+  if (-not $NoWindow) {
+    try {
+      Add-Type -AssemblyName System.Windows.Forms
+      [void][System.Windows.Forms.MessageBox]::Show($Message, "Tesseract", "OK", "Warning")
+    } catch {}
+  }
+  throw $Message
 }
 
-if (-not (Test-Server)) {
-  $node = (Get-Command node -ErrorAction Stop).Source
-  # Pre-built bundle uses ~30 MB less memory; fall back to the TypeScript source.
-  $entry = Join-Path $app "apps\server\dist\server.mjs"
-  if (-not (Test-Path $entry)) { $entry = Join-Path $app "apps\server\src\main.ts" }
+$node = (Get-Command node -ErrorAction Stop).Source
+$entry = Join-Path $app "apps\server\dist\server.mjs"
+$web = Join-Path $app "apps\web\dist"
+if (!(Test-Path -LiteralPath $entry -PathType Leaf) -or !(Test-Path -LiteralPath (Join-Path $web "index.html") -PathType Leaf)) {
+  Stop-Launch "Desktop build not found. Run npm.cmd run build:desktop from the app folder."
+}
+if (!(Test-Path -LiteralPath $Data -PathType Container)) {
+  Stop-Launch "Workspace folder not found. Use the existing data folder beside app or pass its actual location with -Data."
+}
+$Data = (Resolve-Path -LiteralPath $Data).Path
+$checker = Join-Path $PSScriptRoot "desktop-identity.ts"
+function Get-ServerStatus([string]$Mode) {
+  $status = & $node $checker $entry $web $Data $Port $Mode
+  if ($LASTEXITCODE -ne 0) { Stop-Launch "Could not verify this build and workspace. Check Node.js and the build." }
+  return $status
+}
+function Confirm-ServerStatus([string]$Status) {
+  if ($Status -eq "mismatch") {
+    Stop-Launch "Another Tesseract build or workspace is running on port $Port. Stop the previous Tesseract server yourself, then open this shortcut again. Nothing was stopped."
+  }
+  if ($Status -ne "match" -and $Status -ne "free") {
+    Stop-Launch "Port $Port is in use or did not respond as expected. Check the process before stopping anything."
+  }
+}
+
+$status = Get-ServerStatus "probe"
+Confirm-ServerStatus $status
+if ($status -eq "free") {
   $nodeArgs = @(
     "--max-old-space-size=48", "--max-semi-space-size=1",
     "`"$entry`"", "--data", "`"$Data`"", "--port", $Port, "--idle-exit", $IdleExit, "--desktop"
@@ -41,9 +65,11 @@ if (-not (Test-Server)) {
   $p = Start-Process -FilePath $node -ArgumentList $nodeArgs -WorkingDirectory $app -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput (Join-Path $logDir "server.log") -RedirectStandardError (Join-Path $logDir "server-error.log")
   try { $p.PriorityClass = "BelowNormal" } catch {}
-  $ready = $false
-  for ($i = 0; $i -lt 50 -and -not $ready; $i++) { Start-Sleep -Milliseconds 200; $ready = Test-Server }
-  if (-not $ready) { throw "Tesseract did not respond on port $Port. Another app may be using it. See $logDir\server-error.log" }
+  $status = Get-ServerStatus "wait"
+  Confirm-ServerStatus $status
+  if ($status -ne "match") {
+    Stop-Launch "Tesseract did not start on port $Port. See $logDir\server-error.log."
+  }
 }
 
 if (-not $NoWindow) {

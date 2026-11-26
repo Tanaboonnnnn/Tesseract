@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { ClassroomStore, resolveDataDir, Store } from "@tesseract/core";
+import { ClassroomBundleSchema, ClassroomStore, resolveDataDir, Store } from "@tesseract/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { createServer, REMOTE_TOOLS, type ServerOptions } from "../src/server.ts";
 
@@ -721,3 +721,65 @@ it("validates optional typed Lab visuals against numbered steps without acceptin
   expect(await call("get_course_lesson",{course_id,lesson_id,section:"lab"})).toMatchObject({entries:[{title:lab.title,visuals:[{id:image.id,after_step:1}]}]});
   expect(await call("get_course_visuals",{course_id,lesson_id,visual_id:image.id})).toMatchObject({visual:{id:image.id}});
 });
+
+it.each(["local", "remote", "classroom"] as const)(
+  "%s normalizes either draft encoding to the same validation, storage, receipts and conflicts",
+  async (profile) => {
+    const {store, client, call} = await connect("encoding-test", {profile, classroomFirst:true});
+    const db = new ClassroomStore(store.dataDir);
+    const format = await call("classroom_format");
+    const example = format.example;
+    const submit = (request_id:string, bundle:unknown, base_revision?:string) =>
+      call("submit_course_draft", {request_id,bundle,...(base_revision===undefined?{}:{base_revision})});
+    const encoded = (bundle:unknown) => JSON.stringify(bundle,null,2);
+    const wireSchema=(await client.listTools()).tools.find(t=>t.name==="submit_course_draft")?.inputSchema.properties?.bundle;
+    expect(wireSchema).toMatchObject({anyOf:expect.arrayContaining([
+      expect.objectContaining({type:"object"}),expect.objectContaining({type:"string"}),
+    ])});
+    const broken = (edit:(b:typeof example)=>void) => {
+      const b=structuredClone(example); edit(b); return b;
+    };
+    const invalids = [
+      {name:"missing-guidance", bundle:broken(b=>delete b.lessons[0].guidance),path:"bundle.lessons.0.guidance"},
+      {name:"unsafe-source", bundle:broken(b=>b.sources[0].url="file://source.pdf"),path:"bundle.sources.0.url"},
+      {name:"raw-markup", bundle:broken(b=>b.lessons[0].blocks[0].markdown="<p>Markup</p>"),path:"bundle.lessons.0.blocks.0.markdown"},
+      {name:"legacy-version",bundle:broken(b=>{b.schema_version=1;delete b.lessons[0].guidance;}),path:"bundle.schema_version"},
+      {name:"unknown-field",bundle:{...example,unexpected:true},path:"bundle"},
+      {name:"oversize",bundle:{...example,title:"ก".repeat(100_000)},path:""},
+    ];
+    for (const {name,bundle,path} of invalids) {
+      const a=await submit("reject-"+name,bundle);
+      const b=await submit("reject-"+name,encoded(bundle));
+      expect(a).toEqual(b);
+      expect(a).toMatchObject({ok:false,issues:expect.arrayContaining([expect.objectContaining({path})])});
+    }
+    for (const raw of ["{broken", JSON.stringify(JSON.stringify(example)), "[]", "null", "42"]) {
+      expect(await submit("reject-encoding",raw)).toMatchObject({ok:false,issues:[{path:"bundle",fix:expect.any(String)}]});
+    }
+    const hugeWire=JSON.stringify(example)+" ".repeat(524_288);
+    expect(await submit("reject-padding",hugeWire)).toMatchObject({ok:false,issues:[{fix:expect.any(String)}]});
+    expect(db.listDrafts()).toEqual([]);
+    expect(await call("get_draft_status",{request_id:"reject-encoding"})).toMatchObject({status:"unknown"});
+
+    for (const stringFirst of [false,true]) {
+      const bundle = {...example,course_id:stringFirst?"string-first":"object-first"};
+      const request = "draft-"+bundle.course_id;
+      const first=await submit(request,stringFirst?encoded(bundle):bundle);
+      expect(first).toMatchObject({ok:true,status:"staged"});
+      expect(await submit(request,stringFirst?bundle:encoded(bundle))).toEqual(first);
+      expect(db.getRevision(first.revision_id)?.bundle).toEqual(ClassroomBundleSchema.parse(bundle));
+      expect(await call("get_draft_status",{request_id:request})).toMatchObject({status:"staged",receipt:first});
+      const changed={...bundle,title:'บทเรียนที่แก้แล้ว "ไทย"'};
+      for (const form of [changed,encoded(changed)]) {
+        expect(await submit(request,form)).toMatchObject({ok:false,issues:[{code:"REQUEST_CONFLICT"}]});
+        expect(await submit("revision-"+request,form)).toMatchObject({ok:false,issues:[{code:"STALE_REVISION"}]});
+      }
+      const revision=await submit("revision-"+request,encoded(changed),first.revision_id);
+      expect(revision).toMatchObject({ok:true,status:"staged"});
+      expect(await submit("revision-"+request,changed,first.revision_id)).toEqual(revision);
+      expect(db.getRevision(revision.revision_id)?.bundle).toEqual(ClassroomBundleSchema.parse(changed));
+    }
+    expect(db.listDrafts()).toHaveLength(4);
+    expect(db.listPublished()).toEqual([]);
+  },
+);

@@ -23,13 +23,13 @@ function run(command: string, args: string[], input?: string): string {
   return res.stdout;
 }
 
-export function desktopTunnelVault(dir: string): TunnelVault {
+export function desktopTunnelVault(dir: string, purpose: "tunnel" | "local-mcp" = "tunnel"): TunnelVault {
   const platform = process.platform;
   const windows = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
   const ps = (encrypt: boolean, value: string) =>
     run(windows, ["-NoProfile", "-NonInteractive", "-Command", winScript(encrypt)], value);
   const attributes = (slot: string) => ["application", "tesseract", "purpose", "openai-tunnel", "slot", slot];
-  const file = (slot: string) => join(dir, `tunnel-key-${slot}.dpapi`);
+  const file = (slot: string) => join(dir, `${purpose}-key-${slot}.dpapi`);
 
   return {
     save(slot, secret) {

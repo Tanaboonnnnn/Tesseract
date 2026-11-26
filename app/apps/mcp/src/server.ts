@@ -11,6 +11,7 @@ import {
   ClassroomStore,
   ClassroomSubmitSchema,
   ClassroomBundleSchema,
+  CLASSROOM_MAX_REQUEST_BYTES,
   classroomLesson,
   classroomOutline,
   classroomSummary,
@@ -210,6 +211,14 @@ function classIsoFormat(pack:string) {
   const {examples:_examples,...format}=isoFormat(pack);
   return {...format,requires_schema_version:2};
 }
+// Bound the temporary wire representation before parsing. The normalized input
+// still goes through the original 256 KiB request, authoring, and revision gates.
+const MAX_BUNDLE_TEXT_BYTES = 2 * CLASSROOM_MAX_REQUEST_BYTES;
+const bundleWireIssue = (message: string, fix: string) => ({
+  ok: false as const,
+  issues: [{ code: "VALIDATION", rule: "classroom-bundle-encoding", path: "bundle", message, fix }],
+});
+
 function registerDraftTools(server: McpServer, store: Store) {
   const c = new ClassroomStore(store.dataDir);
   server.registerTool("classroom_format", { description: "Course bundle example, constraints and optional validator-derived input JSON Schema.", inputSchema: { include_schema: z.boolean().optional(), include_scene_schema: z.boolean().optional(), iso_pack:z.string().max(64).optional() }, annotations: READ }, ({ include_schema, include_scene_schema, iso_pack }) => ok({
@@ -222,7 +231,8 @@ function registerDraftTools(server: McpServer, store: Store) {
     lesson_layout: "The reader controls navigation, tabs and placement. Learn renders blocks in their authored order, with visuals inline after the explanation they support. Do not design page chrome or introduce layout markup.",
     lesson_structure: "For new lessons author schema_version 2 and guidance: {question: a prediction, takeaways: [1–4 short statements]}. Start blocks with an explanation, give major text blocks Markdown headings, and only add visuals that explain that concept. The reader places objective, outline, ordered blocks, prediction, recap and Lab / Check actions in that order. Old bundles without guidance stay readable.",
     lesson_guidance_example: CLASSROOM_EXAMPLE.lessons[0].guidance,
-    example: CLASSROOM_EXAMPLE, limits: { max_bytes: 262144, max_lessons: 24 },
+    example: CLASSROOM_EXAMPLE, limits: { max_bytes: CLASSROOM_MAX_REQUEST_BYTES, max_bundle_text_bytes: MAX_BUNDLE_TEXT_BYTES, max_lessons: 24 },
+    submission: "Pass bundle as an object. A client limited to text may send that object as JSON text encoded once. For a new course omit base_revision; for a revision use the actual latest revision ID. Do not send file:// source URLs.",
     blocks: { text: "{type, markdown}", visual: "{type, visual: typed Panya/Tesseract renderer data, fallback}" },
     questions: { single: "{id,type,prompt,choices,correct:[one zero-based index],explanation}", explain: "{id,type,prompt,rubric,model_answer}", multi: "{id,type,prompt,choices,correct,explanation}" },
     labs: "{title,platform,environment,prerequisites,steps,expected,cleanup?,visuals?}",
@@ -241,14 +251,28 @@ function registerDraftTools(server: McpServer, store: Store) {
       const receipt = c.getReceipt(request_id);
       return receipt ? { request_id, status: "staged", receipt } : { request_id, status: "unknown" };
     }));
-  server.registerTool("submit_course_draft", { description: "Read classroom_format first. Stages v2 only: each lesson needs an objective, text first, prediction and recap. Labs need separate titles. Same ID and payload return the same receipt. Never publishes.", inputSchema: ClassroomSubmitSchema.shape, annotations: WRITE },
+  server.registerTool("submit_course_draft", { description: "Read classroom_format first. Stages v2 only: each lesson needs an objective, text first, prediction and recap. Labs need separate titles. Same ID and payload return the same receipt. Never publishes. Pass bundle as an object, or once-encoded JSON object text if required by the client.", inputSchema: {
+    ...ClassroomSubmitSchema.shape,
+    bundle: z.union([z.looseObject({}), z.string()]).describe("Course bundle object (preferred), or JSON text encoding that object exactly once."),
+  }, annotations: WRITE },
     async (input, extra) => {
       const progressToken = extra._meta?.progressToken;
       if (progressToken !== undefined) {
         await extra.sendNotification({ method: "notifications/progress", params: { progressToken, progress: 0, total: 1, message: "running" } });
       }
       if (extra.signal.aborted) return { isError: true, content: [{ type: "text", text: "Request cancelled before staging. Check status by request ID." }] };
-      return run(() => c.submit(input, {requireGuidance:true}));
+      if (typeof input.bundle !== "string") return run(() => c.submit(input, {requireGuidance:true}));
+      if (Buffer.byteLength(input.bundle, "utf8") > MAX_BUNDLE_TEXT_BYTES) {
+        return ok(bundleWireIssue("Encoded bundle exceeds the 512 KiB transport limit.", "Remove padding, prefer a JSON object, or shorten the draft."));
+      }
+      let bundle: unknown;
+      try { bundle = JSON.parse(input.bundle); } catch {
+        return ok(bundleWireIssue("Bundle text is not valid JSON.", "Send a JSON object, or encode that object as JSON text exactly once."));
+      }
+      if (!bundle || typeof bundle !== "object" || Array.isArray(bundle)) {
+        return ok(bundleWireIssue("Bundle text must decode directly to a JSON object.", "Send an object with schema_version and lessons; do not send an array or double-encoded text."));
+      }
+      return run(() => c.submit({ ...input, bundle }, {requireGuidance:true}));
     });
 }
 

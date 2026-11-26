@@ -70,7 +70,10 @@ export type { TokenReport };
 /** Phone & tablet (LAN) state; pairUrls only on this PC (apps/server/src/phone.ts). */
 export type PhoneInfo = { available: false } | { available: true; on: boolean; urls: string[]; pairUrls?: string[] };
 /** Remote access state (apps/server/src/remote.ts). */
-export type LocalMcpInfo = {available:false} | {available:true;on:false} | {available:true;on:true;mode?:"header";url:string;token?:string} | {available:true;on:true;mode:"link";url?:string};
+type LocalMcpPersistence = {canRemember?:true;remembered?:boolean;restoreError?:string};
+export type LocalMcpInfo = {available:false} | (LocalMcpPersistence & (
+  {available:true;on:false} | {available:true;on:true;mode?:"header";url:string;token?:string} | {available:true;on:true;mode:"link";url?:string}
+));
 export type RemoteInfo = { available: false } | { available: true; on: boolean; until: string | null; verified?: boolean; protectedKey?: boolean; setup: { binary: boolean; key: boolean; tunnel: boolean }; error: string | null };
 export type GoogleInfo = {
   available: boolean;
@@ -134,6 +137,7 @@ export const api = {
   newCourse: (title: string) => request<{ id: string }>("POST", "/learning", { title }),
   publishedCourses: () => request<CourseRevision[]>("GET", "/classroom/published"),
   publishedCourse: (id: string) => request<CourseDetail>("GET", "/classroom/published/" + id),
+  latestDraftReceipt: () => request<{status:"unknown"}|{status:"staged";revision_id:string}>("GET", "/classroom/latest-receipt"),
   courseDrafts: () => request<CourseRevision[]>("GET", "/classroom/drafts"),
   classroomTrash: () => request<ClassroomTrashItem[]>("GET", "/classroom/trash"),
   setClassroomTrashed: (kind: ClassroomTrashItem["kind"], id: string, trashed: boolean) =>
@@ -158,7 +162,7 @@ export const api = {
   phone: () => request<PhoneInfo>("GET", "/phone"),
   setPhone: (on: boolean) => request<PhoneInfo & { switching?: boolean }>("POST", "/phone", { on }),
   localMcp: () => request<LocalMcpInfo>("GET", "/local-mcp"),
-  localMcpSwitch: (action:"start"|"start-link"|"stop") => request<LocalMcpInfo>("POST", "/local-mcp/"+action, {}),
+  localMcpSwitch: (action:"start"|"start-link"|"remember-link"|"stop") => request<LocalMcpInfo>("POST", "/local-mcp/"+action, {}),
   remote: () => request<RemoteInfo>("GET", "/remote"),
   remoteSetup: (tunnelId: string, key: string) => request<RemoteInfo>("POST", "/remote/setup", { tunnelId, key }),
   remoteStart: (hours: number) => request<RemoteInfo>("POST", "/remote/start", { hours }),
@@ -203,7 +207,7 @@ export const api = {
   googleDisconnect: () => request<{ ok: true }>("POST", "/google/disconnect", {}),
 
   session: async () => {
-    const result = await request<{ app: "tesseract"; ok: true; local: boolean }>("GET", "/session", undefined, AbortSignal.timeout(4_000));
+    const result = await request<{ app: "tesseract"; ok: true; local: boolean; desktop?:{version:string;build:string} }>("GET", "/session", undefined, AbortSignal.timeout(4_000));
     if (result.app !== "tesseract" || result.ok !== true || typeof result.local !== "boolean") throw new Error("Unexpected host response");
     return result;
   },

@@ -14,8 +14,8 @@ On the host, open Settings, then Local MCP, and choose Start Local MCP. Copy the
 If your native client has only a URL field, stop the current Local MCP listener
 and select **Start URL-only MCP** instead. Paste **Copy private URL** into the
 client's **Streamable HTTP** URL field. Leave its Authorization settings empty.
-The private URL is the credential, contains a random 256-bit secret, and stays
-valid only until you stop or restart the listener. Treat it like a password:
+The private URL is the credential, contains a random 256-bit secret, and by default
+is valid only until you stop or restart the listener. Treat it like a password:
 do not share it, paste it in a browser, or sync it to a cloud account. This mode
 keeps local tools, including writes, but omits the two legacy Learning Map
 creators (`create_course` and `create_roadmap`). For a teaching course the agent
@@ -24,6 +24,21 @@ publish in the app. Existing maps remain accessible, and the header mode and
 stdio keep their existing tools. Use this link only with a trusted native app
 on the same computer. Both modes stay
 on loopback; OpenAI Tunnel has its own separate controls and permissions.
+
+### Optional: use the same URL after restarting Windows
+
+In the Windows desktop app, choose **Start with a saved URL**, or start URL-only
+MCP and then choose **Keep URL after restart** to save its current link. Copy it
+once. When Tesseract next opens on the same Windows account and workspace path,
+the saved port and secret are reused. The secret and port are protected by
+Windows DPAPI and are not part of the workspace backup. If an upgrade moves or
+copies `data` into a different extracted folder, treat it as a different
+workspace: create a saved URL there and update the client once. The old link
+does not follow that copy. If the port is busy,
+Tesseract does not switch to a different port; free the port and choose
+**Retry saved link**. To revoke access or rotate the URL, choose **Stop and
+forget link**, then start with a saved URL again. If Tesseract is not running,
+the link is not available. Do not sync the URL into a cloud-synced client.
 
 ## Start it from a terminal
 

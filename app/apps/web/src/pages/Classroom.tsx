@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { Trash2 } from "lucide-react";
 import { api, type CourseDetail, type CourseProgress, type CourseRevision } from "../lib/api.ts";
 import { Button, Card, ErrorNote, Loading, inputClass } from "../components/ui.tsx";
 import { lessonLabels, isThaiLesson } from "../lib/lesson-language.ts";
@@ -77,6 +78,16 @@ export function CourseActions() {
   </div>;
 }
 
+function CourseTrashButton({kind, title, disabled, onClick}: {
+  kind: "course" | "draft"; title: string; disabled: boolean; onClick: () => void;
+}) {
+  return <Button type="button" variant="danger"
+    className="min-h-11 border border-rose-200 bg-rose-50/70 text-rose-800 hover:border-rose-400 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:border-rose-900/80 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:bg-rose-900/50"
+    disabled={disabled} aria-label={`Move ${kind} to Trash: ${title}`} onClick={onClick}>
+    <Trash2 size={16} aria-hidden="true" /> Move {kind} to Trash
+  </Button>;
+}
+
 export function CourseDraftList() {
   const session = useQuery({ queryKey: ["session"], queryFn: api.session });
   const local = session.data?.local === true;
@@ -89,7 +100,7 @@ export function CourseDraftList() {
       api.setClassroomTrashed(kind, id, trashed),
     onSuccess: async ({trashed}, {kind}) => {
       await Promise.all(["classroom-trash", "classroom-drafts", "classroom-published", "classroom-draft",
-        "classroom-course", "classroom-progress", "lesson-options", "related-learning-tasks"].map(key =>
+        "classroom-course", "classroom-progress", "classroom-latest-receipt", "lesson-options", "related-learning-tasks"].map(key =>
         qc.invalidateQueries({queryKey:[key]})));
       setStatus(trashed ? (kind === "course" ? "Course moved to Trash." : "Draft moved to Trash.")
         : (kind === "course" ? "Course restored." : "Draft restored."));
@@ -106,10 +117,8 @@ ${explanation}`)) return;
     setStatus("");
     change.mutate({kind,id,trashed:true});
   };
-  const trashDraft = (r:CourseRevision) => <button type="button"
-    className="rounded px-2 py-1 text-sm text-rose-700 hover:underline dark:text-rose-300 disabled:opacity-50"
-    disabled={change.isPending} aria-label={"Trash draft " + r.title}
-    onClick={()=>moveToTrash("draft",r.revision_id,r.title)}>Trash draft</button>;
+  const trashDraft = (r:CourseRevision) => <CourseTrashButton kind="draft" title={r.title}
+    disabled={change.isPending} onClick={()=>moveToTrash("draft",r.revision_id,r.title)}/>;
   const groups = new Map<string, CourseRevision[]>();
   for (const rev of drafts.data ?? []) groups.set(rev.course_id, [...(groups.get(rev.course_id) ?? []), rev]);
   return <section className="mt-8 space-y-3 border-t border-slate-500/20 pt-5">
@@ -144,10 +153,10 @@ ${explanation}`)) return;
             {!r.previously_published && trashDraft(r)}
           </li>)}</ul>
         </details>}
-        <div className="border-t border-slate-500/15 pt-2">
-          <button type="button" className="rounded px-2 py-1 text-sm text-rose-700 hover:underline dark:text-rose-300 disabled:opacity-50"
-            disabled={change.isPending} aria-label={"Trash course " + title}
-            onClick={()=>moveToTrash("course",course,title)}>Trash course</button>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-500/15 pt-3">
+          <CourseTrashButton kind="course" title={title} disabled={change.isPending}
+            onClick={()=>moveToTrash("course",course,title)}/>
+          <span className="text-xs muted">Moves all versions. You can restore them from Trash.</span>
         </div>
       </Card>;
     })}

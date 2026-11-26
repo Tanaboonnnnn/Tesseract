@@ -58,6 +58,7 @@ export interface AppOptions {
   allowedHosts: string[];
   /** Built web app (Vite dist). Served with SPA fallback when present. */
   webDir?: string;
+  desktop?: {version:string;build:string;workspace:string};
   /** Access token for devices other than this machine. Undefined = remote access off. */
   token?: string;
   /** Client address of a request. Injectable for tests. */
@@ -171,7 +172,10 @@ export function createApp(store: Store, options: AppOptions): Hono {
   };
 
   api.get("/health", (c) => c.json({ ok: true, agent: store.agent, problems: store.validateAll() }));
-  api.get("/session", (c) => c.json({ app: "tesseract", ok: true, local: isLocal(c) }));
+  api.get("/session", (c) => {
+    const local=isLocal(c);
+    return c.json({app:"tesseract",ok:true,local,...(local&&options.desktop?{desktop:options.desktop}:{})});
+  });
   api.post("/pair", async (c) => {
     const body = await json(c);
     if (!token || typeof body.token !== "string" || !sameSecret(body.token.trim(), token)) {
@@ -353,6 +357,12 @@ export function createApp(store: Store, options: AppOptions): Hono {
     if (!detail) throw new BrainError("NOT_FOUND", "Course not found");
     return c.json(detail);
   });
+  api.get("/classroom/latest-receipt", (c) => {
+    const denied=localOnly(c);
+    if(denied)return denied;
+    const revision_id=classroom.latestDraftReceipt();
+    return c.json(revision_id?{status:"staged",revision_id}:{status:"unknown"});
+  });
   api.get("/classroom/drafts", (c) => localOnly(c) ?? c.json(classroom.listDrafts()));
   api.get("/classroom/drafts/:revision", (c) => {
     const denied = localOnly(c);
@@ -479,13 +489,13 @@ export function createApp(store: Store, options: AppOptions): Hono {
     if(denied)return denied;
     const local=options.localMcp;
     const action=c.req.param("action");
-    if(!local || (action!=="start"&&action!=="start-link"&&action!=="stop")) return c.json({available:false},404);
+    if(!local || (action!=="start"&&action!=="start-link"&&action!=="remember-link"&&action!=="stop")) return c.json({available:false},404);
     try {
-      const info=await (action==="stop"?local.stop():local.start(action==="start-link"?"link":"header"));
-      if(!info)return c.json({error:"LOCAL_MCP",message:"Stop the current Local MCP connection before switching modes."},409);
+      const info=await (action==="stop"?local.stop():action==="remember-link"?local.remember():local.start(action==="start-link"?"link":"header"));
+      if(!info)return c.json({error:"LOCAL_MCP",message:"Check Local MCP status before switching modes or saving a link."},409);
       return c.json({available:true,...info});
     } catch {
-      return c.json({error:"LOCAL_MCP",message:"Could not "+(action==="stop"?"stop":"start")+" Local MCP. Try again."},503);
+      return c.json({error:"LOCAL_MCP",message:"Could not "+(action==="stop"?"stop":action==="remember-link"?"save the private link for":"start")+" Local MCP. Try again."},503);
     }
   });
 
