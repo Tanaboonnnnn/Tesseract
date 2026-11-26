@@ -46,7 +46,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
   const hasFlow=useMemo(()=>!!iso?.data.connections.some(link=>link.kind==="flow"&&iso.steps.some(s=>s.highlight.includes(link.id))),[iso]);
   const progress=useRef({step:-1,run:-1,remaining:0});
   const box = useRef<HTMLDivElement>(null);
-  const [isoScene,setIsoScene]=useState<SVGSVGElement|null>(null);
+  const [isoScene,setIsoScene]=useState<HTMLDivElement|null>(null);
   useEffect(() => {
     setStep(first);
     setSequence(undefined);
@@ -123,7 +123,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
   useEffect(() => {
     if (!keys || !n) return;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.closest("input, textarea, select")) return;
+      if ((e.target as HTMLElement)?.closest("input, textarea, select, .iso-viewport")) return;
       if (e.key === "ArrowRight"||e.key==="ArrowLeft") {
         if(isIso) {setAutoWanted(false);setSequence(undefined);}
         const delta=e.key==="ArrowRight"?1:-1;
@@ -144,7 +144,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
   return (
     <div ref={box} className={iso?"flex flex-col":undefined} onKeyDown={iso&&!keys?e=>{
       if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight")return;
-      if((e.target as HTMLElement)?.closest("input, textarea, select"))return;
+      if((e.target as HTMLElement)?.closest("input, textarea, select, .iso-viewport"))return;
       e.preventDefault();go(step+(e.key==="ArrowRight"?1:-1));
     }:undefined}>
       <div className="map-stage overflow-x-auto rounded-lg p-2">
@@ -154,7 +154,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
         {visual.type === "grid" && <GridView v={visual} fx={fx} />}
         {visual.type === "tree" && <TreeView v={visual} fx={fx} />}
         {visual.type === "plot" && <Plot data={visual.data} fx={fx} />}
-        {iso && <Suspense fallback={<p role="status">Loading illustration…</p>}><IsoView input={iso} step={step} sequence={sequence} run={run} motion={motion} rate={rate} sceneRef={setIsoScene}/></Suspense>}
+        {iso && <Suspense fallback={<p role="status">Loading illustration…</p>}><IsoView input={iso} step={step} sequence={sequence} run={run} motion={motion} rate={rate} viewportRef={setIsoScene}/></Suspense>}
       </div>
 
       {n > 0 && (

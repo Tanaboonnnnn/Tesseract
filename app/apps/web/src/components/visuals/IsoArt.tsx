@@ -192,8 +192,8 @@ function Body({children,fault,animate,step,id,dim}:{children:React.ReactNode;fau
   },[fault,animate,step]);
   return <g ref={ref} className="iso-body" data-id={id} data-dim={dim||undefined}>{children}</g>;
 }
-export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,rate=1,sceneRef}:{
-  checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan;sequence?:IsoSequence;run?:number;rate?:number;sceneRef?:(svg:SVGSVGElement|null)=>void;
+export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,rate=1,zoom=1,viewportRef}:{
+  checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan;sequence?:IsoSequence;run?:number;rate?:number;zoom?:number;viewportRef?:(node:HTMLDivElement|null)=>void;
 }){
   const {value,geometry}=checked;
   const {pack,objects,theme_hint}=value.data;
@@ -203,6 +203,7 @@ export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,ra
   const views=useMemo(()=>plan??isoViewPlan(checked),[checked,plan]);
   const view=views.views[turn??views.home]!;
   const {camera,layout,viewBox}=view;
+  const [, ,width,height]=viewBox.split(" ");
   const {project}=camera;
   const routes=useMemo(()=>Object.fromEntries(Object.entries(geometry.routes).map(([k,p])=>[k,p.map(project)])),[geometry,project]);
   const flow=useMemo(()=>isoFlowBeat(value.data.connections,value.steps,step),[value,step]);
@@ -227,7 +228,9 @@ export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,ra
   const labeled=objects.filter(o=>visible.has(o.id)&&layout.labels.has(o.id));
   const pinNumber=(id:string)=>objects.filter(o=>o.label).findIndex(o=>o.id===id)+1;
   return <figure className="iso-shell" data-iso-theme={theme_hint}>
-    <svg ref={sceneRef} className="iso-scene" data-iso-theme={theme_hint} data-iso-view={view.turn} viewBox={viewBox} role="img" aria-label={value.title}>
+    <div className="iso-viewport" ref={viewportRef} data-zoomed={zoom>1||undefined} tabIndex={zoom>1?0:undefined}
+      role={zoom>1?"region":undefined} aria-label={zoom>1?"Pan zoomed illustration":undefined} style={{aspectRatio:width+" / "+height}}>
+    <svg style={zoom>1?{width:zoom*100+"%",maxHeight:"calc(min(30rem, 57svh) * "+zoom+")"}:undefined} className="iso-scene" data-iso-theme={theme_hint} data-iso-view={view.turn} viewBox={viewBox} role="img" aria-label={value.title}>
       <Grid ground={layout.ground} camera={camera}/>
       {painted.filter(id=>visible.has(id)).map(id=>{
         const o=byId.get(id)!;
@@ -266,6 +269,7 @@ export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,ra
         </g>;
       })}
     </svg>
+    </div>
     {labeled.length>0&&<figcaption className="iso-key">
       <ul aria-label="Illustration key">
         {labeled.map(o=><li key={o.id}><span className="iso-key-pin" aria-hidden="true">{pinNumber(o.id)}</span>
