@@ -5,9 +5,13 @@ import type { Scene } from "@tesseract/core";
 type Entity=Scene["entities"][number] & {opacity:number;z:number};
 type Vec=[number,number,number];
 type Camera={yaw:number;pitch:number;zoom:number};
+type Stage="upright"|"tabletop";
+const worldPoint=(x:number,y:number,z:number,stage:Stage):Vec=>stage==="tabletop"
+  ? [(x-50)/50,(z-50)/50,(y-50)/50] : [(x-50)/50,(50-y)/50,(z-50)/50];
 type Target={id:string;position:Vec;radius:number;color:Vec};
-const initial={yaw:0.6,pitch:0.3,zoom:1};
-const colors:Record<NonNullable<Entity["tone"]>,Vec>={neutral:[.56,.67,.75],primary:[.43,.85,.98],secondary:[.45,.92,.68],caution:[.97,.69,.39]};
+const upright={yaw:.48,pitch:.28,zoom:1};
+const tabletop={yaw:.18,pitch:.84,zoom:1.07};
+const colors:Record<NonNullable<Entity["tone"]>,Vec>={neutral:[.50,.63,.73],primary:[.48,.83,.92],secondary:[.52,.78,.67],caution:[.86,.68,.49]};
 const minus=(a:Vec,b:Vec):Vec=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
 const cross=(a:Vec,b:Vec):Vec=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 const norm=(a:Vec):Vec=>{const size=Math.hypot(...a)||1;return [a[0]/size,a[1]/size,a[2]/size];};
@@ -47,8 +51,8 @@ function geometry(kind:Entity["kind"]) {
   }
   return new Float32Array(out);
 }
-function tube(points:NonNullable<Entity["points"]>) {
-  const world=points.map(([x,y,z=50])=>[(x-50)/50,(50-y)/50,(z-50)/50] as Vec);
+function tube(points:NonNullable<Entity["points"]>,stage:Stage) {
+  const world=points.map(([x,y,z=50])=>worldPoint(x,y,z,stage));
   const radial=(u:Vec,v:Vec,j:number):Vec=>{
     const a=j*Math.PI/3,c=Math.cos(a),s=Math.sin(a);
     return [u[0]*c+v[0]*s,u[1]*c+v[1]*s,u[2]*c+v[2]*s];
@@ -67,14 +71,14 @@ function tube(points:NonNullable<Entity["points"]>) {
   return new Float32Array(out);
 }
 
-function createRenderer(canvas:HTMLCanvasElement) {
+function createRenderer(canvas:HTMLCanvasElement,stage:Stage) {
   const gl=canvas.getContext("webgl",{alpha:true,depth:true,antialias:true});
   if(!gl) throw Error("WebGL unavailable");
   const v=shader(gl,gl.VERTEX_SHADER,`attribute vec3 p,n; uniform vec3 center,right,up,view,scale; uniform vec2 fit; varying vec3 normal;
   void main(){vec3 q=p*scale+center;gl_Position=vec4(dot(q,right)*fit.x,dot(q,up)*fit.y,-dot(q,view)*.3,1.0);normal=n;}`);
   let f:WebGLShader;
   try { f=shader(gl,gl.FRAGMENT_SHADER,`precision mediump float; varying vec3 normal; uniform vec3 tint;
-  void main(){float d=max(0.0,dot(normalize(normal),normalize(vec3(-.35,.7,.65))));gl_FragColor=vec4(tint*(.58+.42*d),1.0);}`); }
+  void main(){float d=max(0.0,dot(normalize(normal),normalize(vec3(-.38,.83,.48))));gl_FragColor=vec4(tint*(.49+.51*d),1.0);}`); }
   catch(e){gl.deleteShader(v);throw e;}
   const program=gl.createProgram();
   if(!program){gl.deleteShader(v);gl.deleteShader(f);throw Error("Program unavailable");}
@@ -93,10 +97,21 @@ function createRenderer(canvas:HTMLCanvasElement) {
   const pathFor=(points:NonNullable<Entity["points"]>)=>{
     const existing=paths.get(points);if(existing)return existing;
     const handle=gl.createBuffer();if(!handle)throw Error("Path unavailable");
-    const vertices=tube(points);
+    const vertices=tube(points,stage);
     gl.bindBuffer(gl.ARRAY_BUFFER,handle);gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.STATIC_DRAW);
     const path={handle,count:vertices.length/6};paths.set(points,path);return path;
   };
+  const scaffold=gl.createBuffer();
+  const grid:number[]=[];
+  if(stage==="tabletop") {
+    for(let i=-5;i<=5;i++){
+      const v=i*.23;
+      for(const [x,z] of [[v,-1.15],[v,1.15],[-1.15,v],[1.15,v]]){
+        grid.push(x!,-.035,z!,0,1,0);
+      }
+    }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER,scaffold);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(grid),gl.STATIC_DRAW);
   gl.enable(gl.DEPTH_TEST);
   return {
     draw(targets:Target[], entities:Entity[], camera:Camera,highlighted:ReadonlySet<string>) {
@@ -111,11 +126,18 @@ function createRenderer(canvas:HTMLCanvasElement) {
       gl.useProgram(program);
       gl.uniform3fv(uniforms.right!,right);gl.uniform3fv(uniforms.up!,up);gl.uniform3fv(uniforms.view!,view);
       gl.uniform2fv(uniforms.fit!,fit);
+      if(grid.length) {
+        gl.uniform3fv(uniforms.center!,[0,0,0]);gl.uniform3fv(uniforms.scale!,[1,1,1]);gl.uniform3fv(uniforms.tint!,[.175,.243,.30]);
+        gl.bindBuffer(gl.ARRAY_BUFFER,scaffold);
+        gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,24,0);
+        gl.enableVertexAttribArray(n);gl.vertexAttribPointer(n,3,gl.FLOAT,false,24,12);
+        gl.drawArrays(gl.LINES,0,grid.length/6);
+      }
       for(const e of entities) {
         if(e.kind!=="path" || e.opacity<=0 || !e.points) continue;
-        const color=highlighted.has(e.id)?colors.primary:colors[e.tone??"neutral"];
+        const color=highlighted.has(e.id)?colors.primary:[.29,.40,.48];
         const path=pathFor(e.points);
-        gl.uniform3fv(uniforms.center!,[e.x/50,-e.y/50,(e.z-50)/50]);gl.uniform3fv(uniforms.scale!,[1,1,1]);gl.uniform3fv(uniforms.tint!,color);
+        gl.uniform3fv(uniforms.center!,stage==="tabletop"?[e.x/50,(e.z-50)/50,e.y/50]:[e.x/50,-e.y/50,(e.z-50)/50]);gl.uniform3fv(uniforms.scale!,[1,1,1]);gl.uniform3fv(uniforms.tint!,color);
         gl.bindBuffer(gl.ARRAY_BUFFER,path.handle);
         gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,3,gl.FLOAT,false,24,0);
         gl.enableVertexAttribArray(n);gl.vertexAttribPointer(n,3,gl.FLOAT,false,24,12);
@@ -153,12 +175,13 @@ function createRenderer(canvas:HTMLCanvasElement) {
         }
       }
     },
-    dispose(){for(const b of buffers)gl.deleteBuffer(b.handle);for(const path of paths.values())gl.deleteBuffer(path.handle);paths.clear();gl.deleteProgram(program);},
+    dispose(){for(const b of buffers)gl.deleteBuffer(b.handle);for(const path of paths.values())gl.deleteBuffer(path.handle);paths.clear();gl.deleteBuffer(scaffold);gl.deleteProgram(program);},
   };
 }
 
-export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,label,language}:{entities:Entity[];highlighted:ReadonlySet<string>;onSelect:(id:string)=>void;onUnavailable:()=>void;label:string;language?:string}) {
+export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,label,language,stage="upright"}:{entities:Entity[];highlighted:ReadonlySet<string>;onSelect:(id:string)=>void;onUnavailable:()=>void;label:string;language?:string;stage?:Stage}) {
   const labels=lessonLabels(language);
+  const initial=stage==="tabletop"?tabletop:upright;
   const canvas=useRef<HTMLCanvasElement>(null);
   const renderer=useRef<ReturnType<typeof createRenderer>|null>(null);
   const [camera,setCamera]=useState(initial);
@@ -189,18 +212,19 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
   const [geometrySize,setGeometrySize]=useState(0);
   const drag=useRef<{x:number;y:number;yaw:number;pitch:number;pointer:number;moved:boolean}|null>(null);
   const targets=entities.filter(e=>e.kind!=="path" && e.opacity>0).map(e=>({
-    id:e.id,position:[(e.x-50)/50,(50-e.y)/50,(e.z-50)/50] as Vec,
+    id:e.id,position:worldPoint(e.x,e.y,e.z,stage),
     radius:(e.width??(e.kind==="point"?8:22))/100,
-    color:highlighted.has(e.id)?[.98,.66,.24] as Vec:colors[e.tone??"neutral"],
+    color:e.kind==="box" ? (highlighted.has(e.id)?[.55,.72,.80] as Vec : [ .39,.49,.57 ] as Vec) :
+      highlighted.has(e.id)?[.82,.69,.47] as Vec:colors[e.tone??"neutral"],
   }));
   useEffect(()=>{
     const el=canvas.current!;
-    try{renderer.current=createRenderer(el);}catch{onUnavailable();return;}
+    try{renderer.current=createRenderer(el,stage);}catch{onUnavailable();return;}
     const lost=(event:Event)=>{event.preventDefault();onUnavailable();};
     const resize=new ResizeObserver(()=>setGeometrySize(i=>i+1)); resize.observe(el);
     el.addEventListener("webglcontextlost",lost);
     return ()=>{resize.disconnect();el.removeEventListener("webglcontextlost",lost);renderer.current?.dispose();renderer.current=null;};
-  },[onUnavailable]);
+  },[onUnavailable,stage]);
   useEffect(()=>{
     try{renderer.current?.draw(targets,entities,camera,highlighted);}catch{onUnavailable();}
   },[targets,entities,camera,geometrySize,onUnavailable,highlighted]);
@@ -208,9 +232,9 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
   const zoom=(direction:number)=>{const c=desired.current;update({...c,zoom:Math.min(1.65,Math.max(.6,c.zoom+direction))});};
   const [right,up]=basis(camera);
   const unit=(n:number)=>Math.max(10,Math.min(90,n));
-  const button="rounded-md border border-[var(--line)] px-2 py-1 text-sm";
+  const button="tess-camera-button";
   return <>
-    <div className="tess-scene-canvas tess-scene-mesh-stage relative mt-2" data-projection="isometric">
+    <div className="tess-scene-canvas tess-scene-mesh-stage relative mt-2" data-projection="isometric" data-stage={stage}>
     <canvas className="block aspect-[5/3] w-full touch-none" ref={canvas} aria-label={label+" · "+labels.scene3d}
       onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);drag.current={x:e.clientX,y:e.clientY,pointer:e.pointerId,yaw:rendered.current.yaw,pitch:rendered.current.pitch,moved:false};}}
       onPointerMove={e=>{const d=drag.current;if(!d||d.pointer!==e.pointerId)return; const dx=e.clientX-d.x,dy=e.clientY-d.y;if(!d.moved && Math.hypot(dx,dy)<5)return;d.moved=true;update({...desired.current,yaw:d.yaw-dx*.01,pitch:Math.min(1.3,Math.max(-1.3,d.pitch+dy*.01))});}}
@@ -225,21 +249,21 @@ export default function SceneMesh({entities,highlighted,onSelect,onUnavailable,l
     <div className="pointer-events-none absolute inset-0">
       {entities.filter(e=>e.kind==="box" && e.opacity>0).map(e=>{
         const target=targets.find(t=>t.id===e.id)!;
-        const pos=target.position;
+        const pos:Vec=[target.position[0],target.position[1]+.09,target.position[2]];
         const left=unit(50+50*dot(pos,right)*.6*camera.zoom);
-        const top=unit(50-50*dot(pos,up)*camera.zoom-10);
-        return <span key={e.id} className="tess-scene-mesh-label" style={{left:left+"%",top:top+"%"}}>{e.label}</span>;
+        const top=unit(50-50*dot(pos,up)*camera.zoom-7);
+        return <span key={e.id} className="tess-scene-mesh-label" data-emphasis={highlighted.has(e.id)||undefined} style={{left:left+"%",top:top+"%"}}>{e.label}</span>;
       })}
     </div>
     </div>
-    <div className="mt-2 flex flex-wrap gap-2">
-      <button className={button} type="button" onClick={()=>orbit(-.22)}>{labels.left}</button>
-      <button className={button} type="button" onClick={()=>orbit(.22)}>{labels.right}</button>
-      <button className={button} type="button" onClick={()=>orbit(0,.22)}>{labels.up}</button>
-      <button className={button} type="button" onClick={()=>orbit(0,-.22)}>{labels.down}</button>
-      <button className={button} type="button" onClick={()=>zoom(.15)}>{labels.closer}</button>
-      <button className={button} type="button" onClick={()=>zoom(-.15)}>{labels.farther}</button>
-      <button className={button} type="button" onClick={()=>update(initial)}>{labels.reset}</button>
+    <div className="tess-camera-tools">
+      <button className={button} type="button" onClick={()=>orbit(-.22)} aria-label={labels.left} title={labels.left}><span aria-hidden="true">↶</span></button>
+      <button className={button} type="button" onClick={()=>orbit(.22)} aria-label={labels.right} title={labels.right}><span aria-hidden="true">↷</span></button>
+      <button className={button} type="button" onClick={()=>orbit(0,.22)} aria-label={labels.up} title={labels.up}><span aria-hidden="true">↑</span></button>
+      <button className={button} type="button" onClick={()=>orbit(0,-.22)} aria-label={labels.down} title={labels.down}><span aria-hidden="true">↓</span></button>
+      <button className={button} type="button" onClick={()=>zoom(.15)} aria-label={labels.closer} title={labels.closer}><span aria-hidden="true">+</span></button>
+      <button className={button} type="button" onClick={()=>zoom(-.15)} aria-label={labels.farther} title={labels.farther}><span aria-hidden="true">−</span></button>
+      <button className={button} type="button" onClick={()=>update(initial)} aria-label={labels.reset} title={labels.reset}><span aria-hidden="true">↺</span></button>
     </div>
   </>;
 }

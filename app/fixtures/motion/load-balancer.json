@@ -7,7 +7,8 @@
     {
       "id": "network",
       "kind": "mesh",
-      "label": "กระจายคำขอแบบวนคิว"
+      "label": "กระจายคำขอแบบวนคิว",
+      "stage": "tabletop"
     }
   ],
   "entities": [
@@ -17,11 +18,11 @@
       "kind": "box",
       "x": 9,
       "y": 53,
-      "width": 24,
-      "height": 12,
+      "width": 19,
+      "height": 9,
       "label": "ผู้ใช้",
-      "z": 50,
-      "depth": 12,
+      "z": 59,
+      "depth": 16,
       "appearance": "display"
     },
     {
@@ -30,12 +31,12 @@
       "kind": "box",
       "x": 43,
       "y": 53,
-      "width": 24,
+      "width": 23,
       "height": 12,
       "label": "ตัวกระจายงาน",
       "tone": "secondary",
-      "z": 50,
-      "depth": 12,
+      "z": 62,
+      "depth": 16,
       "appearance": "equipment-rack"
     },
     {
@@ -44,11 +45,11 @@
       "kind": "box",
       "x": 88,
       "y": 20,
-      "width": 24,
+      "width": 23,
       "height": 12,
       "label": "เครื่อง A",
-      "z": 50,
-      "depth": 12,
+      "z": 62,
+      "depth": 16,
       "appearance": "equipment-rack"
     },
     {
@@ -57,11 +58,11 @@
       "kind": "box",
       "x": 88,
       "y": 53,
-      "width": 24,
+      "width": 23,
       "height": 12,
       "label": "เครื่อง B",
-      "z": 50,
-      "depth": 12,
+      "z": 62,
+      "depth": 16,
       "appearance": "equipment-rack"
     },
     {
@@ -70,11 +71,11 @@
       "kind": "box",
       "x": 88,
       "y": 86,
-      "width": 24,
+      "width": 23,
       "height": 12,
       "label": "เครื่อง C",
-      "z": 50,
-      "depth": 12,
+      "z": 62,
+      "depth": 16,
       "appearance": "equipment-rack"
     },
     {
@@ -257,7 +258,7 @@
       "y": 53,
       "tone": "primary",
       "label": "คำขอ",
-      "z": 50,
+      "z": 52,
       "width": 3.2
     },
     {
@@ -268,7 +269,7 @@
       "y": 20,
       "tone": "secondary",
       "label": "คำตอบ",
-      "z": 50,
+      "z": 52,
       "width": 3.2
     }
   ],

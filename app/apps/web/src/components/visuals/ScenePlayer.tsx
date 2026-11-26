@@ -146,7 +146,7 @@ export function ScenePlayer({ scene, title, language }: { scene:Scene; title:str
               </g>;
             })}
           </svg>;
-            return panel.kind==="mesh" ? <OptionalMesh label={panel.label} language={language} fallback={drawing}
+            return panel.kind==="mesh" ? <OptionalMesh label={panel.label} language={language} stage={panel.stage} fallback={drawing}
               entities={entities.filter(e=>e.panel===panel.id)} highlighted={new Set([...selected,...(beat.focus??[])])}
               onSelect={entity=>{const binding=(scene.bindings??[]).find(b=>b.target_ids.includes(entity));if(binding)toggle(binding.id);}}/> : drawing;
           })()}

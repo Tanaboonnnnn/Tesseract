@@ -9,7 +9,7 @@ const property = z.enum(["x", "y", "z", "opacity"]);
 const panel = z.discriminatedUnion("kind", [
   z.strictObject({ id, kind: z.literal("diagram"), label, projection: z.enum(["flat","isometric"]).optional() }),
   z.strictObject({ id, kind: z.literal("plot"), label, x_label: label, y_label: label }),
-  z.strictObject({ id, kind: z.literal("mesh"), label }),
+  z.strictObject({ id, kind: z.literal("mesh"), label, stage: z.enum(["upright","tabletop"]).optional() }),
   z.strictObject({ id, kind: z.literal("inspect"), label, tex:z.string().min(1).max(400).optional() }),
 ]);
 const entity = z.strictObject({

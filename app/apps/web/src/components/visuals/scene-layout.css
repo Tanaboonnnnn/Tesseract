@@ -158,3 +158,19 @@
   padding: .125rem 0 .125rem .875rem;
   line-height: 1.65;
 }
+
+/* Keep the tabletop grid inside the perspective; the DOM only supplies light and labels. */
+.tess-scene-mesh-stage {
+  background: radial-gradient(ellipse at 52% 40%, #1d2e3c 0%, #111c29 65%, #0d1722 100%);
+}
+.tess-scene-mesh-label[data-emphasis] { border-color: #89b8cb; color: #fff; }
+.tess-camera-tools { display: flex; flex-wrap: wrap; gap: .375rem; margin-top: .625rem; }
+.tess-camera-button {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: .45rem;
+  color: inherit;
+  font-size: 1.1rem;
+}
+.tess-camera-button:hover { background: var(--lane); }
+.tess-camera-button:focus-visible { outline: 2px solid var(--color-accent-500); outline-offset: 2px; }
