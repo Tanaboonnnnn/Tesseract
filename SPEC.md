@@ -169,6 +169,8 @@ Two levels: **domain → skill**. Radar top level = domains; click a domain = ra
 | **English** | Reading, Listening, Speaking, Writing |
 
 ### 4.8 Assessment — `assessments/<date>-<slug>.md`
+The Fieldbook layout displays the same domain and skill results as score bars. It labels rows with no assessment history as "Not assessed" instead of drawing a zero bar; the §4.9 calculations and data are unchanged. Skill details chart up to 12 raw assessment scores when at least two exist, separate from the current computed level and AI adjustment.
+
 ```yaml
 id: 2026-11-21-ctf-web-01
 title: CTF — SQLi challenge
@@ -400,6 +402,8 @@ create/update, skill adjustments, assessments, inbox, calendar sync. Agent name 
 List/get tools return compact summaries by default; `detail: true` for full data.
 
 ## 6. UI
+
+**Fieldbook** is an optional layout with a left desktop sidebar, existing mobile navigation, and a matched paper-and-ink palette in Light and Dark. Palette overrides remain independent. Skills has a dedicated Fieldbook presentation; other routes keep their existing page structure with the shared shell and palette.
 
 - **English only, minimal text, clean.**
 - **Theme: "System window"** — holographic HUD panels (glowing frame, corner brackets), grid background, Rajdhani display font (self-hosted, OFL) for headings, Today as a notification window. Original design; no characters, logos or assets from any existing work.

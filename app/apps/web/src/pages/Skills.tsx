@@ -2,12 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { SkillRadar } from "../components/SkillRadar.tsx";
+import { FieldbookSkills } from "../components/FieldbookSkills.tsx";
+import { useLayout } from "../lib/theme.ts";
 import { Card, Chip, Dialog, Empty, ErrorNote, Loading, PageHeader, ProgressBar, SectionTitle } from "../components/ui.tsx";
 import { api, type DomainLevel } from "../lib/api.ts";
 import { cn, shortDate } from "../lib/format.ts";
 import { DIFFICULTY_TONE, SOURCE_LABEL } from "../lib/labels.ts";
 
 export function Skills() {
+  const [layout] = useLayout();
   const [params, setParams] = useSearchParams();
   const { data, error, isPending } = useQuery({ queryKey: ["skills"], queryFn: api.skills });
 
@@ -24,6 +27,10 @@ export function Skills() {
     if (s) p.set("skill", s);
     setParams(p);
   };
+
+  if (layout === "fieldbook") {
+    return <FieldbookSkills domains={data} domain={domain} skillId={skillId} pending={isPending} error={error} go={go}/>;
+  }
 
   return (
     <>

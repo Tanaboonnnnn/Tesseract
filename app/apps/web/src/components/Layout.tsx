@@ -20,13 +20,14 @@ const FRAME: Record<LayoutId, string> = {
   notion: "lg:pl-64",
   editorial: "",
   insights: "lg:pl-60",
+  fieldbook: "lg:pl-[220px]",
 };
 
 export function Layout() {
   const [layout] = useLayout();
   return (
     <div className={cn("sb-frame min-h-dvh", FRAME[layout])}>
-      {layout === "system" && <SidebarNav />}
+      {(layout === "system" || layout === "fieldbook") && <SidebarNav />}
       {(layout === "minimal" || layout === "terminal") && <TopNav terminal={layout === "terminal"} />}
       {layout === "bento" && <RailNav />}
       {layout === "notebook" && <TabsNav />}

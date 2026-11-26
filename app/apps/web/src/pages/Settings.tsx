@@ -138,7 +138,7 @@ function Mini({ id }: { id: LayoutId }) {
       </div>
     );
   }
-  if (id === "system")
+  if (id === "system" || id === "fieldbook")
     return (
       <div className={cn(box, "flex")}>
         <div className="w-1/4 bg-[var(--color-sidebar)] p-1">
