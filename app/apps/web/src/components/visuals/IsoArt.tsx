@@ -6,8 +6,8 @@ import type { ValidIso } from "@tesseract/core/iso";
 import { block, drawKeys, drawPart, labelSurface, tokenGlyph } from "./iso-parts.tsx";
 import { isoCamera } from "./iso-camera.ts";
 import type { IsoCamera, IsoTurn } from "./iso-camera.ts";
-import { routeMotion } from "./iso-motion.ts";
-import type { XY } from "./iso-motion.ts";
+import { isoBeatTime, isoFlowBeat, routeMotion } from "./iso-motion.ts";
+import type { IsoSequence, XY } from "./iso-motion.ts";
 import "./iso-tokens.css";
 import "./iso-scene.css";
 export { drawKeys };
@@ -135,24 +135,43 @@ function Grid({ground,camera}:{ground:Ground;camera:IsoCamera}){
     </g>
   </g>;
 }
-function FlowToken({points,step,enabled,flow}:{points:XY[];step:number;enabled:boolean;flow:string}){
+function FlowToken({points,step,enabled,flow,sequence,run,duration,parked=false}:{
+  points:XY[];step:number;enabled:boolean;flow:string;sequence?:IsoSequence;run:number;duration:number;parked?:boolean;
+}){
   const p=points.at(-1) || [0,0];
   const ref=useRef<SVGGElement>(null);
+  const animation=useRef<Animation|null>(null);
+  const saved=useRef<{step:number;run:number;time:number}|null>(null);
+  const automatic=sequence!==undefined;
   useEffect(()=>{
     const node=ref.current;
-    if(!node||!enabled||step<0||!node.animate||document.hidden)return;
+    if(!node||!enabled||parked||step<0||!node.animate||document.hidden)return;
     const frames=routeMotion(points);
     if(!frames.length)return;
-    const a=node.animate(frames,{duration:950,iterations:1,easing:"linear"});
+    const a=node.animate(frames,{duration,iterations:1,easing:"linear",fill:"both"});
+    animation.current=a;
+    if(automatic&&saved.current?.step===step&&saved.current.run===run)a.currentTime=saved.current.time;
+    if(sequence==="pause") a.pause();
+    if(sequence==="end") a.finish();
     const stop=()=>{if(document.hidden)a.cancel();};
-    const observer=typeof IntersectionObserver==="undefined"?null:new IntersectionObserver(entries=>{
+    const observer=automatic||typeof IntersectionObserver==="undefined"?null:new IntersectionObserver(entries=>{
       if(entries[0]&&!entries[0].isIntersecting)a.cancel();
     });
     observer?.observe(node.ownerSVGElement!);
-    document.addEventListener("visibilitychange",stop);
-    return ()=>{a.cancel();observer?.disconnect();document.removeEventListener("visibilitychange",stop);};
-  },[points,step,enabled]);
-  return <g data-iso-packet={flow} ref={ref} style={{transform:`translate(${p[0]}px, ${p[1]}px)`}}>{tokenGlyph()}</g>;
+    if(!automatic) document.addEventListener("visibilitychange",stop);
+    return ()=>{
+      if(automatic&&typeof a.currentTime==="number")saved.current={step,run,time:a.currentTime};
+      animation.current=null;a.cancel();observer?.disconnect();
+      if(!automatic) document.removeEventListener("visibilitychange",stop);
+    };
+  },[points,step,enabled,parked,duration,run,automatic]);
+  useEffect(()=>{
+    const a=animation.current;
+    if(!a)return;
+    if(sequence==="pause")a.pause();
+    else if(sequence==="run"&&a.playState==="paused")a.play();
+  },[sequence]);
+  return <g data-iso-packet={flow} data-iso-parked={parked||undefined} ref={ref} style={{transform:`translate(${p[0]}px, ${p[1]}px)`}}>{tokenGlyph()}</g>;
 }
 function Body({children,fault,animate,step,id,dim}:{children:React.ReactNode;fault:boolean;animate:boolean;step:number;id:string;dim:boolean}){
   const ref=useRef<SVGGElement>(null);
@@ -164,7 +183,9 @@ function Body({children,fault,animate,step,id,dim}:{children:React.ReactNode;fau
   },[fault,animate,step]);
   return <g ref={ref} className="iso-body" data-id={id} data-dim={dim||undefined}>{children}</g>;
 }
-export function IsoArt({checked,step,playing:animate,turn,plan}:{checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan}){
+export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0}:{
+  checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan;sequence?:IsoSequence;run?:number;
+}){
   const {value,geometry}=checked;
   const {pack,objects,theme_hint}=value.data;
   const frames=useMemo(()=>resolveIsoFrames(value),[value]);
@@ -175,6 +196,12 @@ export function IsoArt({checked,step,playing:animate,turn,plan}:{checked:ValidIs
   const {camera,layout,viewBox}=view;
   const {project}=camera;
   const routes=useMemo(()=>Object.fromEntries(Object.entries(geometry.routes).map(([k,p])=>[k,p.map(project)])),[geometry,project]);
+  const flow=useMemo(()=>isoFlowBeat(value.data.connections,value.steps,step),[value,step]);
+  const automatic=sequence!==undefined;
+  const movement=useMemo(()=>flow.moving.map(({id,after})=>({
+    id,
+    points:automatic&&after&&routes[after]?.length?[routes[after]!.at(-1)!,...routes[id]!]:routes[id]!,
+  })),[flow,routes,automatic]);
   const byId=new Map(objects.map(o=>[o.id,o]));
   const depth=(id:string)=>{
     const o=byId.get(id)!, [w,d]=dimensions(o,pack);
@@ -207,12 +234,15 @@ export function IsoArt({checked,step,playing:animate,turn,plan}:{checked:ValidIs
       {painted.filter(id=>visible.has(id)).map(id=>{
         const o=byId.get(id)!;
         const pose=props(o);
-        return <Body key={id} id={id} fault={pose.state==="fault"&&(previous?.states[id]??o.state)!=="fault"} step={step} animate={animate} dim={!!focus.size&&!focus.has(id)&&pose.state!=="fault"}>
+        return <Body key={id} id={id} fault={pose.state==="fault"&&(previous?.states[id]??o.state)!=="fault"} step={step} animate={animate&&sequence!=="pause"} dim={!!focus.size&&!focus.has(id)&&pose.state!=="fault"}>
           {drawPart(pack,o.component,pose)}
         </Body>;
       })}
-      {value.data.connections.filter(c=>visible.has(c.id)&&focus.has(c.id)&&c.kind==="flow").map(c=>
-        <FlowToken key={c.id} flow={c.id} points={routes[c.id]!} step={step} enabled={animate}/>)}
+      {movement.filter(c=>visible.has(c.id)).map(c=>
+        <FlowToken key={c.id} flow={c.id} points={c.points} step={step} enabled={animate}
+          sequence={sequence} run={run} duration={automatic?isoBeatTime(flow).travel:950}/>)}
+      {automatic&&animate&&flow.parked.filter(id=>visible.has(id)).map(id=>
+        <FlowToken key={id} flow={id} points={routes[id]!} step={step} enabled={false} sequence={sequence} run={run} duration={0} parked/>)}
       {labeled.map(o=>{
         const {anchor:[x,y],pos:[tx,ty]}=layout.labels.get(o.id)!;
         return <g key={o.id} className="iso-annotation" data-dim={(focus.size>0&&!focus.has(o.id)&&!status(o))||undefined}>

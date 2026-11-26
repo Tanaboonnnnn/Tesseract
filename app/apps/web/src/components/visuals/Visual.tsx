@@ -15,6 +15,8 @@ import { Plot } from "./Plot.tsx";
 import { makeFx } from "./shared.ts";
 import { StateView } from "./StateView.tsx";
 import { TreeView } from "./TreeView.tsx";
+import { isoBeatTime, isoFlowBeat } from "./iso-motion.ts";
+import type { IsoSequence } from "./iso-motion.ts";
 
 const IsoView=lazy(()=>import("./IsoView.tsx"));
 
@@ -24,19 +26,28 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
   // -1 = overview (everything visible); build mode starts at step 0 so the picture builds up.
   const first = visual.step_mode === "build" && n ? 0 : -1;
   const [step, setStep] = useState(first);
-  const [playing, setPlaying] = useState(false);
+  const [legacyPlaying, setPlaying] = useState(false);
+  const [sequence,setSequence]=useState<IsoSequence>();
+  const [run,setRun]=useState(0);
+  const playing=isIso?sequence==="run":legacyPlaying;
   const iso=useMemo(()=>{
     if(visual.type!=="iso")return null;
     const {author:_a,created:_c,updated:_u,...input}=visual;
     return input;
   },[visual]);
+  const beatTime=iso?isoBeatTime(isoFlowBeat(iso.data.connections,iso.steps,step)).duration:2600;
+  const progress=useRef({step:-1,run:-1,remaining:0});
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setStep(first);
-    if (isIso) setPlaying(false);
+    setSequence(undefined);
+    setPlaying(false);
   }, [visual.id, visual.updated, first, isIso]);
 
-  const go = (s: number) => setStep(Math.max(first, Math.min(n - 1, s)));
+  const go = (s: number) => {
+    if(isIso) setSequence(undefined);
+    setStep(Math.max(first, Math.min(n - 1, s)));
+  };
 
   useEffect(() => {
     if (!playing) return;
@@ -45,18 +56,28 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
       setPlaying(false);
       return;
     }
-    // Let ISO's last beat finish before changing the control to Replay.
+    if(isIso&&(progress.current.run!==run||progress.current.step!==step)) {
+      progress.current={step,run,remaining:beatTime};
+    }
+    const duration=isIso?progress.current.remaining:2600;
+    const started=performance.now();
     const t = setTimeout(() => {
-      if (atEnd) setPlaying(false);
+      if (atEnd) {
+        if(isIso) setSequence("end");
+        else setPlaying(false);
+      }
       else setStep((s) => s + 1);
-    }, 2600);
-    return () => clearTimeout(t);
-  }, [playing, step, n, isIso]);
+    }, duration);
+    return () => {
+      clearTimeout(t);
+      if(isIso) progress.current.remaining=Math.max(0,duration-(performance.now()-started));
+    };
+  }, [playing, step, n, isIso, run, beatTime]);
 
   useEffect(() => {
     const el = box.current;
     if (!el || !playing) return;
-    const stop = () => setPlaying(false);
+    const stop = () => isIso?setSequence("pause"):setPlaying(false);
     const io = new IntersectionObserver(([e]) => !e?.isIntersecting && stop());
     io.observe(el);
     const vis = () => document.hidden && stop();
@@ -65,18 +86,21 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
       io.disconnect();
       document.removeEventListener("visibilitychange", vis);
     };
-  }, [playing]);
+  }, [playing,isIso]);
 
   useEffect(() => {
     if (!keys || !n) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest("input, textarea, select")) return;
-      if (e.key === "ArrowRight") setStep((s) => Math.min(n - 1, s + 1));
-      if (e.key === "ArrowLeft") setStep((s) => Math.max(first, s - 1));
+      if (e.key === "ArrowRight"||e.key==="ArrowLeft") {
+        if(isIso) setSequence(undefined);
+        const delta=e.key==="ArrowRight"?1:-1;
+        setStep(s=>Math.max(first,Math.min(n-1,s+delta)));
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [keys, n, first]);
+  }, [keys, n, first,isIso]);
 
   const fx = makeFx(visual, step);
   const caption = step >= 0 ? visual.steps[step]?.text : null;
@@ -98,7 +122,7 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
         {visual.type === "grid" && <GridView v={visual} fx={fx} />}
         {visual.type === "tree" && <TreeView v={visual} fx={fx} />}
         {visual.type === "plot" && <Plot data={visual.data} fx={fx} />}
-        {iso && <Suspense fallback={<p role="status">Loading illustration…</p>}><IsoView input={iso} step={step}/></Suspense>}
+        {iso && <Suspense fallback={<p role="status">Loading illustration…</p>}><IsoView input={iso} step={step} sequence={sequence} run={run}/></Suspense>}
       </div>
 
       {n > 0 && (
@@ -108,13 +132,18 @@ export function Visual({ visual, keys = false, learning = "", language }: { visu
               <ChevronLeft size={16} />
             </StepButton>
             <StepButton label={playing ? "Pause" : "Play steps"} onClick={() => {
-              if (playing) setPlaying(false);
+              if(isIso) {
+                if(playing) setSequence("pause");
+                else if(sequence==="pause") setSequence("run");
+                else {setRun(r=>r+1);setStep(0);setSequence("run");}
+              }
+              else if (playing) setPlaying(false);
               else {
-                if (step >= n - 1 || (isIso && step < 0)) go(isIso ? 0 : first);
+                if (step >= n - 1) go(first);
                 setPlaying(true);
               }
             }}>
-              {playing ? <Pause size={15} /> : step >= n - 1 ? <RotateCcw size={15} /> : <Play size={15} />}
+              {playing ? <Pause size={15} /> : sequence==="end" || (!isIso && step >= n - 1) ? <RotateCcw size={15} /> : <Play size={15} />}
             </StepButton>
             <StepButton label="Next step" onClick={() => go(step + 1)} disabled={step >= n - 1}>
               <ChevronRight size={16} />
