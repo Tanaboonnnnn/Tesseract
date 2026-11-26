@@ -16,20 +16,21 @@ export default function IsoView({input,step,sequence,run,motion,rate,viewportRef
   const [turn,setTurn]=useState<IsoTurn>(home);
   const [zoom,setZoom]=useState(1);
   const viewport=useRef<HTMLDivElement|null>(null);
-  const previous=useRef(1);
+  const previous=useRef({zoom:1,turn});
   const attachViewport=useCallback((node:HTMLDivElement|null)=>{
     viewport.current=node;
     viewportRef(node);
   },[viewportRef]);
   useEffect(()=>{setTurn(home);setZoom(1);},[home,input.id]);
   useLayoutEffect(()=>{
-    const el=viewport.current, ratio=zoom/previous.current;
-    previous.current=zoom;
-    if(!el||ratio===1)return;
+    const el=viewport.current, old=previous.current, ratio=zoom/old.zoom;
+    previous.current={zoom,turn};
+    if(!el||(ratio===1&&old.turn===turn))return;
     if(zoom===1){el.scrollTo(0,0);return;}
+    if(old.zoom===1||old.turn!==turn){el.scrollTo((el.scrollWidth-el.clientWidth)/2,(el.scrollHeight-el.clientHeight)/2);return;}
     el.scrollTo((el.scrollLeft+el.clientWidth/2)*ratio-el.clientWidth/2,
       (el.scrollTop+el.clientHeight/2)*ratio-el.clientHeight/2);
-  },[zoom]);
+  },[zoom,turn]);
   const reset=()=>{setTurn(home);setZoom(1);};
   if(!checked.ok||!plan)return <p role="status">This illustration could not be displayed.</p>;
   return <>

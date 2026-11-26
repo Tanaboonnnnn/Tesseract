@@ -17,6 +17,7 @@ const source = z.strictObject({
   rights: z.enum(["reference-only", "owned", "licensed", "unverified"]), summary: text(1200),
 });
 const visual = z.unknown().transform((input, ctx) => {
+  const repair={rule:"classroom-visual-format",fix:"Get a complete typed example from classroom_format.lab_authoring.step_visual_example, or request include_scene_schema for scenes. For other visual types, see visual_formats if your profile exposes it. Do not use HTML or image URL embeds."};
   try {
     const required = (input ?? {}) as Record<string, unknown>;
     if(required.type==="iso"){
@@ -30,12 +31,12 @@ const visual = z.unknown().transform((input, ctx) => {
     const parsed = VisualSchema.safeParse({ ...required, author: "classroom", created: "2026-01-01", updated: "2026-01-01" });
     if (!parsed.success || parsed.data.type === "html" ||
       (parsed.data.type === "lesson" && parsed.data.data.blocks.some((b) => b.kind === "html" || b.kind === "visual" || (b.kind === "text" && !noEmbeddedContent(b.md))))) {
-      ctx.addIssue({ code: "custom", message: "Use a valid typed visual without HTML, embedded images, or cross-workspace components" });
+      ctx.addIssue({ code: "custom", message: "Use a valid typed visual without HTML, embedded images, or cross-workspace components", params:repair });
       return z.NEVER;
     }
     return parsed.data;
   } catch {
-    ctx.addIssue({ code: "custom", message: "Invalid visual data" });
+    ctx.addIssue({ code: "custom", message: "Invalid visual data", params:repair });
     return z.NEVER;
   }
 });
@@ -49,6 +50,8 @@ const question = z.discriminatedUnion("type", [
   z.strictObject({ id, type: z.literal("multi"), prompt: text(1200), choices: z.array(text()).min(3).max(8), correct: z.array(z.number().int().nonnegative()).min(2).max(8), explanation: text(3000) }),
 ]);
 const lab = z.strictObject({
+  title: text(120).optional(),
+  visuals: z.array(z.strictObject({after_step:z.number().int().min(1).max(16), visual, fallback:text(2000)})).max(8).optional(),
   platform: z.enum(["windows", "linux", "both"]), environment: z.enum(["offline", "online"]), prerequisites: z.array(text()).max(10),
   steps: z.array(text(1500)).min(1).max(16), expected: text(1500), cleanup: text(1500).optional(),
 });
@@ -80,6 +83,24 @@ export const ClassroomBundleSchema = z.strictObject({
       if(b.type==="visual"&&b.visual.type==="iso")
         ctx.addIssue({code:"custom",path:["lessons",i,"blocks",j,"visual","type"],message:"ISO is not part of Classroom bundle v1.",params:{rule:"classroom-version",fix:"Use schema_version 2 on a compatible host, or use a v1 visual type."}});
     });
+    const visualIds=new Set(l.blocks.flatMap(b=>b.type==="visual"?[b.visual.id]:[]));
+    l.labs.forEach((lab,li)=>{
+      const path=["lessons",i,"labs",li];
+      if(bundle.schema_version===1 && (lab.title!==undefined||lab.visuals!==undefined)) issue(path,
+        "Explicit lab titles and step visuals use Classroom v2.",{rule:"lab-version",fix:"Use schema_version 2 for titled labs or labs with visuals."});
+      const placed=new Set<number>();
+      lab.visuals?.forEach(({after_step,visual},vi)=>{
+        if(visualIds.has(visual.id)) issue([...path,"visuals",vi,"visual","id"],"This visual ID is already used in the lesson.",
+          {rule:"lab-visual-id",fix:"Choose a distinct visual.id across Learn blocks and Lab steps of this lesson."});
+        visualIds.add(visual.id);
+        const at=[...path,"visuals",vi,"after_step"];
+        if(after_step>lab.steps.length) issue(at,"This lab does not have step "+after_step+".",
+          {rule:"lab-visual-step",fix:"Use the number of an existing step (1 to "+lab.steps.length+")."});
+        else if(placed.has(after_step)) issue(at,"This lab step already has a visual.",
+          {rule:"lab-visual-per-step",fix:"Use at most one visual per step; combine related details or move the visual to the relevant step."});
+        placed.add(after_step);
+      });
+    });
     if (l.source_ids.some((s) => !sourceIds.has(s))) issue(["lessons", i, "source_ids"], "Unknown source ID");
     if (new Set(l.questions.map((q) => q.id)).size !== l.questions.length) issue(["lessons", i, "questions"], "Question IDs must be unique within a lesson");
     l.questions.forEach((q, qi) => {
@@ -100,6 +121,8 @@ const bundleIssue=(i:z.core.$ZodIssue):ClassroomIssue=>{
   let detail=i.code==="custom"?i.params:undefined;
   if (!detail && i.path[0]==="lessons") {
     if (i.path[2]==="guidance") detail={rule:"lesson-guidance-format",fix:"Set guidance.question to a short prediction prompt and guidance.takeaways to 1-4 nonempty plain-text strings (240 characters each). See classroom_format."};
+    if (i.path[2]==="labs" && i.path.at(-1)==="after_step") detail={rule:"lab-visual-step",fix:"Set after_step to the 1-based number of an existing lab step."};
+    if (i.path[2]==="labs" && i.path.at(-1)==="title") detail={rule:"lab-title-format",fix:"Use one short lab title (up to 120 characters); put setup requirements in prerequisites."};
     if (i.path[2]==="objective") detail={rule:"lesson-objective",fix:"Write a nonempty learning objective (up to 1000 characters) for this lesson."};
   }
   return {code:"VALIDATION",path:["bundle",...i.path].join("."),message:i.message,
@@ -121,11 +144,18 @@ function authoringIssues(bundle: ClassroomBundle): ClassroomIssue[] {
     message:"New MCP Classroom drafts must use schema version 2.",
     fix:"Set schema_version to 2 and add guidance to each lesson using classroom_format. Older revisions remain readable.",
   }];
-  return bundle.lessons.flatMap((lesson,index) => lesson.guidance ? [] : [{
+  return bundle.lessons.flatMap((lesson,index) => [
+    ...(lesson.guidance ? [] : [{
     code:"VALIDATION", path:"bundle.lessons."+index+".guidance", rule:"lesson-guidance-required",
     message:"Lesson "+lesson.id+" is missing a prediction and recap.",
     fix:"Add guidance: {question: a short prediction prompt, takeaways: an array of 1-4 short recap points}. See classroom_format for an example.",
-  }]);
+    }]),
+    ...lesson.labs.flatMap((lab,number)=>lab.title?[]:[{
+      code:"VALIDATION",path:"bundle.lessons."+index+".labs."+number+".title",rule:"lab-title-required",
+      message:"Lab "+(number+1)+" in lesson "+lesson.id+" needs its own title.",
+      fix:"Set lab.title to a short task name and keep prerequisites for actual setup requirements. See classroom_format.lab_authoring.",
+    }]),
+  ]).slice(0,20);
 }
 
 type RevisionSummary = { revision_id: string; course_id: string; title: string; created_at: string; published: boolean; previously_published: boolean; latest: boolean };

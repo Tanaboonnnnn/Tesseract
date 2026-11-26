@@ -70,6 +70,7 @@ export type { TokenReport };
 /** Phone & tablet (LAN) state; pairUrls only on this PC (apps/server/src/phone.ts). */
 export type PhoneInfo = { available: false } | { available: true; on: boolean; urls: string[]; pairUrls?: string[] };
 /** Remote access state (apps/server/src/remote.ts). */
+export type LocalMcpInfo = {available:false} | {available:true;on:false} | {available:true;on:true;url:string;token?:string};
 export type RemoteInfo = { available: false } | { available: true; on: boolean; until: string | null; verified?: boolean; protectedKey?: boolean; setup: { binary: boolean; key: boolean; tunnel: boolean }; error: string | null };
 export type GoogleInfo = {
   available: boolean;
@@ -153,6 +154,8 @@ export const api = {
   deleteEntity: (kind: "projects" | "learning", id: string) => request<DeleteImpact>("DELETE", `/${kind}/${id}`),
   phone: () => request<PhoneInfo>("GET", "/phone"),
   setPhone: (on: boolean) => request<PhoneInfo & { switching?: boolean }>("POST", "/phone", { on }),
+  localMcp: () => request<LocalMcpInfo>("GET", "/local-mcp"),
+  localMcpSwitch: (action:"start"|"stop") => request<LocalMcpInfo>("POST", "/local-mcp/"+action, {}),
   remote: () => request<RemoteInfo>("GET", "/remote"),
   remoteSetup: (tunnelId: string, key: string) => request<RemoteInfo>("POST", "/remote/setup", { tunnelId, key }),
   remoteStart: (hours: number) => request<RemoteInfo>("POST", "/remote/start", { hours }),

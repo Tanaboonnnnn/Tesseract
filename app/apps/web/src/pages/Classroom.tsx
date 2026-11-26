@@ -253,24 +253,8 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
             </div>
           </section>}
         </>}
-        {tab === "lab" && <div className="classroom-reading__panel-stack">
-          <h2 className="classroom-reading__section-title">{thai?"แล็บประจำบท":"Practice lab"}</h2>
-          {!lesson.labs.length && <div className="classroom-reading__panel"><p>{label.noLab}</p><p className="muted text-sm">{thai?"เลือกบทอื่นหรือไปทบทวนความเข้าใจได้":"Choose another lesson or check your understanding here."}</p></div>}
-          {downloads.length > 0 && <div className="classroom-reading__panel">
-            <h3 className="font-semibold">{thai?"ไฟล์ฝึก":"Practice files"}</h3>
-            {downloads.map(s=><a key={s.id} href={s.url} className="block underline break-words" target="_blank" rel="noreferrer">{s.title}</a>)}
-          </div>}
-          {lesson.labs.map((lab,i)=><details key={i} className="classroom-reading__panel" open={i===0}>
-            <summary>{lab.prerequisites[0] ?? "Lab " + (i+1)}</summary>
-            <div className="mt-3 space-y-3">
-              <p className="text-sm muted">{lab.platform === "both" ? "Windows and Linux" : lab.platform} · {lab.environment}</p>
-              {lab.prerequisites.length>1 && <p>{lab.prerequisites.slice(1).join(" · ")}</p>}
-              <ol className="ml-5 list-decimal space-y-2">{lab.steps.map((x,j)=><li className="whitespace-pre-wrap break-words" key={j}>{x}</li>)}</ol>
-              <p><strong>{thai?"ผลที่ควรเห็น":"Expected"}:</strong> {lab.expected}</p>{lab.cleanup && <p><strong>{thai?"เก็บงาน":"Cleanup"}:</strong> {lab.cleanup}</p>}
-            </div>
-          </details>)}
-        </div>}
-        {tab === "check" && <div className="classroom-reading__panel-stack classroom-reading__measure">
+        {tab === "lab" && <PracticeLab labs={lesson.labs} downloads={downloads} thai={thai} empty={label.noLab}/>}
+        {tab === "check" && <div className="classroom-reading__panel-stack classroom-reading__check">
           <h2 className="classroom-reading__section-title">{label.knowledge}</h2>
           {!draft && lesson.questions.length>0 && (progress.error ? <ErrorNote error={progress.error}/> :
             progress.isPending ? <Loading/> : <p className="text-sm muted">{saved.size} {label.saved}</p>)}
@@ -287,6 +271,65 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
       {!draft && <RelatedTasks id={d.course_id}/>}
     </div>
   </div>;
+}
+
+
+function PracticeLab({labs,downloads,thai,empty}:{
+  labs:Bundle["lessons"][number]["labs"]; downloads:Bundle["sources"]; thai:boolean; empty:string;
+}){
+  const words=thai?{
+    practice:"\u0e41\u0e25\u0e47\u0e1a\u0e1b\u0e23\u0e30\u0e08\u0e33\u0e1a\u0e17",setup:"\u0e01\u0e48\u0e2d\u0e19\u0e40\u0e23\u0e34\u0e48\u0e21", steps:"\u0e02\u0e31\u0e49\u0e19\u0e15\u0e2d\u0e19", expected:"\u0e1c\u0e25\u0e17\u0e35\u0e48\u0e04\u0e27\u0e23\u0e40\u0e2b\u0e47\u0e19",
+    cleanup:"\u0e40\u0e01\u0e47\u0e1a\u0e07\u0e32\u0e19",files:"\u0e44\u0e1f\u0e25\u0e4c\u0e1d\u0e36\u0e01", offline:"\u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e40\u0e19\u0e47\u0e15",online:"\u0e15\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e40\u0e19\u0e47\u0e15",lab:"\u0e41\u0e25\u0e47\u0e1a",
+  }:{practice:"Practice lab",setup:"Before you start",steps:"Steps",expected:"What you should see",cleanup:"Cleanup",files:"Practice files",offline:"Offline",online:"Internet required",lab:"Lab"};
+  const title=(lab:typeof labs[number],i:number)=>lab.title??(lab.prerequisites.length>1?lab.prerequisites[0]:undefined)??(words.lab+" "+(i+1));
+  return <section className="classroom-lab" data-has-files={downloads.length>0||undefined} aria-label={words.practice}>
+    {downloads.length>0&&<aside className="classroom-lab__files" aria-label={words.files}>
+      <h3>{words.files}</h3>
+      <ul>{downloads.map(s=><li key={s.id}><a href={s.url} target="_blank" rel="noreferrer">{s.title}</a></li>)}</ul>
+    </aside>}
+    <div className="classroom-lab__main">
+    {!labs.length&&<div><h2 className="classroom-reading__section-title">{words.practice}</h2><p className="muted">{empty}</p></div>}
+    {labs.length>1&&<nav className="classroom-reading__outline classroom-lab__index" aria-label={words.practice}>
+      <h2 className="font-semibold">{words.practice}</h2>
+      <ul>{labs.map((lab,i)=><li key={i}><a href={"#practice-"+(i+1)} onClick={event=>{
+        event.preventDefault();const item=document.getElementById("practice-"+(i+1));
+        item?.focus({preventScroll:true});item?.scrollIntoView({block:"start"});
+      }}>{String(i+1).padStart(2,"0")}. {title(lab,i)}</a></li>)}</ul>
+    </nav>}
+    {labs.map((lab,i)=>{
+      const prep=lab.title||lab.prerequisites.length<2?lab.prerequisites:lab.prerequisites.slice(1);
+      return <article key={i} id={"practice-"+(i+1)} tabIndex={-1} className="classroom-lab__article">
+        <header>
+          <p className="classroom-reading__kicker">{words.practice}{labs.length>1?" "+String(i+1).padStart(2,"0"):""}</p>
+          <h2 className="classroom-reading__section-title">{title(lab,i)}</h2>
+          <p className="muted">{lab.platform==="both"?"Windows / Linux":lab.platform==="windows"?"Windows":"Linux"}{" \u00b7 "}{words[lab.environment]}</p>
+        </header>
+        {prep.length>0&&<section data-lab-section="setup" aria-label={words.setup} className="classroom-lab__setup">
+          <h3>{words.setup}</h3><ul className="classroom-lab__prereqs">{prep.map((x,j)=><li key={j}>{x}</li>)}</ul>
+        </section>}
+        <section data-lab-section="steps" aria-label={words.steps}>
+          <h3>{words.steps}</h3>
+          <ol className="classroom-lab__steps">{lab.steps.map((step,j)=>{
+            const [lead,...lines]=step.split(/\r?\n/);
+            const media=lab.visuals?.find(x=>x.after_step===j+1);
+            return <li key={j}><div className="classroom-lab__step-text">
+              <p>{lead}</p>
+              {lines.filter(line=>line.trim()).map((line,k)=><p key={k} className="muted">{line}</p>)}
+            </div>{media&&<section className="classroom-reading__visual classroom-lab__step-media" aria-label={media.visual.title}>
+              <h3>{media.visual.title}</h3>
+              <Suspense fallback={<Loading/>}><Visual visual={media.visual} language={thai?"th":"en"}/></Suspense>
+              <details><summary>{thai?"\u0e2d\u0e48\u0e32\u0e19\u0e04\u0e33\u0e2d\u0e18\u0e34\u0e1a\u0e32\u0e22\u0e41\u0e17\u0e19\u0e20\u0e32\u0e1e":"Read the visual description"}</summary><p>{media.fallback}</p></details>
+            </section>}</li>;
+          })}</ol>
+        </section>
+        <section data-lab-section="expected" className="classroom-lab__result">
+          <h3>{words.expected}</h3><p>{lab.expected}</p>
+        </section>
+        {lab.cleanup&&<section data-lab-section="cleanup"><h3>{words.cleanup}</h3><p className="muted">{lab.cleanup}</p></section>}
+      </article>;
+    })}
+    </div>
+  </section>;
 }
 
 function Answer({course,lesson,q,saved}:{course:CourseDetail;lesson:string;q:Bundle["lessons"][number]["questions"][number];saved?:CourseProgress|undefined}) {

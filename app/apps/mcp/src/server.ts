@@ -219,7 +219,10 @@ function registerDraftTools(server: McpServer, store: Store) {
     example: CLASSROOM_EXAMPLE, limits: { max_bytes: 262144, max_lessons: 24 },
     blocks: { text: "{type, markdown}", visual: "{type, visual: typed Panya/Tesseract renderer data, fallback}" },
     questions: { single: "{id,type,prompt,choices,correct:[one zero-based index],explanation}", explain: "{id,type,prompt,rubric,model_answer}", multi: "{id,type,prompt,choices,correct,explanation}" },
-    labs: "{platform,environment,prerequisites,steps,expected,cleanup?}",
+    labs: "{title,platform,environment,prerequisites,steps,expected,cleanup?,visuals?}",
+    lab_authoring:{step_visual_example:{after_step:1,visual:{id:"scale-bars",title:"Compare two scale readings",type:"chart",data:{kind:"bar",x:{label:"Reading"},y:{label:"mL"},series:[{id:"volume",label:"Volume",points:[[1,100],[2,200]]}]}},fallback:"Reading 1 is 100 mL and reading 2 is 200 mL."},step_visuals:"Optional visuals: [{after_step: existing 1-based step, visual: typed visual data, fallback: accessible text}]. At most one per step and eight per lab; visual IDs are unique across the lesson. Explain the action first, then add a visual only if it helps. No raw HTML or remote image URLs.",required:["title","platform","environment","prerequisites","steps","expected"],
+      guidance:"Labs are optional. Use one concise action title, list only real setup requirements, give one executable learning action per numbered step, and describe an observable result. Put cleanup in its own field. Use an empty prerequisites list when nothing is needed. Keep steps plain text; the app presents the layout.",
+      example:{title:"Read a measuring scale",platform:"both",environment:"offline",prerequisites:["A measuring jug"],steps:["Read the numbered marks and count the intervals between them."],expected:"You can explain the value of one interval."}},
   }));
   server.registerTool("validate_course_visual", {description:"Validate declarative scene data without creating a draft.",inputSchema:{scene:z.unknown()},annotations:READ}, ({scene}) => {
     const result=SceneSchema.safeParse(scene);
@@ -232,7 +235,7 @@ function registerDraftTools(server: McpServer, store: Store) {
       const receipt = c.getReceipt(request_id);
       return receipt ? { request_id, status: "staged", receipt } : { request_id, status: "unknown" };
     }));
-  server.registerTool("submit_course_draft", { description: "Read classroom_format first. Stages v2 only: each lesson needs an objective, text first, prediction and recap. Same ID and payload return the same receipt. Never publishes.", inputSchema: ClassroomSubmitSchema.shape, annotations: WRITE },
+  server.registerTool("submit_course_draft", { description: "Read classroom_format first. Stages v2 only: each lesson needs an objective, text first, prediction and recap. Labs need separate titles. Same ID and payload return the same receipt. Never publishes.", inputSchema: ClassroomSubmitSchema.shape, annotations: WRITE },
     async (input, extra) => {
       const progressToken = extra._meta?.progressToken;
       if (progressToken !== undefined) {

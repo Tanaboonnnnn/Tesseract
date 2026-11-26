@@ -199,3 +199,36 @@ it("forwards the resolved workspace separately from the MCP command", () => {
   expect(calls[0]?.args.join(" ")).not.toContain("workspace with spaces");
   remote.dispose();
 });
+
+
+it("keeps Local MCP independent of OpenAI Tunnel and blocks paired phones from its credentials",async()=>{
+  const {dir,remote,children}=setup();
+  const {Store}=await import("@tesseract/core");
+  const {createApp}=await import("../src/app.ts");
+  const {localMcpControl}=await import("../src/local-mcp.ts");
+  const dataDir=join(dir,"isolated");mkdirSync(dataDir);
+  const store=new Store({dataDir,agent:"local-mcp-test"});
+  const localMcp=localMcpControl(store);
+  const options={allowedHosts:["localhost:4320","192.168.1.2:4320"],token:"paired-test-token",remote,localMcp};
+  const app=createApp(store,{...options,remoteAddress:c=>c.req.header("host")?.startsWith("localhost")?"127.0.0.1":"192.168.1.3"});
+  const req=(path:string,method="GET",host="localhost:4320")=>app.request("http://"+host+"/api/"+path,{method,headers:{Host:host,Authorization:"Bearer "+options.token,...(method==="POST"?{"Content-Type":"application/json",Origin:"http://"+host}:{})},...(method==="POST"?{body:"{}"}:{})});
+  try{
+    remote.start(1);
+    const a=await req("local-mcp/start","POST");
+    expect(a.status).toBe(200);const body=await a.json();
+    expect(body).toMatchObject({available:true,on:true,url:expect.stringMatching(/^http:\/\/127\.0\.0\.1:/),token:expect.stringMatching(/^[\w-]{43}$/)});
+    const init=await fetch(body.url,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json, text/event-stream",Authorization:"Bearer "+body.token},body:JSON.stringify({id:1,jsonrpc:"2.0",method:"initialize",params:{protocolVersion:"2025-11-25",capabilities:{},clientInfo:{name:"coexistence-check",version:"1"}}})});
+    expect(init.status).toBe(200);expect(await init.json()).toMatchObject({result:{serverInfo:{name:"tesseract"}}});
+    expect(a.headers.get("cache-control")).toBe("no-store");
+    expect(await (await req("local-mcp")).json()).toEqual({available:true,on:true,url:body.url});
+    expect((await req("local-mcp","GET","192.168.1.2:4320")).status).toBe(403);
+    expect((await req("local-mcp/start","POST","192.168.1.2:4320")).status).toBe(403);
+    expect(remote.state().on).toBe(true);
+    expect(await (await req("local-mcp/stop","POST")).json()).toMatchObject({on:false});
+    expect(remote.state().on).toBe(true);expect(children[0]!.killed).toBe(false);
+    const restarted=await (await req("local-mcp/start","POST")).json();
+    expect(restarted.url).not.toBe(body.url);expect(restarted.token).not.toBe(body.token);
+    remote.stop();
+    expect(await (await req("local-mcp")).json()).toMatchObject({on:true});
+  } finally {await localMcp.stop();remote.dispose();}
+});

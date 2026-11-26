@@ -42,12 +42,51 @@ export function Settings() {
         <PhoneAccess />
       </Card>
       <Card className="mb-6">
+        <SectionTitle>Local MCP</SectionTitle>
+        <LocalMcpAccess />
+      </Card>
+      <Card className="mb-6">
         <SectionTitle>OpenAI Tunnel</SectionTitle>
         <RemoteAccess settings />
         <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">Lets ChatGPT on the web or your phone reach a read-mostly Tesseract through OpenAI's outbound-only tunnel. Setup: docs/REMOTE_ACCESS.md.</p>
       </Card>
     </>
   );
+}
+
+function LocalMcpAccess(){
+  const query=useQuery({queryKey:["local-mcp"],queryFn:api.localMcp,retry:false,refetchInterval:10000});
+  const qc=useQueryClient();
+  const [credential,setCredential]=useState<{url:string;token:string}|null>(null);
+  const [copied,setCopied]=useState("");
+  const control=useMutation({mutationFn:api.localMcpSwitch,onSuccess:(data)=>{
+    setCopied("");
+    if(data.available&&data.on){setCredential(data.token?{url:data.url,token:data.token}:null);qc.setQueryData(["local-mcp"],{available:true,on:true,url:data.url});}
+    else {setCredential(null);qc.setQueryData(["local-mcp"],data);}
+  }});
+  const copy=async(value:string,label:string)=>{
+    try{await navigator.clipboard.writeText(value);setCopied(label+" copied.");}
+    catch{setCopied("Could not copy. Select and copy the field directly.");}
+  };
+  if(!query.data?.available)return <p className="mt-2 text-sm muted">Available in Settings on the main computer.</p>;
+  const info=query.data;
+  const token=info.on&&credential?.url===info.url?credential.token:"";
+  return <div className="space-y-2">
+    <p className="text-sm muted">Streamable HTTP for trusted clients on this computer. Runs separately from OpenAI Tunnel.</p>
+    {!info.on?<Button onClick={()=>control.mutate("start")} disabled={control.isPending}>Start Local MCP</Button>:<>
+      <p className="text-sm font-semibold">Running on this computer</p>
+      <label className="block text-sm">Endpoint <input className="block w-full rounded border border-[var(--line)] bg-[var(--panel-solid)] p-2" readOnly value={info.url} onFocus={e=>e.target.select()}/></label>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={()=>void copy(info.url,"Endpoint")}>Copy endpoint</Button>
+        {!token&&<Button onClick={()=>control.mutate("start")} disabled={control.isPending}>Show connection key</Button>}
+        <Button onClick={()=>control.mutate("stop")} disabled={control.isPending}>Stop Local MCP</Button>
+      </div>
+      {token&&<div className="space-y-1"><label className="block text-sm">Authorization header <input type="password" className="block w-full rounded border border-[var(--line)] bg-[var(--panel-solid)] p-2" readOnly value={"Bearer "+token} onFocus={e=>e.target.select()}/></label>
+        <div className="flex flex-wrap gap-2"><Button onClick={()=>void copy("Bearer "+token,"Authorization header")}>Copy authorization</Button><Button onClick={()=>setCredential(null)}>Hide key</Button></div></div>}
+      <p className="text-xs muted">Restarting creates a new endpoint and key. Never share either in chat.</p>
+    </>}
+    {copied&&<p role="status" className="text-xs muted">{copied}</p>}<ErrorNote error={control.error}/>
+  </div>;
 }
 
 /* ---------- layout ---------- */

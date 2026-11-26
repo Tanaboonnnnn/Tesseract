@@ -18,6 +18,7 @@ import { googleService } from "@tesseract/gcal";
 import { createApp } from "./app.ts";
 import { windowControl } from "./window.ts";
 import { remoteControl } from "./remote.ts";
+import { localMcpControl } from "./local-mcp.ts";
 import { phoneAddresses, phoneControl } from "./phone.ts";
 
 function arg(name: string): string | undefined {
@@ -67,6 +68,7 @@ google?.startAutoSync(15);
 const extraHosts = (arg("--allow-host") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
 // Remote access (off by default): tunnel-client child process, stopped with the server.
 const remote = preview ? undefined : remoteControl({ dataDir: store.dataDir });
+const localMcp = preview ? undefined : localMcpControl(new Store({dataDir:store.dataDir,agent:"mcp-local-http",gitCommit:process.env.BRAIN_GIT_COMMIT==="1"}));
 const windowCtl = preview ? undefined : windowControl();
 
 /** LAN mode (phone & tablet). Starts from --lan; the desktop switch changes it in-process. */
@@ -103,6 +105,7 @@ function buildApp() {
     google,
     window: windowCtl,
     remote,
+    localMcp,
     phone,
   });
 }
@@ -117,7 +120,7 @@ let lastRequest = Date.now();
 if (idleMinutes > 0) {
   setInterval(() => {
     // While remote access is on, ChatGPT needs this server even with the window closed.
-    if (Date.now() - lastRequest > idleMinutes * 60_000 && !remote?.state().on) {
+    if (Date.now() - lastRequest > idleMinutes * 60_000 && !remote?.state().on && !localMcp?.state().on) {
       console.log(`Idle for ${idleMinutes} min, exiting.`);
       process.exit(0);
     }

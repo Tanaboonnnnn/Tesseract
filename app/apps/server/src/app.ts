@@ -50,6 +50,7 @@ import {
 import type { GoogleService } from "@tesseract/gcal";
 import { MIN_WINDOW_OPACITY, type WindowControl } from "./window.ts";
 import type { RemoteControl } from "./remote.ts";
+import type { LocalMcpControl } from "./local-mcp.ts";
 import type { PhoneControl } from "./phone.ts";
 
 export interface AppOptions {
@@ -67,6 +68,7 @@ export interface AppOptions {
   window?: WindowControl;
   /** Remote access through OpenAI's tunnel (Phase 8a). Omit when not available. */
   remote?: RemoteControl;
+  localMcp?: LocalMcpControl;
   /** Phone & tablet (LAN) switch for the desktop app. Omit when not started by the launcher. */
   phone?: PhoneControl;
 }
@@ -457,6 +459,22 @@ export function createApp(store: Store, options: AppOptions): Hono {
     const switching = on !== options.phone.on;
     options.phone.set(on);
     return c.json({ available: true, on, switching });
+  });
+
+  // There are no local listener credentials or switches on a paired device.
+  api.get("/local-mcp", (c) => localOnly(c) ?? c.json(options.localMcp ? { available:true, ...options.localMcp.state() } : { available:false }));
+  api.post("/local-mcp/:action", async (c) => {
+    const denied=localOnly(c);
+    if(denied)return denied;
+    const local=options.localMcp;
+    const action=c.req.param("action");
+    if(!local || (action!=="start"&&action!=="stop")) return c.json({available:false},404);
+    try {
+      const info=await (action==="start"?local.start():local.stop());
+      return c.json({available:true,...info});
+    } catch {
+      return c.json({error:"LOCAL_MCP",message:"Could not "+action+" Local MCP. Try again."},503);
+    }
   });
 
   // Remote access: starts/stops a process on this PC, so this machine only. State is safe to show anywhere.

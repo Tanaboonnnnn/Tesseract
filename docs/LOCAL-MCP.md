@@ -5,7 +5,11 @@ Tesseract. You don't need to change the web server, LAN pairing, stdio MCP, or
 OpenAI Secure MCP Tunnel settings. Keep using stdio for clients that can launch
 Tesseract directly or the separate restricted tunnel for supported cloud clients.
 
-## Start it
+## Start it in the app
+
+On the host, open Settings, then Local MCP, and choose Start Local MCP. Copy the endpoint and Authorization header into a trusted native MCP client. The key is separate from OpenAI Tunnel and lives only for this app-host session. A fresh start generates a different URL and key. Stopping either connection leaves the other alone. The host does not idle out while either connection is enabled.
+
+## Start it from a terminal
 
 From the repository's `app/` directory, provision a separate bearer token in
 your client or OS secret store. Generate it with Node if needed:

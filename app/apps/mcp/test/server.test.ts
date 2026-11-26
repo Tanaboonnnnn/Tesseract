@@ -665,3 +665,53 @@ it("preserves legacy published courses, import and receipt recovery under the MC
   expect(await call("submit_course_draft",{...payload,bundle:{...bundle,title:"Different"}})).toMatchObject({ok:false,issues:[{code:"REQUEST_CONFLICT"}]});
   expect(db.listDrafts()).toHaveLength(1);
 });
+
+
+it("requires explicit lab titles for new MCP drafts and advertises a valid lab shape",async()=>{
+  const {call,store}=await connect("lab-authoring-rules",{profile:"remote"});
+  const {example,lab_authoring}=await call("classroom_format");
+  expect(lab_authoring.required).toContain("title");
+  expect(lab_authoring.example).toMatchObject({title:expect.any(String),steps:[expect.any(String)],expected:expect.any(String)});
+  example.lessons[0].labs=[{platform:"both",environment:"offline",prerequisites:["Use the sample"],steps:["Compare two values."],expected:"The second value is larger."}];
+  const req={request_id:"lab-with-title",bundle:example};
+  const legacy=new ClassroomStore(store.dataDir);
+  expect(await call("submit_course_draft",req)).toMatchObject({ok:false,issues:[{path:"bundle.lessons.0.labs.0.title",rule:"lab-title-required",fix:expect.any(String)}]});
+  expect(legacy.listDrafts()).toHaveLength(0);
+  example.lessons[0].labs[0].title="Compare readings";
+  expect(await call("submit_course_draft",req)).toMatchObject({ok:true,status:"staged"});
+});
+
+
+it("validates optional typed Lab visuals against numbered steps without accepting raw HTML",async()=>{
+  const {call,store}=await connect("lab-visuals",{profile:"remote"});
+  const {example,lab_authoring}=await call("classroom_format");
+  expect(lab_authoring.step_visuals).toMatch(/after_step/);
+  const documented=lab_authoring.step_visual_example;
+  const image={type:"lesson",id:"compare-scale",title:"Read the scale",data:{blocks:[{kind:"text",md:"Compare the two tick marks."}]}};
+  const lab={...lab_authoring.example,visuals:[{after_step:2,visual:image,fallback:"Read the two tick marks."}]};
+  example.lessons[0].labs=[lab];
+  const request_id="lab-multimedia";
+  expect(await call("submit_course_draft",{request_id,bundle:example})).toMatchObject({ok:false,issues:[{path:"bundle.lessons.0.labs.0.visuals.0.after_step",rule:"lab-visual-step"}]});
+  lab.visuals[0].after_step=1;
+  lab.visuals.push({...lab.visuals[0],visual:{...image,id:"other-visual"}});
+  expect(await call("submit_course_draft",{request_id,bundle:example})).toMatchObject({ok:false,issues:[{rule:"lab-visual-per-step"}]});
+  lab.visuals.pop();
+  lab.visuals[0].visual={type:"html",id:"raw",title:"Raw HTML",data:{html:"<p>raw</p>"}};
+  expect(await call("submit_course_draft",{request_id,bundle:example})).toMatchObject({ok:false});
+  lab.visuals[0].visual=image;
+  const documentedCourse=structuredClone(example);
+  documentedCourse.course_id="documented-lab-visual";
+  documentedCourse.lessons[0].labs[0].visuals=[{...documented,visual:{...documented.visual,data:{}}}];
+  const docReq={request_id:"documented-lab-visual",bundle:documentedCourse};
+  expect(await call("submit_course_draft",docReq)).toMatchObject({ok:false,issues:[{rule:"classroom-visual-format",fix:expect.stringContaining("step_visual_example")}]});
+  documentedCourse.lessons[0].labs[0].visuals=[documented];
+  expect(await call("submit_course_draft",docReq)).toMatchObject({ok:true,status:"staged"});
+  const accepted=await call("submit_course_draft",{request_id,bundle:example});
+  expect(accepted).toMatchObject({ok:true,status:"staged"});
+  const db=new ClassroomStore(store.dataDir);
+  expect(db.getRevision(accepted.revision_id)?.bundle.lessons[0]?.labs[0]).toMatchObject({visuals:[{after_step:1,fallback:"Read the two tick marks."}]});
+  db.publish(accepted.revision_id);
+  const course_id=example.course_id, lesson_id=example.lessons[0].id;
+  expect(await call("get_course_lesson",{course_id,lesson_id,section:"lab"})).toMatchObject({entries:[{title:lab.title,visuals:[{id:image.id,after_step:1}]}]});
+  expect(await call("get_course_visuals",{course_id,lesson_id,visual_id:image.id})).toMatchObject({visual:{id:image.id}});
+});

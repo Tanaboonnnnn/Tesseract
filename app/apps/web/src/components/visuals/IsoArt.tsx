@@ -195,6 +195,7 @@ function Body({children,fault,animate,step,id,dim}:{children:React.ReactNode;fau
 export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,rate=1,zoom=1,viewportRef}:{
   checked:ValidIso;step:number;playing:boolean;turn?:IsoTurn;plan?:ViewPlan;sequence?:IsoSequence;run?:number;rate?:number;zoom?:number;viewportRef?:(node:HTMLDivElement|null)=>void;
 }){
+  const drag=useRef<{id:number;x:number;y:number;left:number;top:number}|null>(null);
   const {value,geometry}=checked;
   const {pack,objects,theme_hint}=value.data;
   const frames=useMemo(()=>resolveIsoFrames(value),[value]);
@@ -229,7 +230,23 @@ export function IsoArt({checked,step,playing:animate,turn,plan,sequence,run=0,ra
   const pinNumber=(id:string)=>objects.filter(o=>o.label).findIndex(o=>o.id===id)+1;
   return <figure className="iso-shell" data-iso-theme={theme_hint}>
     <div className="iso-viewport" ref={viewportRef} data-zoomed={zoom>1||undefined} tabIndex={zoom>1?0:undefined}
-      role={zoom>1?"region":undefined} aria-label={zoom>1?"Pan zoomed illustration":undefined} style={{aspectRatio:width+" / "+height}}>
+      role={zoom>1?"region":undefined} aria-label={zoom>1?"Pan zoomed illustration":undefined} style={{aspectRatio:width+" / "+height}}
+      onPointerDown={e=>{
+        if(zoom===1||!e.isPrimary||e.button!==0||drag.current)return;
+        const el=e.currentTarget;
+        e.preventDefault();
+        drag.current={id:e.pointerId,x:e.clientX,y:e.clientY,left:el.scrollLeft,top:el.scrollTop};
+        el.dataset.dragging="true";
+        el.setPointerCapture(e.pointerId);
+      }} onPointerMove={e=>{
+        const start=drag.current;
+        if(start?.id!==e.pointerId)return;
+        e.currentTarget.scrollTo(start.left+start.x-e.clientX,start.top+start.y-e.clientY);
+      }} onLostPointerCapture={e=>{
+        if(drag.current?.id!==e.pointerId)return;
+        drag.current=null;
+        delete e.currentTarget.dataset.dragging;
+      }}>
     <svg style={zoom>1?{width:zoom*100+"%",maxHeight:"calc(min(30rem, 57svh) * "+zoom+")"}:undefined} className="iso-scene" data-iso-theme={theme_hint} data-iso-view={view.turn} viewBox={viewBox} role="img" aria-label={value.title}>
       <Grid ground={layout.ground} camera={camera}/>
       {painted.filter(id=>visible.has(id)).map(id=>{

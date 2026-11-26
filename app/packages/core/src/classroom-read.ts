@@ -11,7 +11,10 @@ export function publishedClassrooms(dataDir: string) {
 
 type Published = NonNullable<ReturnType<ClassroomStore["getPublished"]>>;
 type Lesson = ClassroomBundle["lessons"][number];
-const visuals = (lesson: Lesson) => lesson.blocks.flatMap(block => block.type === "visual" ? [block.visual] : []);
+const visuals = (lesson: Lesson) => [
+  ...lesson.blocks.flatMap(block=>block.type==="visual"?[block.visual]:[]),
+  ...lesson.labs.flatMap(lab=>lab.visuals?.map(item=>item.visual)??[]),
+];
 
 export function classroomSummary(row: Published) {
   return {
@@ -55,7 +58,8 @@ export function classroomLesson(row: Published, id: string, section: "learn" | "
     ? { type: "text", markdown: b.markdown }
     : { type: "visual", id: b.visual.id, title: b.visual.title, renderer: b.visual.type });
   else if (section === "lab") entries = l.labs.map((lab, index) => ({
-    index, platform: lab.platform, environment: lab.environment, prerequisites: lab.prerequisites, steps: lab.steps, cleanup: lab.cleanup,
+    index, title:lab.title, platform: lab.platform, environment: lab.environment, prerequisites: lab.prerequisites, steps: lab.steps, cleanup: lab.cleanup,
+    ...(lab.visuals?.length?{visuals:lab.visuals.map(({after_step,visual})=>({after_step,id:visual.id,title:visual.title,renderer:visual.type}))}:{}),
   }));
   else entries = l.questions.map(q => q.type === "explain"
     ? { id: q.id, type: q.type, prompt: q.prompt }
