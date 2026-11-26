@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "style": "minimal-technical",
+  "duration_ms": 7200,
+  "panels": [
+    {
+      "id": "apparatus",
+      "kind": "diagram",
+      "label": "Stretching a spring"
+    },
+    {
+      "id": "response",
+      "kind": "plot",
+      "label": "Linear response",
+      "x_label": "Extension x (cm)",
+      "y_label": "Force F (N)"
+    },
+    {
+      "id": "relation",
+      "kind": "inspect",
+      "label": "Hooke’s law (magnitude)",
+      "tex": "\\term{force}{F} = k\\,\\term{extension}{x}"
+    }
+  ],
+  "entities": [
+    {
+      "id": "zero",
+      "panel": "apparatus",
+      "kind": "path",
+      "label": "Unstretched mark",
+      "x": 0,
+      "y": 0,
+      "points": [
+        [
+          28,
+          27
+        ],
+        [
+          28,
+          70
+        ]
+      ]
+    },
+    {
+      "id": "load",
+      "panel": "apparatus",
+      "kind": "point",
+      "label": "Loaded tip",
+      "x": 28,
+      "y": 45,
+      "tone": "primary"
+    },
+    {
+      "id": "scale",
+      "panel": "response",
+      "kind": "path",
+      "label": "Linear force–extension relation",
+      "x": 0,
+      "y": 0,
+      "points": [
+        [
+          8,
+          92
+        ],
+        [
+          78,
+          20
+        ]
+      ],
+      "tone": "secondary"
+    },
+    {
+      "id": "sample",
+      "panel": "response",
+      "kind": "point",
+      "label": "Force reading",
+      "x": 8,
+      "y": 92,
+      "tone": "primary"
+    }
+  ],
+  "beats": [
+    {
+      "id": "rest",
+      "at_ms": 0,
+      "label": "Unstretched",
+      "text": "The reference is the unstretched length; extension starts at zero.",
+      "focus": [
+        "zero"
+      ]
+    },
+    {
+      "id": "load",
+      "at_ms": 1800,
+      "label": "Apply force",
+      "text": "In the linear range, a spring with fixed stiffness k takes more force as it stretches.",
+      "focus": [
+        "load",
+        "sample"
+      ]
+    },
+    {
+      "id": "compare",
+      "at_ms": 5500,
+      "label": "Compare",
+      "text": "Within this linear model, doubling the extension doubles the required force.",
+      "focus": [
+        "scale"
+      ]
+    }
+  ],
+  "tracks": [
+    {
+      "entity": "load",
+      "property": "x",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 28
+        },
+        {
+          "at_ms": 1800,
+          "value": 28
+        },
+        {
+          "at_ms": 5500,
+          "value": 72
+        }
+      ]
+    },
+    {
+      "entity": "sample",
+      "property": "x",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 8
+        },
+        {
+          "at_ms": 1800,
+          "value": 8
+        },
+        {
+          "at_ms": 5500,
+          "value": 78
+        }
+      ]
+    },
+    {
+      "entity": "sample",
+      "property": "y",
+      "frames": [
+        {
+          "at_ms": 0,
+          "value": 92
+        },
+        {
+          "at_ms": 1800,
+          "value": 92
+        },
+        {
+          "at_ms": 5500,
+          "value": 20
+        }
+      ]
+    }
+  ],
+  "bindings": [
+    {
+      "id": "force",
+      "panel": "relation",
+      "term": "F",
+      "target_ids": [
+        "sample"
+      ],
+      "explanation": "Applied force magnitude, in newtons."
+    },
+    {
+      "id": "extension",
+      "panel": "relation",
+      "term": "x",
+      "target_ids": [
+        "load",
+        "zero"
+      ],
+      "explanation": "Tip displacement from the unstretched mark."
+    }
+  ]
+}
