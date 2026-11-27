@@ -186,10 +186,12 @@ export const api = {
     request<Omit<Assessment, "body">[]>("GET", `/assessments${skill ? `?skill=${encodeURIComponent(skill)}` : ""}`),
 
   quizzes: () => request<QuizSummary[]>("GET", "/quizzes"),
+  deleteQuiz: (id: string) => request<void>("DELETE", `/quizzes/${encodeURIComponent(id)}`),
   quiz: (id: string) => request<QuizPublic>("GET", `/quizzes/${id}`),
   submitQuiz: (id: string, answers: (number | number[] | string)[]) => request<QuizResult>("POST", `/quizzes/${id}/submit`, { answers }),
 
   notes: (type?: Note["type"]) => request<NoteSummary[]>("GET", `/notes${type ? `?type=${type}` : ""}`),
+  deleteNote: (id: string) => request<void>("DELETE", `/notes/${encodeURIComponent(id)}`),
   note: (id: string) => request<NoteDetail>("GET", `/notes/${id}`),
   createNote: (input: NoteInput) => request<Note>("POST", "/notes", input),
   updateNote: (id: string, patch: NotePatch) => request<Note>("PATCH", `/notes/${id}`, patch),

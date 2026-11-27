@@ -142,13 +142,26 @@ function authoringIssues(bundle: ClassroomBundle): ClassroomIssue[] {
   if (bundle.schema_version !== 2) return [{
     code:"VALIDATION", path:"bundle.schema_version", rule:"authoring-version",
     message:"New MCP Classroom drafts must use schema version 2.",
-    fix:"Set schema_version to 2 and add guidance to each lesson using classroom_format. Older revisions remain readable.",
+    fix:"Set schema_version to 2 and follow the per-lesson rules in classroom_format. Older revisions remain readable.",
   }];
   return bundle.lessons.flatMap((lesson,index) => [
     ...(lesson.guidance ? [] : [{
     code:"VALIDATION", path:"bundle.lessons."+index+".guidance", rule:"lesson-guidance-required",
     message:"Lesson "+lesson.id+" is missing a prediction and recap.",
     fix:"Add guidance: {question: a short prediction prompt, takeaways: an array of 1-4 short recap points}. See classroom_format for an example.",
+    }]),
+    ...(lesson.blocks.some((block) => block.type === "visual" && (
+      block.visual.type !== "lesson" || block.visual.data.blocks.some((part) =>
+        part.kind === "formula" || part.kind === "trace" || part.kind === "motion" || part.kind === "plot" || part.kind === "sim")
+    )) ? [] : [{
+      code:"VALIDATION", path:"bundle.lessons."+index+".blocks", rule:"lesson-learn-visual-required",
+      message:"Lesson "+lesson.id+" needs an instructional visual in Learn.",
+      fix:"After the opening explanation, add a typed visual block with accessible fallback text (see classroom_format.example). Lab visuals and lesson wrappers with only text or self-checks do not count.",
+    }]),
+    ...(lesson.questions.length ? [] : [{
+      code:"VALIDATION", path:"bundle.lessons."+index+".questions", rule:"lesson-check-question-required",
+      message:"Lesson "+lesson.id+" needs at least one question in Check.",
+      fix:"Add a single, multi, or explain entry to this lesson's questions array. The opening prediction and inline self-checks do not count. See classroom_format.questions.",
     }]),
     ...lesson.labs.flatMap((lab,number)=>lab.title?[]:[{
       code:"VALIDATION",path:"bundle.lessons."+index+".labs."+number+".title",rule:"lab-title-required",
@@ -220,7 +233,7 @@ export class ClassroomStore {
     } finally { db.close(); } // closing rolls back any unfinished transaction
   }
 
-  submit(input: unknown, options: { requireGuidance?: boolean } = {}): Receipt {
+  submit(input: unknown, options: { requireAuthoringRules?: boolean } = {}): Receipt {
     let bytes: string;
     try { bytes = canonical(input); } catch { return fail("VALIDATION", "", "Send JSON data only"); }
     if (!bytes || Buffer.byteLength(bytes) > CLASSROOM_MAX_REQUEST_BYTES) return fail("VALIDATION", "", "Draft exceeds the 256 KiB limit");
@@ -231,7 +244,7 @@ export class ClassroomStore {
     const { request_id, base_revision } = header.data;
     const { course_id, title } = parsed.data;
     const digest = hash(bytes);
-    if (options.requireGuidance) {
+    if (options.requireAuthoringRules) {
       const issues = authoringIssues(parsed.data);
       if (issues.length) {
         // A retry of a historical, accepted payload still recovers its original receipt.

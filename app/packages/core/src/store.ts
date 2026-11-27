@@ -874,6 +874,13 @@ export class Store {
     return quiz;
   }
 
+  /** Remove the quiz itself, preserving a completed attempt's assessment and skill history. */
+  deleteQuiz(id: string): void {
+    this.getQuiz(id);
+    const ref = `quizzes/${id}`;
+    this.#commit("delete", ref, `delete quiz ${id}`, { [`${ref}.yaml`]: null });
+  }
+
   /**
    * Grade a quiz (one attempt only) and record it as a `web-quiz` assessment.
    * Assessment, topic updates and quiz status are written as one change.
@@ -946,6 +953,15 @@ export class Store {
       [`notes/${current.id}.md`]: toMarkdown(note, newBody ?? body),
     });
     return this.getNote(current.id);
+  }
+
+  /** Remove the note and its structured references, but leave other notes' prose untouched. */
+  deleteNote(id: string): void {
+    this.getNote(id);
+    const ref = `notes/${id}`;
+    const changes: Record<string, string | null> = { [`${ref}.md`]: null };
+    this.#unlink(ref, changes);
+    this.#commit("delete", ref, `delete note ${id}`, changes);
   }
 
   /* ======================= Inbox ======================= */
@@ -1114,15 +1130,10 @@ export class Store {
     return impact;
   }
 
-  #deletePlan(kind: "projects" | "learning", rawId: string): { impact: DeleteImpact; changes: Record<string, null | string> } {
-    const item = kind === "projects" ? this.getProject(rawId) : this.getLearning(rawId);
-    const ref = `${kind}/${item.id}`;
-    const changes: Record<string, string | null> = {};
-    for (const f of listTree(this.#abs(ref))) changes[`${ref}/${f}`] = null;
-
+  #unlink(ref: string, changes: Record<string, string | null>): string[] {
     const unlinked: string[] = [];
     for (const n of this.listNotes()) {
-      if (!n.links.includes(ref)) continue;
+      if (changes[`notes/${n.id}.md`] === null || !n.links.includes(ref)) continue;
       const { body, ...note } = n;
       changes[`notes/${n.id}.md`] = toMarkdown({ ...note, links: note.links.filter((l) => l !== ref) }, body);
       unlinked.push(`notes/${n.id}`);
@@ -1133,6 +1144,16 @@ export class Store {
       const kept = events.map((e) => (e.links.includes(ref) ? { ...e, links: e.links.filter((l) => l !== ref) } : e));
       changes[EVENTS] = toYaml(validate(EventListSchema, kept, "events"));
     }
+    return unlinked;
+  }
+
+  #deletePlan(kind: "projects" | "learning", rawId: string): { impact: DeleteImpact; changes: Record<string, null | string> } {
+    const item = kind === "projects" ? this.getProject(rawId) : this.getLearning(rawId);
+    const ref = `${kind}/${item.id}`;
+    const changes: Record<string, string | null> = {};
+    for (const f of listTree(this.#abs(ref))) changes[`${ref}/${f}`] = null;
+
+    const unlinked = this.#unlink(ref, changes);
     const quizzes =
       kind === "learning" ? this.listQuizzes({ status: "open" }).filter((q) => q.topic_refs.some((r) => r.startsWith(`${ref}#`))).map((q) => q.id) : [];
     for (const q of quizzes) changes[`quizzes/${q}.yaml`] = null;

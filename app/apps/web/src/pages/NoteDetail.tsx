@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Link2, Pencil } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { DeleteRecord } from "../components/DeleteRecord.tsx";
 import { Markdown, refRoute } from "../components/Markdown.tsx";
 import { Button, Card, Chip, ErrorNote, Field, inputClass, Loading } from "../components/ui.tsx";
 import { api, type NoteDetail as NoteData } from "../lib/api.ts";
@@ -12,6 +13,7 @@ type NoteType = keyof typeof NOTE_TYPES;
 
 export function NoteDetail() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const creating = id === "new";
   const { data, error, isPending } = useQuery({ queryKey: ["note", id], queryFn: () => api.note(id), enabled: !creating });
   const [editing, setEditing] = useState(false);
@@ -52,7 +54,7 @@ export function NoteDetail() {
       {crumbs(data.title)}
       <div className="grid gap-6 lg:grid-cols-3">
         <article className="lg:col-span-2">
-          <header className="mb-5 flex items-start gap-3">
+          <header className="mb-5 flex flex-wrap items-start gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="hud-title text-3xl">{data.title}</h1>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -63,9 +65,12 @@ export function NoteDetail() {
                 <span>· Updated {shortDate(data.updated)}</span>
               </div>
             </div>
-            <Button variant="ghost" onClick={() => setEditing(true)}>
-              <Pencil size={15} /> Edit
-            </Button>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Button variant="ghost" onClick={() => setEditing(true)}>
+                <Pencil size={15} /> Edit
+              </Button>
+              <DeleteRecord kind="note" id={data.id} title={data.title} onDeleted={() => navigate("/notes", { replace: true })} />
+            </div>
           </header>
           <Card>{data.body ? <Markdown text={data.body} wikilinks={data.wikilinks} /> : <p className="text-sm text-slate-400">Empty note.</p>}</Card>
         </article>

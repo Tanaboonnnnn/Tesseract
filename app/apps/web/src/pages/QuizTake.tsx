@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, X } from "lucide-react";
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
+import { DeleteRecord } from "../components/DeleteRecord.tsx";
 import { Button, Card, Chip, ErrorNote, Loading } from "../components/ui.tsx";
 import { api, type QuizResult } from "../lib/api.ts";
 import { cn, label } from "../lib/format.ts";
@@ -26,6 +27,7 @@ const isAnswered = (v: Given | undefined) => (Array.isArray(v) ? v.length > 0 : 
 
 export function QuizTake() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: quiz, error, isPending } = useQuery({ queryKey: ["quiz", id], queryFn: () => api.quiz(id) });
   const list = useQuery({ queryKey: ["quizzes"], queryFn: api.quizzes });
@@ -55,7 +57,10 @@ export function QuizTake() {
         <span className="text-slate-700 dark:text-slate-300">{quiz.title}</span>
       </nav>
       <header className="mb-6">
-        <h1 className="hud-title text-3xl">{quiz.title}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="hud-title min-w-0 flex-1 break-words text-3xl">{quiz.title}</h1>
+          <DeleteRecord kind="quiz" id={quiz.id} title={quiz.title} completed={!!result || quiz.status === "done"} onDeleted={() => navigate("/quizzes", { replace: true })} />
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <Chip tone={DIFFICULTY_TONE[quiz.difficulty]}>{quiz.difficulty}</Chip>
           <span>{quiz.questions.length} questions</span>

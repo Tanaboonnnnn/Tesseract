@@ -97,6 +97,14 @@ describe("local Streamable HTTP MCP", () => {
     await standard.connect(new StreamableHTTPClientTransport(new URL(normal.url), { requestInit: { headers: auth } }));
     const names = (list: Awaited<ReturnType<Client["listTools"]>>) => list.tools.map(t=>t.name).sort();
     const legacy = ["create_course","create_roadmap"];
+    for (const client of [web, standard]) {
+      const toolNames = (await client.listTools()).tools.map(tool => tool.name);
+      expect(toolNames.slice(0, 3)).toEqual(["classroom_format", "submit_course_draft", "get_draft_status"]);
+      expect(toolNames.slice(-6)).toEqual([
+        "list_published_courses", "get_published_course", "get_course_lesson",
+        "get_course_visuals", "get_course_revision_anchor", "get_course_activity",
+      ]);
+    }
     const headerTools = names(await standard.listTools());
     expect(headerTools).toEqual(expect.arrayContaining(legacy));
     expect(names(await web.listTools())).toEqual(headerTools.filter(name=>!legacy.includes(name)));
@@ -123,6 +131,38 @@ describe("local Streamable HTTP MCP", () => {
     expect(new URL(fresh.url).pathname).not.toBe(new URL(link.url).pathname);
     expect((await post(link.url)).status).toBe(404);
     expect((await post(fresh.url)).status).toBe(200);
+  });
+
+  it("enforces Classroom quality across both local HTTP connector modes on the same workspace", async () => {
+    const store = await fixtureStore();
+    const link = await startLocalHttp(store, { token, authMode: "link" });
+    const authenticated = await startLocalHttp(store, { token });
+    stop.push(link.close, authenticated.close);
+    const linkClient = new Client({ name: "link", version: "1" });
+    const bearerClient = new Client({ name: "bearer", version: "1" });
+    clients.push(linkClient, bearerClient);
+    await linkClient.connect(new StreamableHTTPClientTransport(new URL(link.url)));
+    await bearerClient.connect(new StreamableHTTPClientTransport(new URL(authenticated.url), { requestInit: { headers: auth } }));
+    const call = async (client: Client, name: string, args: Record<string, unknown>) => {
+      const result = await client.callTool({ name, arguments: args });
+      expect(result.isError, name).not.toBe(true);
+      return JSON.parse((result.content as { text: string }[])[0]!.text);
+    };
+    const { example } = await call(linkClient, "classroom_format", {});
+    const sparse = structuredClone(example);
+    sparse.lessons[0].blocks = sparse.lessons[0].blocks.filter((block: { type: string }) => block.type === "text");
+    sparse.lessons[0].questions = [];
+    for (const client of [linkClient, bearerClient]) {
+      const result = await call(client, "submit_course_draft", { request_id: "http-classroom-quality", bundle: sparse });
+      expect(result.ok).toBe(false);
+      expect(result.issues.map((issue: { rule: string }) => issue.rule)).toEqual([
+        "lesson-learn-visual-required", "lesson-check-question-required",
+      ]);
+    }
+    const receipt = await call(linkClient, "submit_course_draft", { request_id: "http-classroom-quality", bundle: example });
+    expect(receipt).toMatchObject({ ok: true, status: "staged" });
+    expect(await call(bearerClient, "get_draft_receipt", { request_id: "http-classroom-quality" })).toEqual(receipt);
+    expect(await call(bearerClient, "list_published_courses", {})).toEqual([]);
   });
 
   it("rejects wrong route, missing/invalid credentials, browser origins, and bad hosts", async () => {

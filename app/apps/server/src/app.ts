@@ -277,6 +277,10 @@ export function createApp(store: Store, options: AppOptions): Hono {
     ),
   );
   api.get("/quizzes/:id", (c) => c.json(quizPublic(store.getQuiz(c.req.param("id")))));
+  api.delete("/quizzes/:id", (c) => {
+    store.deleteQuiz(c.req.param("id"));
+    return c.body(null, 204);
+  });
   api.post("/quizzes/:id/submit", async (c) => c.json(store.submitQuiz(c.req.param("id"), (await json(c)).answers)));
 
   api.get("/notes", (c) => {
@@ -285,6 +289,10 @@ export function createApp(store: Store, options: AppOptions): Hono {
     return c.json(notes.map(({ body, ...n }) => ({ ...n, excerpt: body.replace(/\s+/g, " ").slice(0, 160) })));
   });
   api.get("/notes/:id", (c) => c.json(noteDetail(store, c.req.param("id"))));
+  api.delete("/notes/:id", (c) => {
+    store.deleteNote(c.req.param("id"));
+    return c.body(null, 204);
+  });
   api.post("/notes", async (c) => c.json(store.createNote((await json(c)) as unknown as NoteInput), 201));
   api.patch("/notes/:id", async (c) => c.json(store.updateNote(c.req.param("id"), (await json(c)) as NotePatch)));
 

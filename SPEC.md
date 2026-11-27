@@ -203,7 +203,7 @@ id: why-react-for-weather-app
 type: decision            # note | decision | log
 links: [projects/weather-app, skills/web-apis]
 ```
-Body Markdown with `[[wikilinks]]`.
+Body Markdown with `[[wikilinks]]`. The Notes list and detail pages can delete a note after confirmation. This removes structured references from other notes and schedule events in the same undoable Activity change, without rewriting prose or evidence. No MCP delete tool.
 
 ### 4.10a Offline workspace snapshot
 
@@ -244,6 +244,7 @@ questions:
     accept: ["443"]
     tolerance: 0          # numbers only: allowed absolute difference
 ```
+- The Quizzes list and detail pages can delete open or completed quizzes after confirmation. A completed quiz’s saved assessment, score, and skill history stay. Activity can undo the deletion. No MCP delete tool.
 - **Answers never reach the browser** while a quiz is open; grading happens on the server.
 - **One attempt.** Submitting writes a `web-quiz` assessment (id = quiz id), updates linked topics and closes the quiz, all as one change (one undo).
 - **Question types:** `single` (default when `type` is missing, so older quizzes still load; `answer` = index),
@@ -373,7 +374,7 @@ Each roadmap/course is shown with the same diagram as §4.14, built from its top
 
 ### Classroom authoring via MCP
 
-The saved Classroom bundle supports v1 and v2. New MCP draft writes require v2, a nonempty objective, a text first block, and structured lesson guidance (one prediction prompt and 1-4 recap points). Typed visuals are optional and follow the explanation they support. For any lab in a new MCP draft, require an explicit short lab title separate from setup, numbered steps, and expected result. Older lab records without a title remain readable and importable. V2 labs can optionally embed typed visuals after existing numbered steps (one per step, up to eight per lab). Each visual needs a text fallback and uses the same safe data-only renderer contract as Learn. The stricter write policy does not migrate existing revisions or change the owner's local import path. Historical matching MCP retries keep their original receipts. The app, not the bundle, owns page layout.
+The saved Classroom bundle supports v1 and v2. New MCP draft writes require v2, a nonempty objective, a text first block, and structured lesson guidance (one prediction prompt and 1-4 recap points). Each newly submitted MCP lesson requires at least one genuine inline Learn visual after its explanation and at least one Check question. A prose-only visual wrapper, Lab-only media, and the opening prediction do not satisfy these requirements. A static instructional diagram and a rubric-based written question are valid. Missing requirements produce lesson-specific repair messages. For any lab in a new MCP draft, require an explicit short lab title separate from setup, numbered steps, and expected result. Older lab records without a title remain readable and importable. V2 labs can optionally embed typed visuals after existing numbered steps (one per step, up to eight per lab). Each visual needs a text fallback and uses the same safe data-only renderer contract as Learn. The stricter write policy does not migrate existing revisions or change the owner's local import path. Historical matching MCP retries keep their original receipts. The app, not the bundle, owns page layout.
 
 ## 5. MCP Tools (v1)
 
@@ -513,7 +514,7 @@ V2 adds the built-in `iso` visual under the existing typed visual block. V1 does
 
 ### Isolated MCP profile
 
-`npm run mcp -- --profile classroom --data <isolated-data-directory>` exposes only `classroom_format`, `submit_course_draft`, `get_draft_receipt`, and `get_draft_status`. Validation is before writes, input is capped at 256 KiB, a retry of the same request returns the original receipt, and conflicting IDs/stale revisions fail explicitly. Submission never publishes. A client that requests MCP progress sees `running` when the submission handler starts. The read-only status looks up the same request ID and returns a durable `staged` receipt or `unknown` (no durable receipt; not proof that a request never ran, and not permission to replay). Queries do not repeat the write. The local, remote and isolated Classroom profiles use the same authoring gate on submit_course_draft. MCP prefers a bundle object but accepts a JSON string that decodes to an object once (512 KiB raw text cap, before parsing). Both forms use the 256 KiB normalized request cap, the same validators and the same receipt hash. Malformed, nested-encoded or non-object text is rejected; this does not relax revision or publication rules. classroom_format supplies an accepted v2 example, machine-readable rules, and on-demand schemas. Invalid drafts return issues with paths and repair suggestions for the authoring rules and are not staged. Import and reading of existing compatible revisions remain available. The MCP surface has no publish operation; only the owner can publish locally.
+`npm run mcp -- --profile classroom --data <isolated-data-directory>` exposes only `classroom_format`, `submit_course_draft`, `get_draft_receipt`, and `get_draft_status`. Validation is before writes, input is capped at 256 KiB, a retry of the same request returns the original receipt, and conflicting IDs/stale revisions fail explicitly. Submission never publishes. A client that requests MCP progress sees `running` when the submission handler starts. The read-only status looks up the same request ID and returns a durable `staged` receipt or `unknown` (no durable receipt; not proof that a request never ran, and not permission to replay). Queries do not repeat the write. The local, remote and isolated Classroom profiles use the same authoring gate on submit_course_draft. They advertise the authoring path first: `classroom_format` → `submit_course_draft` → `get_draft_status`. Optional tools and published-course reads are separate; existing tool names and access rules stay unchanged. The revision anchor addresses published courses only. To revise an unpublished draft, use the latest known staged receipt’s revision ID as the base. Recover that receipt with the original request ID and send a new request ID for changed content. MCP prefers a bundle object but accepts a JSON string that decodes to an object once (512 KiB raw text cap, before parsing). Both forms use the 256 KiB normalized request cap, the same validators and the same receipt hash. Malformed, nested-encoded or non-object text is rejected; this does not relax revision or publication rules. classroom_format supplies an accepted v2 example, machine-readable rules, and on-demand schemas. Invalid drafts return issues with paths and repair suggestions for the authoring rules and are not staged. Import and reading of existing compatible revisions remain available. The MCP surface has no publish operation; only the owner can publish locally.
 
 ### Performance verification
 

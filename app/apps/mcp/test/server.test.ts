@@ -501,7 +501,7 @@ describe("published classroom read model", () => {
     expect(list).toContainEqual(expect.objectContaining({id:sample.course_id,kind:"classroom",progress:null}));
     expect(legacyAlias).toEqual(course);
     expect(course.lessons).toHaveLength(1);
-    expect(visuals[0]).toMatchObject({lesson_id:lesson.id,id:"native-visual"});
+    expect(visuals).toContainEqual(expect.objectContaining({lesson_id:lesson.id,id:"native-visual"}));
     expect(section.entries[0]).toMatchObject({type:"explain",prompt:lesson.questions[0].prompt});
     expect(visual.visual.data.blocks[0]).toEqual({kind:"check",q:"Explain the example"});
     expect(anchor).toEqual({course_id:sample.course_id,published_revision_id:first.revision_id,base_revision:next.revision_id,pending_draft:true});
@@ -654,6 +654,87 @@ it("teaches fresh MCP clients the enforced draft contract and returns actionable
       {path:"bundle.lessons.0.blocks.0",rule:"lesson-text-first",fix:expect.stringContaining("text")},
     ]});
   }
+});
+
+it.each(["local", "remote", "classroom"] as const)(
+  "%s requires a teaching visual and a Check question in each new MCP lesson",
+  async (profile) => {
+    const {client, call, store}=await connect("course-quality", {profile});
+    const format=await call("classroom_format");
+    const complete=structuredClone(format.example.lessons[0]);
+    const tickTree={type:"visual", fallback:"Four equal intervals connect the 100 and 300 mL marks.",
+      visual:{type:"tree",id:"tick-tree",title:"Tick marks",data:{root:{id:"mark-100",label:"100 mL",
+        children:[{id:"mark-150",label:"150 mL"}]}}}};
+    const prose={type:"visual",fallback:"Text-only material",
+      visual:{type:"lesson",id:"prose-wrapper",title:"Read the text",data:{blocks:[{kind:"text",md:"Count each interval."},
+        {kind:"check",q:"Result?",a:"50 mL"}]}}};
+    const weak={...structuredClone(complete),id:"second-lesson",title:"Read the lower mark",
+      blocks:[complete.blocks[0],prose],questions:[],
+      labs:[{...format.lab_authoring.example, visuals:[{...format.lab_authoring.step_visual_example}]}]};
+    const course={...format.example,lessons:[{...complete,blocks:[complete.blocks[0],tickTree]},weak]};
+    const request_id="missing-learn-check-01";
+    expect(await call("submit_course_draft",{request_id,bundle:course})).toMatchObject({ok:false,issues:[
+      {path:"bundle.lessons.1.blocks",rule:"lesson-learn-visual-required",fix:expect.any(String)},
+      {path:"bundle.lessons.1.questions",rule:"lesson-check-question-required",fix:expect.any(String)},
+    ]});
+    const db=new ClassroomStore(store.dataDir);
+    expect(db.listDrafts()).toEqual([]);
+    expect(await call("get_draft_status",{request_id})).toMatchObject({status:"unknown"});
+    weak.questions=structuredClone(complete.questions);
+    expect(await call("submit_course_draft",{request_id,bundle:course})).toMatchObject({ok:false,issues:[
+      {path:"bundle.lessons.1.blocks",rule:"lesson-learn-visual-required"},
+    ]});
+    weak.blocks.push({...tickTree,visual:{...tickTree.visual,id:"second-tick-tree"}});
+    const good=await call("submit_course_draft",{request_id,bundle:course});
+    expect(good).toMatchObject({ok:true,status:"staged"});
+    expect(db.listDrafts()).toHaveLength(1);
+    expect(db.getRevision(good.revision_id)?.bundle.lessons[1]?.questions[0]?.type).toBe("explain");
+
+    expect(format.authoring_rules).toMatchObject({min_learn_visuals:1,min_check_questions:1});
+    expect(format.example.lessons[0].blocks).toEqual(expect.arrayContaining([expect.objectContaining({type:"visual"})]));
+    expect((await client.listTools()).tools.find(t=>t.name==="submit_course_draft")?.description).toMatch(/Learn visual and Check question/);
+  },
+);
+
+it("guides authors to the known receipt for an unpublished revision without exposing a private lookup",async()=>{
+  const {client,call,store}=await connect("revise-unpublished-draft",{profile:"remote"});
+  const format=await call("classroom_format");
+  const request_id="private-first-submission";
+  const first=await call("submit_course_draft",{request_id,bundle:format.example});
+  expect(first).toMatchObject({ok:true,status:"staged"});
+  expect(await call("get_course_revision_anchor",{course_id:format.example.course_id})).toEqual(
+    await call("get_course_revision_anchor",{course_id:"missing-course"}),
+  );
+  expect(await call("get_course_revision_anchor",{course_id:format.example.course_id})).toMatchObject(
+    {ok:false,error:{code:"NOT_FOUND",message:expect.stringMatching(/published.*get_draft_status/i)}},
+  );
+  expect(client.getInstructions()).toMatch(/unpublished.*base_revision/s);
+  expect(format.submission).toMatch(/published.*unpublished.*get_draft_status/);
+  expect(await call("list_published_courses")).toEqual([]);
+  const latest=await call("get_draft_status",{request_id});
+  expect(latest).toMatchObject({status:"staged",receipt:{revision_id:first.revision_id}});
+  const revised={...format.example,title:"Revised measuring jug lesson"};
+  const next=await call("submit_course_draft",{request_id:"private-second-submission",base_revision:latest.receipt.revision_id,bundle:revised});
+  expect(next).toMatchObject({ok:true,status:"staged"});
+  const db=new ClassroomStore(store.dataDir);
+  expect(db.getRevision(next.revision_id)?.bundle.title).toBe(revised.title);
+  expect(db.listPublished()).toEqual([]);
+});
+
+it("keeps sparse historical v2 content and exact receipts readable without accepting sparse revisions through MCP",async()=>{
+  const {call,store}=await connect("old-v2-draft",{profile:"remote"});
+  const db=new ClassroomStore(store.dataDir);
+  const {example}=await call("classroom_format");
+  const lesson=example.lessons[0];
+  const historical={...example,lessons:[{...lesson,blocks:[lesson.blocks[0]],questions:[]}]};
+  const original={request_id:"historic-v2-01",bundle:historical};
+  const prior=db.submit(original);
+  if(!prior.ok) throw Error(JSON.stringify(prior));
+  expect(await call("submit_course_draft",original)).toEqual(prior);
+  expect(await call("submit_course_draft",{request_id:"historic-v2-02",base_revision:prior.revision_id,bundle:historical})).toMatchObject({ok:false});
+  expect(db.getRevision(prior.revision_id)?.bundle.lessons[0]?.questions).toEqual([]);
+  db.publish(prior.revision_id);
+  expect(db.getPublished(historical.course_id)?.revision_id).toBe(prior.revision_id);
 });
 
 it("preserves legacy published courses, import and receipt recovery under the MCP authoring gate", async () => {

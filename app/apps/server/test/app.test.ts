@@ -551,3 +551,21 @@ describe("classroom onboarding", () => {
     expect((await req("POST","/api/classroom/drafts/fixture/publish",{},auth)).status).toBe(403);
   });
 });
+
+describe("delete standalone quizzes and notes", () => {
+  it("deletes items from the UI API and restores them through Activity", async () => {
+    const { req } = setup();
+    for (const [kind, id] of [["quizzes", "2026-11-23-kubernetes-deployments"], ["notes", "why-typescript-monorepo"]]) {
+      const url = `/api/${kind}/${id}`;
+      expect((await req("GET", url)).status).toBe(200);
+      expect((await req("DELETE", url, undefined, { origin: "https://other.test" })).status).toBe(403);
+      expect((await req("DELETE", url)).status).toBe(204);
+      expect((await req("GET", url)).status).toBe(404);
+      expect((await req("DELETE", url)).status).toBe(404);
+      const [latest] = await (await req("GET", "/api/activity")).json();
+      expect(latest.entity).toBe(`${kind}/${id}`);
+      expect((await req("POST", `/api/activity/${latest.id}/undo`, {})).status).toBe(200);
+      expect((await req("GET", url)).status).toBe(200);
+    }
+  });
+});

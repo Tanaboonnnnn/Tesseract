@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { NotebookPen, Plus, Scale, ScrollText, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+import { DeleteRecord } from "../components/DeleteRecord.tsx";
 import { Card, Chip, Empty, ErrorNote, inputClass, Loading, PageHeader } from "../components/ui.tsx";
 import { api, type NoteSummary } from "../lib/api.ts";
 import { cn, shortDate } from "../lib/format.ts";
@@ -80,11 +81,8 @@ function NoteCard({ n }: { n: NoteSummary }) {
   const t = NOTE_TYPES[n.type];
   const Icon = t.icon;
   return (
-    <li>
-      <Link
-        to={`/notes/${n.id}`}
-        className="block h-full tile tile-hover p-4"
-      >
+    <li className="tile tile-hover flex flex-col">
+      <Link to={`/notes/${n.id}`} className="block flex-1 p-4 pb-2">
         <div className="flex items-start gap-2.5">
           <Icon size={17} className="mt-0.5 shrink-0 text-slate-400" />
           <div className="min-w-0 flex-1">
@@ -100,6 +98,9 @@ function NoteCard({ n }: { n: NoteSummary }) {
           </div>
         </div>
       </Link>
+      <div className="flex justify-end px-4 pb-3">
+        <DeleteRecord kind="note" id={n.id} title={n.title} />
+      </div>
     </li>
   );
 }

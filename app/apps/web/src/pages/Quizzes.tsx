@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ListChecks } from "lucide-react";
 import { Link } from "react-router";
+import { DeleteRecord } from "../components/DeleteRecord.tsx";
 import { Card, Chip, Empty, ErrorNote, Loading, PageHeader, SectionTitle } from "../components/ui.tsx";
 import { api, type QuizSummary } from "../lib/api.ts";
 import { cn, shortDate } from "../lib/format.ts";
@@ -52,27 +53,29 @@ export function Quizzes() {
 
 function QuizCard({ q }: { q: QuizSummary }) {
   return (
-    <Link
-      to={`/quizzes/${q.id}`}
-      className="block tile tile-hover p-4"
-    >
-      <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/40 dark:shadow-[0_0_12px_rgb(var(--glow-rgb)/0.3)]">
-          <ListChecks size={18} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-lg leading-tight font-semibold tracking-wide text-slate-900 dark:text-sky-50">{q.title}</h3>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-            <Chip tone={DIFFICULTY_TONE[q.difficulty]}>{q.difficulty}</Chip>
-            <span>{q.questions} questions</span>
-            <span>· by {q.author}</span>
+    <div className="tile tile-hover flex flex-col">
+      <Link to={`/quizzes/${q.id}`} className="block flex-1 p-4 pb-2">
+        <div className="flex items-start gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/40 dark:shadow-[0_0_12px_rgb(var(--glow-rgb)/0.3)]">
+            <ListChecks size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate font-display text-lg leading-tight font-semibold tracking-wide text-slate-900 dark:text-sky-50">{q.title}</h3>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+              <Chip tone={DIFFICULTY_TONE[q.difficulty]}>{q.difficulty}</Chip>
+              <span>{q.questions} questions</span>
+              <span>· by {q.author}</span>
+            </div>
           </div>
+          {q.score != null && (
+            <span className={cn("text-lg font-semibold tabular-nums", q.score < 60 ? "text-rose-600" : "text-emerald-600")}>{q.score}</span>
+          )}
         </div>
-        {q.score != null && (
-          <span className={cn("text-lg font-semibold tabular-nums", q.score < 60 ? "text-rose-600" : "text-emerald-600")}>{q.score}</span>
-        )}
+      </Link>
+      <div className="flex items-center justify-between gap-2 px-4 pb-3">
+        <p className="text-xs text-slate-400">{shortDate(q.created)}</p>
+        <DeleteRecord kind="quiz" id={q.id} title={q.title} completed={q.status === "done"} />
       </div>
-      <p className="mt-3 text-xs text-slate-400">{shortDate(q.created)}</p>
-    </Link>
+    </div>
   );
 }

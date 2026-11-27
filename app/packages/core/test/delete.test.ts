@@ -74,3 +74,54 @@ describe("delete learning", () => {
     expect(store.listQuizzes({ status: "open" }).map((q) => q.id)).toEqual(["2026-11-23-kubernetes-deployments"]);
   });
 });
+
+describe("delete standalone quizzes and notes", () => {
+  it("deletes and restores an open quiz without creating an assessment", () => {
+    const store = makeStore();
+    const id = "2026-11-23-kubernetes-deployments";
+    const quiz = store.getQuiz(id);
+    store.deleteQuiz(id);
+    expect(code(() => store.getQuiz(id))).toBe("NOT_FOUND");
+    expect(code(() => store.getAssessment(id))).toBe("NOT_FOUND");
+    expect(store.listActivity()[0]).toMatchObject({ action: "delete", entity: "quizzes/" + id });
+    store.undo(store.listActivity()[0]!.id);
+    expect(store.getQuiz(id)).toEqual(quiz);
+  });
+
+  it("preserves completed quiz evidence and skill levels after deletion", () => {
+    const store = makeStore();
+    const quiz = store.createQuiz({
+      title: "Practice",
+      difficulty: "easy",
+      skills: { "kubernetes-ops": 1 },
+      questions: [{ q: "Pick A", choices: ["A", "B"], answer: 0 }],
+    });
+    const { assessment } = store.submitQuiz(quiz.id, [0]);
+    const profile = store.getSkillProfile();
+    store.deleteQuiz(quiz.id);
+    expect(code(() => store.getQuiz(quiz.id))).toBe("NOT_FOUND");
+    expect(store.getAssessment(assessment.id)).toEqual(assessment);
+    expect(store.getSkillProfile()).toEqual(profile);
+    store.undo(store.listActivity()[0]!.id);
+    expect(store.getQuiz(quiz.id).status).toBe("done");
+  });
+
+  it("deletes a note and unlinks structured references in one undoable change", () => {
+    const store = makeStore();
+    const id = "why-typescript-monorepo";
+    const note = store.getNote(id);
+    const ref = "notes/" + id;
+    const related = store.createNote({ id: "related", title: "Related", type: "note", links: [ref], body: "See the original." });
+    const event = store.addEvent({ title: "Review note", date: "2026-11-24", links: [ref] });
+    store.deleteNote(id);
+    expect(code(() => store.getNote(id))).toBe("NOT_FOUND");
+    expect(store.getNote(related.id)).toMatchObject({ body: related.body, links: [] });
+    expect(store.listEvents().find((e) => e.id === event.id)?.links).toEqual([]);
+    expect(store.validateAll()).toEqual([]);
+    expect(store.listActivity()[0]).toMatchObject({ action: "delete", entity: ref });
+    store.undo(store.listActivity()[0]!.id);
+    expect(store.getNote(id)).toEqual(note);
+    expect(store.getNote(related.id)).toEqual(related);
+    expect(store.listEvents().find((e) => e.id === event.id)).toEqual(event);
+  });
+});
