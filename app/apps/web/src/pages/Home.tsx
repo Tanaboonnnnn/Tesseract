@@ -10,7 +10,7 @@ import { useNow } from "../lib/now.ts";
 import { useLayout } from "../lib/theme.ts";
 import { REVIEW_REASON as REASON } from "../lib/labels.ts";
 import { FieldbookCourseHero } from "../components/FieldbookCourseHero.tsx";
-import { mostRecentFieldbookCourse } from "../lib/fieldbook-workspace.ts";
+import { mostRecentFieldbookCourse, usesReadingLayout } from "../lib/fieldbook-workspace.ts";
 
 const SkillRadar = lazy(() => import("../components/SkillRadar.tsx").then((m) => ({ default: m.SkillRadar })));
 
@@ -44,8 +44,8 @@ export function Home() {
 
   return (
     <>
-      {layout !== "bento" && layout !== "insights" && layout !== "fieldbook" && <Header />}
-      {isPending ? <Loading /> : error ? <ErrorNote error={error} /> : layout === "insights" ? <InsightsHome o={data} /> : layout==="fieldbook"?<FieldbookHome o={data}/>:<Dashboard o={data} />}
+      {layout !== "bento" && layout !== "insights" && !usesReadingLayout(layout) && <Header />}
+      {isPending ? <Loading /> : error ? <ErrorNote error={error} /> : layout === "insights" ? <InsightsHome o={data} /> : usesReadingLayout(layout)?<FieldbookHome o={data}/>:<Dashboard o={data} />}
     </>
   );
 }

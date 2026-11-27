@@ -18,17 +18,17 @@ html[data-palette="fieldbook-paper"].dark {
   --lane: #283d33; --color-sidebar: #151d19; --glow-rgb: 181 217 195;
   color: var(--fieldbook-ink);
 }
-html[data-ui="fieldbook"] {
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) {
   --fk-muted: var(--fieldbook-muted, var(--chart-text));
   --fk-label: var(--fieldbook-label, var(--chart-accent));
   --fk-accent: var(--chart-accent);
   --fk-ink: var(--fieldbook-ink, currentColor);
   --font-sans: "IBM Plex Sans Thai", system-ui, sans-serif;
 }
-html[data-ui="fieldbook"] body { background-image:none; background-color: var(--bg); }
-html[data-ui="fieldbook"] :is(.tile,.panel) { box-shadow:none; border:1px solid var(--line); border-radius:9px; }
-html[data-ui="fieldbook"] .panel::before { display:none; }
-html[data-ui="fieldbook"] .sb-main { max-width: 91rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) body { background-image:none; background-color: var(--bg); }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) :is(.tile,.panel) { box-shadow:none; border:1px solid var(--line); border-radius:9px; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .panel::before { display:none; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .sb-main { max-width: 91rem; }
 html[data-ui="fieldbook"] .sb-sidebar {
   width:220px; background:var(--color-sidebar); border-color:var(--line);
   box-shadow:none; color:var(--fk-ink); overflow-y:auto;
@@ -38,8 +38,8 @@ html[data-ui="fieldbook"] .sb-sidebar nav a { color:var(--fk-muted); box-shadow:
 html[data-ui="fieldbook"] .sb-sidebar nav a:is(:hover,[aria-current="page"]) { color:var(--fk-accent); background:var(--lane); }
 html[data-ui="fieldbook"] .sb-sidebar nav a[aria-current="page"] { font-weight:700; }
 html[data-ui="fieldbook"] .sb-sidebar nav a[aria-current="page"]::before { background:var(--fk-accent); box-shadow:none; }
-html[data-ui="fieldbook"] .sb-brand .brand-title { color:var(--fk-ink); text-shadow:none; letter-spacing:.045em; }
-html[data-ui="fieldbook"] .sb-brand-icon { color:var(--fk-accent); filter:none; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .sb-brand .brand-title { color:var(--fk-ink); text-shadow:none; letter-spacing:.045em; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .sb-brand-icon { color:var(--fk-accent); filter:none; }
 html[data-ui="fieldbook"] .sb-bottombar { background:var(--panel-solid); border-color:var(--line); }
 .fieldbook-skills { color:var(--fk-ink); font-family:var(--font-sans); min-width:0; }
 .fk-heading { margin-bottom:2rem; }
@@ -101,25 +101,25 @@ html[data-ui="fieldbook"] .sb-sidebar .fk-sidebar-brand { font-family:Rajdhani,s
 .fk-sidebar-caption,.fk-sidebar-footer strong { text-transform:uppercase; }
 .fk-sidebar-footer { border-top:1px solid var(--line); padding-top:.7rem; }
 .fk-sidebar-footer span { display:block; font:400 .78rem/1.6 var(--font-sans); }
-html[data-ui="fieldbook"] .sb-main { padding-top:clamp(1.35rem,2.4vw,2.45rem); }
-html[data-ui="fieldbook"] :is(.sb-page-title,.sb-section-title,.hud-label,.notice-title) {
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .sb-main { padding-top:clamp(1.35rem,2.4vw,2.45rem); }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) :is(.sb-page-title,.sb-section-title,.hud-label,.notice-title) {
   font-family:var(--font-sans); letter-spacing:normal; color:var(--fk-ink);
   text-shadow:none; text-transform:none;
 }
-html[data-ui="fieldbook"] .sb-page-header h1 {
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .sb-page-header h1 {
   font-size:clamp(2rem,4vw,2.75rem); line-height:1.13; font-weight:700; margin-top:.3rem;
 }
-html[data-ui="fieldbook"] .sb-page-header h1+p { color:var(--fk-muted); font-size:1rem; margin-top:.5rem; }
-html[data-ui="fieldbook"] .sb-section-title { font-size:1.13rem; font-weight:700; }
-html[data-ui="fieldbook"] .sb-title-mark { display:none; }
-html[data-ui="fieldbook"] .tile-hover:hover { transform:none; box-shadow:0 0 0 1px var(--line-strong); }
-html[data-ui="fieldbook"] :is(.notice-title,.notice-icon,.sb-pill,.hud-number) { box-shadow:none; text-shadow:none; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .sb-page-header h1+p { color:var(--fk-muted); font-size:1rem; margin-top:.5rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .sb-section-title { font-size:1.13rem; font-weight:700; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .sb-title-mark { display:none; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .tile-hover:hover { transform:none; box-shadow:0 0 0 1px var(--line-strong); }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) :is(.notice-title,.notice-icon,.sb-pill,.hud-number) { box-shadow:none; text-shadow:none; }
 html[data-ui="fieldbook"] .sb-bottombar a[aria-current="page"] { color:var(--fk-accent); background:var(--lane); }
 html[data-ui="fieldbook"] .sb-bottombar a.is-active { color:var(--fk-accent); background:var(--lane); }
 html[data-ui="fieldbook"][data-palette="fieldbook-paper"] :is(.sb-btn-primary,.bg-accent-600.text-white) {
   background-color:var(--accent); color:var(--accent-foreground);
 }
-html[data-ui="fieldbook"] :is(button,input,select,textarea,a):focus-visible { outline-color:var(--fk-accent); }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) :is(button,input,select,textarea,a):focus-visible { outline-color:var(--fk-accent); }
 .fk-feature { border:1px solid var(--line); border-radius:9px; padding:clamp(1rem,3vw,1.65rem); background:var(--lane); }
 .fk-feature h2 { font-size:clamp(1.45rem,3vw,2rem); font-weight:700; margin:.35rem 0; }
 .fk-primary { display:inline-flex; align-items:center; min-height:2.4rem; padding:.55rem .85rem; margin-top:1rem; background:var(--accent,var(--chart-accent)); color:var(--accent-foreground,#fff); border-radius:6px; font-weight:650; }
@@ -133,31 +133,31 @@ html[data-ui="fieldbook"] :is(button,input,select,textarea,a):focus-visible { ou
 .fk-lists li { padding:.55rem 0; border-bottom:1px solid var(--line); }
 .fk-course-list { display:grid; gap:.65rem; }
 .fk-course-list .panel { border-radius:7px; }
-html[data-ui="fieldbook"] [data-fieldbook-route]:is([data-fieldbook-route="/notes"],[data-fieldbook-route="/quizzes"],[data-fieldbook-route="/projects"]) .tile { background:var(--panel-solid); }
-html[data-ui="fieldbook"] [data-fieldbook-route="/settings"] [role="radiogroup"] { gap:.75rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) [data-fieldbook-route]:is([data-fieldbook-route="/notes"],[data-fieldbook-route="/quizzes"],[data-fieldbook-route="/projects"]) .tile { background:var(--panel-solid); }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) [data-fieldbook-route="/settings"] [role="radiogroup"] { gap:.75rem; }
 
-html[data-ui="fieldbook"] .classroom-reading {
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading {
   --class-paper:var(--bg); --class-panel:var(--panel-solid); --class-ink:var(--fk-ink);
   --class-line:var(--line); --class-wash:var(--lane); --class-brand:var(--fk-accent);
   --class-rust:var(--fk-label); --class-muted:var(--fk-muted); --class-on-brand:var(--accent-foreground,#fff);
   border:none;
 }
-html[data-ui="fieldbook"] .classroom-reading__bar { background:transparent; padding:0 0 .7rem; border-radius:0; }
-html[data-ui="fieldbook"] .classroom-reading__mark { display:none; }
-html[data-ui="fieldbook"] .classroom-reading__wordmark { display:none; }
-html[data-ui="fieldbook"] .classroom-reading__page { max-width:70rem; margin-inline:0; padding-inline:0; }
-html[data-ui="fieldbook"] .classroom-reading__outline { background:var(--lane); border-radius:7px; border-left-color:var(--fk-accent); padding:.7rem 1rem; }
-html[data-ui="fieldbook"] .classroom-reading__text { line-height:1.65; }
-html[data-ui="fieldbook"] .classroom-reading__visual .map-stage { border-color:var(--class-line); }
-html[data-ui="fieldbook"] .classroom-reading__after { margin-top:2rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading__bar { background:transparent; padding:0 0 .7rem; border-radius:0; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading__mark { display:none; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading__wordmark { display:none; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading__page { max-width:70rem; margin-inline:0; padding-inline:0; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading__outline { background:var(--lane); border-radius:7px; border-left-color:var(--fk-accent); padding:.7rem 1rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading__text { line-height:1.65; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading__visual .map-stage { border-color:var(--class-line); }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .classroom-reading__after { margin-top:2rem; }
 
-html[data-ui="fieldbook"] .fk-index-grid { grid-template-columns:minmax(0,1fr); gap:.52rem; }
-html[data-ui="fieldbook"] .fk-index-grid .tile { border-radius:7px; padding:.85rem 1rem; }
-html[data-ui="fieldbook"] .fk-project-index { align-items:start; }
-html[data-ui="fieldbook"] .fk-project-index > a { padding:1.15rem; }
-html[data-ui="fieldbook"] .fk-activity-feed { max-width:58rem; }
-html[data-ui="fieldbook"] .fk-schedule [role="group"] button[aria-pressed="true"] { background:var(--lane); color:var(--fk-accent); }
-html[data-ui="fieldbook"] .fk-guide-start .panel:first-child { background:var(--lane); }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .fk-index-grid { grid-template-columns:minmax(0,1fr); gap:.52rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .fk-index-grid .tile { border-radius:7px; padding:.85rem 1rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .fk-project-index { align-items:start; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .fk-project-index > a { padding:1.15rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .fk-activity-feed { max-width:58rem; }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .fk-schedule [role="group"] button[aria-pressed="true"] { background:var(--lane); color:var(--fk-accent); }
+html:is([data-ui="fieldbook"],[data-ui="instrument"]) .fk-guide-start .panel:first-child { background:var(--lane); }
 @media(min-width:1024px) {
-  html[data-ui="fieldbook"] .fk-project-index { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  html:is([data-ui="fieldbook"],[data-ui="instrument"]) .fk-project-index { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }

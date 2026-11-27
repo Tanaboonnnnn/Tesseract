@@ -3,7 +3,7 @@ import { readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
-export const DESKTOP_VERSION = "0.6.4";
+export const DESKTOP_VERSION = "0.6.5";
 type Identity = { version: string; build: string; workspace: string };
 
 export function desktopIdentity(entry: string, web: string, data: string): Identity {

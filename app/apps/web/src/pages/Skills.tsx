@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { SkillRadar } from "../components/SkillRadar.tsx";
 import { FieldbookSkills } from "../components/FieldbookSkills.tsx";
+import { usesReadingLayout } from "../lib/fieldbook-workspace.ts";
 import { useLayout } from "../lib/theme.ts";
 import { Card, Chip, Dialog, Empty, ErrorNote, Loading, PageHeader, ProgressBar, SectionTitle } from "../components/ui.tsx";
 import { api, type DomainLevel } from "../lib/api.ts";
@@ -28,7 +29,7 @@ export function Skills() {
     setParams(p);
   };
 
-  if (layout === "fieldbook") {
+  if (usesReadingLayout(layout)) {
     return <FieldbookSkills domains={data} domain={domain} skillId={skillId} pending={isPending} error={error} go={go}/>;
   }
 

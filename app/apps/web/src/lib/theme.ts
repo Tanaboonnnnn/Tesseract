@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 export type ThemePref = "light" | "dark" | "system";
 const KEY = "theme";
@@ -16,8 +16,14 @@ export function applyTheme(pref: ThemePref): void {
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#030817" : "#edf3ff");
 }
 
+const themeListeners = new Set<() => void>();
+function subscribeTheme(fn: () => void) {
+  themeListeners.add(fn);
+  return () => { themeListeners.delete(fn); };
+}
+
 export function useTheme(): [ThemePref, (p: ThemePref) => void] {
-  const [pref, setPref] = useState<ThemePref>(readTheme);
+  const pref = useSyncExternalStore(subscribeTheme, readTheme);
 
   useEffect(() => {
     applyTheme(pref);
@@ -31,7 +37,8 @@ export function useTheme(): [ThemePref, (p: ThemePref) => void] {
   const set = (p: ThemePref) => {
     if (p === "system") localStorage.removeItem(KEY);
     else localStorage.setItem(KEY, p);
-    setPref(p);
+    applyTheme(p);
+    themeListeners.forEach(fn => fn());
   };
   return [pref, set];
 }
@@ -48,6 +55,7 @@ export const LAYOUTS = [
   { id: "notion", name: "Notion", hint: "Workspace sidebar, breadcrumbs and a centred writing column", palette: "paper" },
   { id: "editorial", name: "Warm Editorial", hint: "Centred masthead, horizontal index and a reading-first column", palette: "terracotta" },
   { id: "insights", name: "Insights", hint: "Dual sidebar and a workspace overview with live metrics", palette: "garden" },
+  { id: "instrument", name: "Study Instrument", hint: "Desk, Study and System keys with a grounded reading surface", palette: "instrument-paper" },
   { id: "fieldbook", name: "Fieldbook", hint: "Paper and ink, a quiet sidebar, and clear skill progress", palette: "fieldbook-paper" },
 ] as const;
 export type LayoutId = (typeof LAYOUTS)[number]["id"];
@@ -63,6 +71,7 @@ export const PALETTES = [
   { id: "paper", name: "Paper", swatch: ["#ffffff", "#31302e", "#0075de"] },
   { id: "terracotta", name: "Terracotta", swatch: ["#fbf6ee", "#f1e3cf", "#9b5b32"] },
   { id: "garden", name: "Garden", swatch: ["#ffffff", "#eef3e9", "#367e12"] },
+  { id: "instrument-paper", name: "Instrument Paper", swatch: ["#f6f3e7", "#294537", "#ee8756"] },
   { id: "fieldbook-paper", name: "Fieldbook Paper", swatch: ["#f8f6f0", "#e8efe6", "#243d34"] },
 ] as const;
 export type PaletteId = (typeof PALETTES)[number]["id"];

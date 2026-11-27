@@ -7,7 +7,7 @@ import { CourseActions, CourseDraftList } from "./Classroom.tsx";
 import { api } from "../lib/api.ts";
 import { useLayout } from "../lib/theme.ts";
 import { FieldbookCourseHero } from "../components/FieldbookCourseHero.tsx";
-import { mostRecentFieldbookCourse } from "../lib/fieldbook-workspace.ts";
+import { mostRecentFieldbookCourse, usesReadingLayout } from "../lib/fieldbook-workspace.ts";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -25,8 +25,8 @@ export function Learning() {
 
   return (
     <>
-      <PageHeader title="Learning" subtitle={layout==="fieldbook"?"Return to a course or choose what to learn next.":undefined}/>
-      {layout==="fieldbook"&&courses.length>0&&<div className="mb-5"><FieldbookCourseHero course={mostRecentFieldbookCourse(courses)}/></div>}
+      <PageHeader title="Learning" subtitle={usesReadingLayout(layout)?"Return to a course or choose what to learn next.":undefined}/>
+      {usesReadingLayout(layout)&&courses.length>0&&<div className="mb-5"><FieldbookCourseHero course={mostRecentFieldbookCourse(courses)}/></div>}
       <CourseActions />
       <div className="seg mb-5">
         {FILTERS.map((f) => (
@@ -44,7 +44,7 @@ export function Learning() {
       ) : error ? (
         <ErrorNote error={error} />
       ) : shown.length || courses.length ? (
-        <div className={layout==="fieldbook"?"fk-course-list":"grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
+        <div className={usesReadingLayout(layout)?"fk-course-list":"grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
           {courses.map(c => <Link key={c.course_id} to={"/learning/classroom/" + c.course_id} className="block"><Card className="p-4"><p className="text-xs muted">Course · Reviewed revision</p><p className="font-semibold">{c.title}</p></Card></Link>)}
           {shown.map((l) => (
             <LearningCard key={l.id} l={l} />

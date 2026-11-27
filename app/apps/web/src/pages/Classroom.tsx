@@ -7,7 +7,7 @@ import { Button, Card, ErrorNote, Loading, inputClass } from "../components/ui.t
 import { lessonLabels, isThaiLesson } from "../lib/lesson-language.ts";
 import { Markdown } from "../components/Markdown.tsx";
 import { chapterWindow, classroomOutline, classroomTitle } from "../lib/classroom-layout.ts";
-import { rememberFieldbookLesson } from "../lib/fieldbook-workspace.ts";
+import { rememberFieldbookLesson, usesReadingLayout } from "../lib/fieldbook-workspace.ts";
 import { useLayout } from "../lib/theme.ts";
 import classroomMark from "./classroom-mark.svg";
 import "@fontsource/ibm-plex-sans-thai/400.css";
@@ -190,7 +190,7 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
   const requested = new URLSearchParams(search).get("tab");
   const tab = requested === "lab" || requested === "check" ? requested : "learn";
   useEffect(()=>{
-    if(draft||layout!=="fieldbook"||!query.data)return;
+    if(draft||!usesReadingLayout(layout)||!query.data)return;
     const lessons=query.data.bundle.lessons;
     const lesson=lessons.find(l=>l.id===hash.slice(1))??lessons[0];
     if(lesson) rememberFieldbookLesson({course:query.data.course_id,lesson:lesson.id,title:classroomTitle(lesson.title)});
@@ -276,7 +276,7 @@ export function ClassroomPage({draft=false}:{draft?:boolean}) {
             <h2>{thai?"หลังจบบทนี้":"By the end of this lesson"}</h2>
             <p>{lesson.objective}</p>
           </div>
-          {outline.length>(layout==="fieldbook"?1:0)&&<nav aria-label={label.outline} className="classroom-reading__outline">
+          {outline.length>(usesReadingLayout(layout)?1:0)&&<nav aria-label={label.outline} className="classroom-reading__outline">
             <h2 className="font-semibold">{label.outline}</h2>
             <ul>{outline.map((item,i)=><li key={item.id}><a href={"#"+item.id} onClick={e=>{
               e.preventDefault();const target=document.getElementById(item.id);

@@ -229,6 +229,22 @@ function Mini({ id }: { id: LayoutId }) {
       </div>
     );
   }
+  if (id === "instrument")
+    return (
+      <div aria-hidden="true" className={cn(box, "flex flex-col gap-1.5 bg-[#e2e0d5] p-2 dark:bg-[#333834]")}>
+        <i className="h-1 w-1/3 rounded bg-[#294537] dark:bg-[#b5d9c3]"/>
+        <span className="grid grid-cols-3 gap-1">
+          <i className="h-2.5 rounded-sm border border-[#a39f8c] bg-[#eeeade]"/>
+          <i className="h-2.5 rounded-sm bg-[#ee8756]"/>
+          <i className="h-2.5 rounded-sm border border-[#a39f8c] bg-[#eeeade]"/>
+        </span>
+        <span className="flex min-h-0 flex-1 flex-col gap-1 rounded-sm border border-[#a39f8c] bg-[#f6f3e7] dark:bg-[#222b24]">
+          <i className="h-1.5 bg-[#262b28]"/>
+          <i className="mx-1 h-1 w-1/2 rounded bg-[#8c9886]"/>
+          <i className="mx-1 h-1.5 rounded-sm bg-[#e6ecde] dark:bg-[#2b3e32]"/>
+        </span>
+      </div>
+    );
   if (id === "system" || id === "fieldbook")
     return (
       <div className={cn(box, "flex")}>

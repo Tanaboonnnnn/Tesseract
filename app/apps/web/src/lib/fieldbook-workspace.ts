@@ -36,3 +36,20 @@ export function fieldbookCourseLink(course:string) {
   const last=lastLesson();
   return last?.course===course?{to:to+"#"+encodeURIComponent(last.lesson),title:last.title}:{to,title:undefined};
 }
+
+// Presentation only: both reading layouts use the same course, resume state and lesson renderer.
+export function usesReadingLayout(layout: string) {
+  return layout === "fieldbook" || layout === "instrument";
+}
+
+export const INSTRUMENT_MODES = [
+  { id:"desk", title:"Desk", routes:["/", "/schedule", "/projects"] },
+  { id:"study", title:"Study", routes:["/learning", "/skills", "/quizzes", "/notes"] },
+  { id:"system", title:"System", routes:["/settings", "/activity", "/guide"] },
+] as const;
+
+export function instrumentLocation(path: string) {
+  const page = fieldbookPage(path);
+  const group = INSTRUMENT_MODES.find(m => m.routes.some(r => r === page.to)) ?? INSTRUMENT_MODES[0];
+  return {...page, mode:group.id, modeTitle:group.title, routes:group.routes};
+}

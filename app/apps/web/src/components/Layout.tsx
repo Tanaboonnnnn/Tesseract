@@ -1,7 +1,8 @@
 /** App frame: the navigation for the chosen layout (UI theme) around the shared pages. */
 import { Suspense } from "react";
 import { Link, Outlet, useLocation } from "react-router";
-import { fieldbookPage } from "../lib/fieldbook-workspace.ts";
+import { InstrumentNav } from "./InstrumentNav.tsx";
+import { fieldbookPage, usesReadingLayout } from "../lib/fieldbook-workspace.ts";
 import { Loading } from "./ui.tsx";
 import { InsightsNav } from "./InsightsNav.tsx";
 import { cn } from "../lib/format.ts";
@@ -22,6 +23,7 @@ const FRAME: Record<LayoutId, string> = {
   editorial: "",
   insights: "lg:pl-60",
   fieldbook: "lg:pl-[220px]",
+  instrument: "",
 };
 
 export function Layout() {
@@ -44,12 +46,13 @@ export function Layout() {
         </nav><span className="fk-label">Fieldbook</span>
       </header>}
 
-      <main className="sb-main mx-auto max-w-6xl px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12" data-fieldbook-route={layout==="fieldbook"?page.to:undefined}>
+      {layout==="instrument" && <InstrumentNav/>}
+      <main className="sb-main mx-auto max-w-6xl px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12" data-fieldbook-route={usesReadingLayout(layout)?page.to:undefined}>
         <Suspense fallback={<Loading />}><Outlet /></Suspense>
       </main>
 
       {layout === "terminal" && <StatusBar />}
-      <BottomNav fieldbook={layout==="fieldbook"}/>
+      {layout!=="instrument" && <BottomNav fieldbook={layout==="fieldbook"}/>}
     </div>
   );
 }

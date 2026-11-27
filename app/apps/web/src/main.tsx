@@ -15,6 +15,7 @@ import "./palettes.css";
 import "./layouts.css";
 import "./design-layouts.css";
 import "./fieldbook.css";
+import "./study-instrument.css";
 const Activity = lazy(() => import("./pages/Activity.tsx").then((m) => ({ default: m.Activity })));
 const Guide = lazy(() => import("./pages/Guide.tsx").then((m) => ({ default: m.Guide })));
 const VisualPage = lazy(() => import("./pages/VisualPage.tsx").then((m) => ({ default: m.VisualPage })));
